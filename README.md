@@ -38,7 +38,7 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Multi-select teaching zones with adjustable opacity; overlaps naturally emphasize intersections.
 - Player number, label, individual color editing, and team/goalkeeper color palettes.
 - Opponent visibility toggle, turf/dark/field themes, landscape and portrait pitch rendering.
-- Freehand telestration, arrows, cones, extra soccer balls, clear drawings, play/pause/reset, 0.5×/1×/2× simulation speed, and good-spacing/bunching teaching modes.
+- Freehand telestration, arrows, cones, mini goals, extra soccer balls, clear drawings, play/pause/reset, 0.5×/1×/2× simulation speed, and good-spacing/bunching teaching modes.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
 - Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, JSON backup export/import.
 - Offline app-shell caching and installable web-app manifest.

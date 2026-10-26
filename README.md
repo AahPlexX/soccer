@@ -18,6 +18,12 @@ Tests use the Node.js standard test runner:
 npm test
 ```
 
+## Validation
+
+Every push to `main` runs `.github/workflows/validate.yml`. The workflow runs the behavior/integrity test suite and syntax-checks every runtime JavaScript module plus `sw.js`. The repository-integrity tests also verify that the service-worker app shell does not reference missing files and does not omit install-critical local assets or reachable static ES-module dependencies.
+
+A green workflow proves only those automated checks. Physical-iPad touch behavior, standalone Home Screen behavior, offline use, outdoor readability, and the PRD's 2018-iPad 60 fps target require separate browser or real-device evidence before they can be marked verified.
+
 ## GitHub Pages
 
 Deployment target: `https://aahplexx.github.io/soccer/`.

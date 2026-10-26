@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en" data-theme="turf">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#063d2b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <title>U9 Tactical Board</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to tactical board</a>
+  <div class="app-shell">
+    <header class="top-rail" aria-label="Team and board controls">
+      <div class="brand-block">
+        <span class="brand-mark" aria-hidden="true">⚽</span>
+        <div><strong>U9 Tactical Board</strong><span>7v7 coach workspace</span></div>
+      </div>
+
+      <div class="formation-control">
+        <label for="home-formation">Our shape</label>
+        <select id="home-formation">
+          <option value="1-3-2-1">1-3-2-1</option>
+          <option value="1-2-3-1">1-2-3-1</option>
+        </select>
+      </div>
+      <div class="formation-control">
+        <label for="away-formation">Their shape</label>
+        <select id="away-formation">
+          <option value="1-3-2-1">1-3-2-1</option>
+          <option value="1-2-3-1" selected>1-2-3-1</option>
+        </select>
+      </div>
+      <button id="away-visible" class="rail-button" type="button" aria-pressed="true">Hide opponents</button>
+      <button id="zones-toggle" class="rail-button" type="button" aria-expanded="false" aria-controls="zone-panel">Zones</button>
+      <button id="saved-open" class="rail-button" type="button">Saved positions</button>
+      <button id="colors-open" class="rail-button" type="button">Team colors</button>
+      <label class="theme-control" for="theme-select"><span>View</span>
+        <select id="theme-select">
+          <option value="turf">Turf</option>
+          <option value="dark">Dark</option>
+          <option value="field">Field mode</option>
+        </select>
+      </label>
+    </header>
+
+    <section id="zone-panel" class="zone-panel" hidden aria-label="Selectable pitch zones">
+      <div id="zone-buttons" class="zone-buttons"></div>
+      <label class="opacity-control" for="zone-opacity">Zone opacity
+        <input id="zone-opacity" type="range" min="0.1" max="0.45" step="0.05" value="0.2">
+      </label>
+      <button id="zones-clear" type="button">Clear zones</button>
+    </section>
+
+    <main id="workspace" class="workspace" tabindex="-1">
+      <section class="pitch-stage" aria-label="Interactive U9 soccer pitch">
+        <svg id="pitch" class="pitch" aria-label="Tactical soccer pitch. Players and ball are keyboard focusable." role="group"></svg>
+        <div id="drag-status" class="visually-hidden" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="bottom-dock" aria-label="Coaching and simulation controls">
+      <div class="tool-group" role="group" aria-label="Board tools">
+        <button class="tool-button is-active" data-tool="move" type="button" aria-pressed="true">Move</button>
+        <button class="tool-button" data-tool="draw" type="button" aria-pressed="false">Draw</button>
+        <button class="tool-button" data-tool="arrow" type="button" aria-pressed="false">Arrow</button>
+        <button class="tool-button" data-tool="cone" type="button" aria-pressed="false">Add cone</button>
+        <button class="tool-button" data-tool="ball" type="button" aria-pressed="false">Add ball</button>
+        <button id="remove-selected" class="tool-button" type="button">Remove selected prop</button>
+        <button id="drawings-clear" class="tool-button" type="button">Clear drawings</button>
+      </div>
+      <div class="simulation-group">
+        <button id="play-toggle" class="primary-action" type="button">Play simulation</button>
+        <button id="reset-board" type="button">Reset</button>
+        <label for="speed-select">Speed
+          <select id="speed-select">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+          </select>
+        </label>
+        <label for="spacing-select">Spacing
+          <select id="spacing-select">
+            <option value="good">Good spacing</option>
+            <option value="swarm">Bunching demo</option>
+          </select>
+        </label>
+      </div>
+      <div class="save-group">
+        <button id="save-as" type="button">Save position</button>
+        <button id="export-backup" type="button">Export backup</button>
+        <button id="import-backup" type="button">Import backup</button>
+        <input id="import-file" class="visually-hidden" type="file" accept="application/json,.json">
+      </div>
+    </footer>
+  </div>
+
+  <dialog id="player-dialog" class="editor-dialog">
+    <form method="dialog" id="player-form">
+      <div class="dialog-heading"><h2>Edit player</h2><button value="cancel" class="icon-button" aria-label="Close player editor">×</button></div>
+      <input type="hidden" id="player-id">
+      <label for="player-number">Jersey number
+        <input id="player-number" name="number" type="number" min="1" max="99" inputmode="numeric" required>
+      </label>
+      <label for="player-label">Name or role
+        <input id="player-label" name="label" type="text" maxlength="12" autocomplete="off">
+      </label>
+      <label for="player-color">Player color override
+        <select id="player-color" name="color">
+          <option value="">Use team color</option>
+          <option value="#1769ff">Blue</option><option value="#ef3340">Red</option><option value="#ffd43b">Yellow</option>
+          <option value="#7cff00">Neon green</option><option value="#ff8c1a">Orange</option><option value="#ffffff">White</option>
+          <option value="#111111">Black</option><option value="#7b4dff">Purple</option>
+        </select>
+      </label>
+      <fieldset class="nudge-fieldset"><legend>Move without dragging</legend>
+        <div class="nudge-grid">
+          <span></span><button type="button" data-nudge="up" aria-label="Move player up">↑</button><span></span>
+          <button type="button" data-nudge="left" aria-label="Move player left">←</button><button type="button" data-nudge="center" aria-label="Reset player to formation position">•</button><button type="button" data-nudge="right" aria-label="Move player right">→</button>
+          <span></span><button type="button" data-nudge="down" aria-label="Move player down">↓</button><span></span>
+        </div>
+      </fieldset>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="player-save" value="default" class="primary-action">Save changes</button></div>
+    </form>
+  </dialog>
+
+
+  <dialog id="colors-dialog" class="editor-dialog">
+    <form method="dialog" id="colors-form">
+      <div class="dialog-heading"><h2>Team colors</h2><button value="cancel" class="icon-button" aria-label="Close team colors">×</button></div>
+      <label for="home-color">Our field players<select id="home-color" name="home"></select></label>
+      <label for="home-gk-color">Our goalkeeper<select id="home-gk-color" name="homeGoalkeeper"></select></label>
+      <label for="away-color">Opposing field players<select id="away-color" name="away"></select></label>
+      <label for="away-gk-color">Opposing goalkeeper<select id="away-gk-color" name="awayGoalkeeper"></select></label>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="colors-save" value="default" class="primary-action">Save colors</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="save-dialog" class="editor-dialog">
+    <form method="dialog" id="save-form">
+      <div class="dialog-heading"><h2>Save position</h2><button value="cancel" class="icon-button" aria-label="Close save dialog">×</button></div>
+      <label for="preset-title">Title
+        <input id="preset-title" type="text" maxlength="48" autocomplete="off" required>
+      </label>
+      <label for="preset-category">Category
+        <select id="preset-category"><option>Formations</option><option selected>Positions</option><option>Plays</option><option>Drills</option><option>Rules</option></select>
+      </label>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="preset-save" value="default" class="primary-action">Save position</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="saved-dialog" class="library-dialog">
+    <div class="dialog-heading"><div><h2>Saved positions</h2><p>Load a formation, position, play, drill, or rule setup.</p></div><button id="saved-close" class="icon-button" type="button" aria-label="Close saved positions">×</button></div>
+    <div id="saved-list" class="saved-list"></div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

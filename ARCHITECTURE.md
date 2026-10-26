@@ -18,6 +18,8 @@ The main boundaries are:
 - `js/render.js`: SVG pitch construction, orientation transform, zone overlays, tokens, props, and drawings.
 - `js/app.js`: UI event wiring, Pointer Events, keyboard alternatives, dialogs, persistence triggers, service-worker registration, and the requestAnimationFrame loop.
 - `sw.js`: app-shell precache, stale-cache cleanup, same-origin cache-first fetch handling with index fallback.
+- `tests/`: Node standard-library behavior and integrity tests, including the service-worker app-shell contract.
+- `.github/workflows/validate.yml`: automatic `main` validation using the pinned Node.js LTS runtime, behavior/integrity tests, and JavaScript syntax checks.
 
 ## Coordinate system
 
@@ -29,7 +31,7 @@ All tactical state uses normalized coordinates from the PRD:
 - `y = 0.0`: left touchline when attacking left-to-right.
 - `y = 1.0`: right touchline.
 
-The SVG world is 1000 × 680 units. Landscape maps `(x, y)` directly to `(x × 1000, y × 680)`. Portrait changes the SVG viewBox to 680 × 1000 and rotates the field world 90 degrees. Player, ball, and cone visual groups counter-rotate so labels and symbols remain upright to the coach. Pointer positions are converted through the inverse `getScreenCTM()` transform, so the normalized model does not change with orientation.
+The SVG world is 1000 × 680 units. Landscape maps `(x, y)` directly to `(x × 1000, y × 680)`. Portrait changes the SVG viewBox to 680 × 1000 and rotates the field world 90 degrees. Player, ball, cone, and mini-goal visual groups counter-rotate so their visual orientation remains usable to the coach. Pointer positions are converted through the inverse `getScreenCTM()` transform, so the normalized model does not change with orientation.
 
 ## Pitch constants
 
@@ -99,7 +101,7 @@ Not yet implemented: throw-ins, corners, kickoffs as explicit restart states; fo
 
 ## Rendering and performance
 
-Static pitch geometry is built once. During live simulation, the animation loop mutates only token transforms and active presentation state. Object layers are rebuilt only when object count/content changes, such as adding a cone or editing a player label.
+Static pitch geometry is built once. During live simulation, the animation loop mutates only token transforms and active presentation state. Object layers are rebuilt only when object count/content changes, such as adding a cone or mini goal or editing a player label.
 
 `requestAnimationFrame` drives rendering. Simulation delta time is capped at 50 ms to avoid large jumps after backgrounding. The PRD's locked 60 fps target on the 2018 iPad baseline is not yet hardware-verified.
 
@@ -107,7 +109,7 @@ Static pitch geometry is built once. During live simulation, the animation loop 
 
 Pointer Events provide one input path for touch, pen, and mouse. The pitch alone uses `touch-action: none` to prevent browser gesture takeover while dragging or drawing. The page does not use `user-scalable=no`; browser zoom is not globally disabled.
 
-Players, balls, and cones are keyboard focusable. Extra balls and cones can be removed without exposing deletion for players or the primary match ball. Arrow keys nudge them by 1% of the pitch; Shift+Arrow uses 2.5%. Pressing Enter on a player opens the editor. The player dialog also provides nudge controls, so player positioning is not drag-only.
+Players, balls, cones, and mini goals are keyboard focusable. Extra balls, cones, and mini goals can be removed without exposing deletion for players or the primary match ball. Arrow keys nudge movable objects by 1% of the pitch; Shift+Arrow uses 2.5%. Pressing Enter on a player opens the editor. The player dialog also provides nudge controls, so player positioning is not drag-only.
 
 Every primary control is a native button, select, input, or dialog control. Focus-visible styling uses a 3 px high-contrast outline. The intended minimum interactive target is 48 CSS px.
 
@@ -118,3 +120,16 @@ The shell uses named CSS Grid areas (`top`, `zones`, `workspace`, `bottom`) so h
 `sw.js` precaches the current app shell during install, removes older `u9-tactical-board-*` caches during activation, claims clients, and serves cached same-origin requests before the network. Cache misses that return a successful same-origin basic response are cached for later use.
 
 Any app-shell file added, removed, or renamed requires both `APP_SHELL` and `CACHE_NAME` to be updated in the same change.
+
+`tests/pwa-shell.test.mjs` protects this contract by verifying that every declared app-shell file exists, every install-critical local asset referenced by `index.html` is precached, and every static ES-module dependency reachable from the cached module graph is also in `APP_SHELL`.
+
+## Validation pipeline
+
+`.github/workflows/validate.yml` runs on every push to `main` and on manual dispatch. It uses Ubuntu 24.04 and Node.js 24.22.1 LTS. Third-party GitHub Actions are pinned to full commit SHAs, checkout credentials are not persisted, and the workflow token has read-only repository-content access.
+
+The validation gate runs:
+
+1. `npm test`, which executes the Node standard-library behavior and repository-integrity test suite.
+2. `node --check` against every `js/*.js` runtime module and `sw.js`.
+
+A successful workflow run is repository evidence for those automated checks only. It does not replace rendered-browser checks or physical-iPad performance, touch, standalone-PWA, and offline verification.

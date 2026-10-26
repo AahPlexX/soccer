@@ -7,7 +7,7 @@ Schema version: `1`
 
 ## Resume here
 
-Current state: the repository has moved from PRD-only to a working static-board foundation with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player and team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, a first CPU-vs-CPU teaching simulation, persistence, JSON backup, and PWA caching.
+Current state: the repository has moved from PRD-only to a working static-board foundation with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player and team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, a first CPU-vs-CPU teaching simulation, persistence, JSON backup, PWA caching, and an automated validation gate on every push to `main`.
 
 Next action: implement the remaining PRD coaching content and simulation completeness in this order: explicit set-piece restart states (out-of-bounds detection, goal kick, throw-in, corner, kickoff); zone-restriction drills; richer saved-library category filtering/editing and an in-app delete confirmation replacing `confirm()`; real-device iPad performance/accessibility verification.
 
@@ -23,13 +23,13 @@ Blockers: no source blocker. Real-device validation on the 2018 iPad baseline ha
 - `FND-006` — Provide play/pause/reset, 0.5×/1×/2× speed, good-spacing mode, and bunching demo. Status: implemented. Evidence: `index.html`, `js/simulation.js`, `js/app.js`.
 - `FND-007` — Enforce goalkeeper build-out retreat before distribution and omit goalkeeper punt/drop-kick behavior. Status: implemented and unit-tested at the engine level. Evidence: `js/simulation.js`, `tests/simulation.test.mjs`.
 - `FND-008` — Autosave board state and provide a saved-position library plus JSON export/import. Status: implemented. Evidence: `js/storage.js`, `js/app.js`.
-- `FND-009` — Provide offline app-shell caching and installable manifest. Status: implemented in source. Evidence: `sw.js`, `manifest.webmanifest`, `icons/`.
+- `FND-009` — Provide offline app-shell caching and installable manifest. Status: implemented in source. Evidence: `sw.js`, `manifest.webmanifest`, `icons/`, `tests/pwa-shell.test.mjs`.
 - `FND-010` — Maintain mandatory repository documentation. Status: implemented. Evidence: `README.md`, `ARCHITECTURE.md`, `PROJECT_STATE.md`, `PRD.md`.
 - `FND-011` — Provide the four required built-in U9 teaching scenarios. Status: implemented and unit-tested. Evidence: `js/builtins.js`, `tests/builtins.test.mjs`.
 - `FND-012` — Support extra movable soccer balls in addition to cones. Status: implemented. Evidence: `index.html`, `js/app.js`, `js/render.js`.
 - `FND-013` — Keep the full application shell usable in 1024×768 landscape, 768×1024 portrait, and 1366×1024 desktop/tablet rendering without page overflow; keep portrait token labels upright. Status: implemented and rendered in headless Chromium. Evidence: `styles.css`, `js/render.js`; three viewport render pass with zero page errors.
-
 - `FND-014` — Support drag-and-drop mini-goals/pug goals as drill props (PRD §7.2). Status: implemented; state normalization unit-tested. Evidence: `js/state.js` (`miniGoals`), `js/render.js` (`buildMiniGoal`), `js/app.js` (`minigoal` tool, `findObject`, remove-selected), `index.html`, `styles.css`, `tests/state.test.mjs`. Requires human/browser verification of the touch drag and hit area; not yet exercised in a browser.
+- `FND-015` — Run repository behavior/integrity tests and runtime syntax checks automatically on every push to `main`. Status: implemented and verified. Evidence: `.github/workflows/validate.yml`, `tests/pwa-shell.test.mjs`, GitHub Actions run `40407990306` at commit `7d14f8cbc2a0c4407f0a4db7da6b0061dd6c5dbf`.
 
 ## Partially implemented PRD areas
 
@@ -44,9 +44,16 @@ Baseline before implementation: repository contained only `PRD.md`; no executabl
 
 Automated checks for this work unit:
 
-- `npm test` — must pass before integration; covers approved formation restriction, mirrored anchors, coordinate clamps, offside support boundaries, carrier acquisition, build-out retreat, goalkeeper wait behavior, built-in presets, and board-state normalization including `miniGoals`. Last run 2026-10-26: 17 tests, 17 pass, 0 fail.
-- JavaScript syntax checks — must pass for all `js/*.js` and `sw.js` before integration.
-- Headless Chromium render smoke test — actual application modules rendered at 1024×768, 768×1024, and 1366×1024 with 14 player tokens, eight zone overlays, and zero page errors. The connected remote Playwright service returned an upstream 404, so this validation used the local Chromium binary with an in-memory document rather than HTTP navigation. Service-worker behavior is therefore not covered by this render smoke test.
+- `npm test` — covers approved formation restriction, mirrored anchors, coordinate clamps, offside support boundaries, carrier acquisition, build-out retreat, goalkeeper wait behavior, built-in presets, board-state normalization including `miniGoals`, and service-worker app-shell integrity. GitHub Actions run `40407990306` on 2026-10-26: 20 tests, 20 pass, 0 fail, 0 skipped.
+- `tests/pwa-shell.test.mjs` — verifies every declared app-shell path exists, every install-critical local `index.html` asset is precached, and every static ES-module dependency reachable from cached modules is included in `APP_SHELL`.
+- JavaScript syntax checks — GitHub Actions run `40407990306` passed `node --check` for all `js/*.js` files and `sw.js`.
+- Headless Chromium render smoke test — actual application modules rendered at 1024×768, 768×1024, and 1366×1024 with 14 player tokens, eight zone overlays, and zero page errors. The connected remote Playwright service returned an upstream 404, so this validation used the local Chromium binary with an in-memory document rather than HTTP navigation. Service-worker behavior is therefore not covered by this render smoke test, and the later mini-goal interaction remains browser-unverified.
+
+Validation pipeline facts:
+
+- `.github/workflows/validate.yml` runs on pushes to `main` and manual dispatch.
+- Runtime: Ubuntu 24.04 with Node.js 24.22.1 LTS.
+- `actions/checkout` and `actions/setup-node` are pinned to full commit SHAs; checkout credentials are not persisted; workflow permissions are read-only for repository contents.
 
 Browser/source standards applied in this work unit:
 
@@ -59,6 +66,7 @@ Browser/source standards applied in this work unit:
 
 - Locked 60 fps on the 2018 iPad 6th generation is a PRD requirement but remains unverified on physical hardware.
 - iPad Safari/PWA offline behavior is implemented from current platform guidance but has not yet been exercised on physical iPad hardware.
+- Mini-goal touch dragging and hit-area ergonomics have not yet been verified in a rendered browser or physical iPad.
 - The current simulation is a teaching model, not a complete match-law engine. Remaining set-piece and goalkeeper behaviors are tracked above.
 - `confirm()` is currently used before deleting a saved preset. It is functional but should be replaced by an in-app confirmation dialog for consistent standalone-PWA presentation.
 
@@ -68,5 +76,6 @@ Browser/source standards applied in this work unit:
 - Do not add preset formations beyond 1-3-2-1 and 1-2-3-1.
 - Keep normalized tactical coordinates independent from rendered pixel dimensions.
 - Do not persist a running simulation state.
-- Changes to cached app-shell files must update `sw.js` cache version/list.
-- Update `ARCHITECTURE.md` and this file in the same change as behavior changes.
+- Changes to cached app-shell files must update `sw.js` cache version/list; `tests/pwa-shell.test.mjs` must remain green.
+- `.github/workflows/validate.yml` must remain green for automated checks on `main`; browser and physical-iPad checks are separate evidence and must not be inferred from CI.
+- Update `ARCHITECTURE.md` and this file in the same work unit as behavior changes.

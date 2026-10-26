@@ -130,6 +130,7 @@ function findObject(id) {
   return state.players.find((item) => item.id === id)
     ?? state.balls.find((item) => item.id === id)
     ?? state.cones.find((item) => item.id === id)
+    ?? state.miniGoals.find((item) => item.id === id)
     ?? null;
 }
 
@@ -179,6 +180,13 @@ function handleDrawPointerDown(event) {
     state.selectedObjectId = state.balls[state.balls.length - 1].id;
     commitChange({ rebuild: true });
     showToast('Extra ball added');
+    return;
+  }
+  if (state.tool === 'minigoal') {
+    state.miniGoals.push({ id: createLocalId('minigoal'), x: point.x, y: point.y });
+    state.selectedObjectId = state.miniGoals[state.miniGoals.length - 1].id;
+    commitChange({ rebuild: true });
+    showToast('Mini goal added');
     return;
   }
   if (!['draw', 'arrow'].includes(state.tool)) return;
@@ -291,12 +299,12 @@ drawingsClear.addEventListener('click', () => {
 
 removeSelected.addEventListener('click', () => {
   const selected = state.selectedObjectId;
-  if (!selected) { showToast('Select a cone or extra ball first'); return; }
-  const coneCount = state.cones.length;
-  const ballCount = state.balls.length;
+  if (!selected) { showToast('Select a cone, mini goal, or extra ball first'); return; }
+  const propCount = state.cones.length + state.miniGoals.length + state.balls.length;
   state.cones = state.cones.filter((item) => item.id !== selected);
+  state.miniGoals = state.miniGoals.filter((item) => item.id !== selected);
   state.balls = state.balls.filter((item) => item.primary || item.id !== selected);
-  if (state.cones.length === coneCount && state.balls.length === ballCount) {
+  if (state.cones.length + state.miniGoals.length + state.balls.length === propCount) {
     showToast('Players and the main ball cannot be removed');
     return;
   }

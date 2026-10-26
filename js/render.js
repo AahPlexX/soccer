@@ -111,6 +111,24 @@ function buildCone(cone) {
   return group;
 }
 
+function buildMiniGoal(goal) {
+  const group = el('g', {
+    id: `object-${goal.id}`,
+    class: 'minigoal-token',
+    tabindex: '0',
+    role: 'button',
+    'aria-label': 'Mini goal. Drag to move or use arrow keys.',
+    'data-object-id': goal.id,
+    'data-object-type': 'minigoal',
+  });
+  const visual = el('g', { class: 'object-visual minigoal-visual' });
+  visual.append(el('rect', { x: -28, y: -20, width: 56, height: 40, class: 'minigoal-hit' }));
+  visual.append(el('rect', { x: -22, y: -14, width: 44, height: 28, class: 'minigoal-net' }));
+  visual.append(el('path', { d: 'M-22 14V-14H22V14', class: 'minigoal-frame' }));
+  group.append(visual);
+  return group;
+}
+
 function drawingPath(points) {
   if (!points?.length) return '';
   return points.map((point, index) => `${index ? 'L' : 'M'}${sx(point.x)} ${sy(point.y)}`).join(' ');
@@ -155,7 +173,7 @@ export function rebuildObjects(svg, state) {
   const drawingLayer = svg.querySelector('#drawing-layer');
   playerLayer.replaceChildren(...state.players.map((player) => buildPlayer(player, state)));
   ballLayer.replaceChildren(...state.balls.map(buildBall));
-  propLayer.replaceChildren(...state.cones.map(buildCone));
+  propLayer.replaceChildren(...state.cones.map(buildCone), ...state.miniGoals.map(buildMiniGoal));
   drawingLayer.replaceChildren(...state.drawings.map(buildDrawing));
 }
 
@@ -204,11 +222,11 @@ export function renderScene(svg, state) {
       node.classList.toggle('is-selected', state.selectedObjectId === ball.id);
     }
   });
-  state.cones.forEach((cone) => {
-    const node = svg.querySelector(`#object-${cone.id}`);
+  [...state.cones, ...state.miniGoals].forEach((prop) => {
+    const node = svg.querySelector(`#object-${prop.id}`);
     if (node) {
-      node.setAttribute('transform', `translate(${sx(cone.x)} ${sy(cone.y)})`);
-      node.classList.toggle('is-selected', state.selectedObjectId === cone.id);
+      node.setAttribute('transform', `translate(${sx(prop.x)} ${sy(prop.y)})`);
+      node.classList.toggle('is-selected', state.selectedObjectId === prop.id);
     }
   });
 }

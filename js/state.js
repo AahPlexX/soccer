@@ -17,6 +17,7 @@ export function createInitialState() {
     players: defaultPlayers(),
     balls: [{ id: 'ball-main', x: 0.5, y: 0.5, primary: true }],
     cones: [],
+    miniGoals: [],
     drawings: [],
     selectedObjectId: null,
     currentPresetId: null,
@@ -42,6 +43,7 @@ export function normalizeState(candidate) {
     players: Array.isArray(candidate.players) && candidate.players.length === 14 ? candidate.players : base.players,
     balls: Array.isArray(candidate.balls) && candidate.balls.length ? candidate.balls : base.balls,
     cones: Array.isArray(candidate.cones) ? candidate.cones : [],
+    miniGoals: Array.isArray(candidate.miniGoals) ? candidate.miniGoals : [],
     drawings: Array.isArray(candidate.drawings) ? candidate.drawings : [],
     selectedZones: Array.isArray(candidate.selectedZones) ? candidate.selectedZones : [],
   };

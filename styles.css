@@ -181,18 +181,20 @@ input[type="text"], input[type="number"] {
 .zone-overlay { fill: #ffd43b; opacity: 0; pointer-events: none; }
 .zone-overlay.is-active { opacity: var(--zone-opacity, .2); }
 
-.player-token, .ball-token, .cone-token { cursor: grab; }
-.player-token:active, .ball-token:active, .cone-token:active { cursor: grabbing; }
+.player-token, .ball-token, .cone-token, .minigoal-token { cursor: grab; }
+.player-token:active, .ball-token:active, .cone-token:active, .minigoal-token:active { cursor: grabbing; }
 .player-token[hidden] { display: none; }
 .player-halo { fill: none; stroke: transparent; stroke-width: 9; }
 .player-token.is-selected .player-halo, .player-token.is-dragging .player-halo { stroke: rgba(255,212,59,.92); }
 .player-disc { stroke: #fff; stroke-width: 3; vector-effect: non-scaling-stroke; filter: drop-shadow(0 4px 4px rgba(0,0,0,.38)); }
 .player-number { fill: #fff; font-size: 22px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: rgba(0,0,0,.55); stroke-width: 3px; }
 .player-label { fill: #fff; font-size: 15px; font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: rgba(0,0,0,.78); stroke-width: 4px; }
-.ball-hit, .cone-hit { fill: transparent; }
+.ball-hit, .cone-hit, .minigoal-hit { fill: transparent; }
 .ball-core { fill: #fff; stroke: #111; stroke-width: 2; }
 .ball-patch { fill: #111; }
-.ball-token.is-selected .ball-hit, .cone-token.is-selected .cone-hit { fill: rgba(255,212,59,.34); }
+.ball-token.is-selected .ball-hit, .cone-token.is-selected .cone-hit, .minigoal-token.is-selected .minigoal-hit { fill: rgba(255,212,59,.34); }
+.minigoal-net { fill: rgba(255,255,255,.28); }
+.minigoal-frame { fill: none; stroke: #fff; stroke-width: 4; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(0,0,0,.6)); }
 .cone-shape, .cone-base { stroke: rgba(20,20,20,.45); stroke-width: 1.5; }
 .drawing-freehand, .drawing-arrow { fill: none; stroke: #fff24d; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 .drawing-arrow { stroke-width: 7; }

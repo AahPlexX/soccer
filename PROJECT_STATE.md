@@ -7,9 +7,9 @@ Schema version: `1`
 
 ## Resume here
 
-Current state: the repository has moved from PRD-only to a working static-board foundation with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player and team color editing, telestration, cones, extra balls, all four built-in teaching scenarios, a first CPU-vs-CPU teaching simulation, persistence, JSON backup, and PWA caching.
+Current state: the repository has moved from PRD-only to a working static-board foundation with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player and team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, a first CPU-vs-CPU teaching simulation, persistence, JSON backup, and PWA caching.
 
-Next action: implement the remaining PRD coaching content and simulation completeness in this order: mini-goal/pug-goal props; explicit set-piece restart states; zone-restriction drills; richer saved-library category filtering/editing; real-device iPad performance/accessibility verification.
+Next action: implement the remaining PRD coaching content and simulation completeness in this order: explicit set-piece restart states (out-of-bounds detection, goal kick, throw-in, corner, kickoff); zone-restriction drills; richer saved-library category filtering/editing and an in-app delete confirmation replacing `confirm()`; real-device iPad performance/accessibility verification.
 
 Blockers: no source blocker. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
 
@@ -29,10 +29,12 @@ Blockers: no source blocker. Real-device validation on the 2018 iPad baseline ha
 - `FND-012` — Support extra movable soccer balls in addition to cones. Status: implemented. Evidence: `index.html`, `js/app.js`, `js/render.js`.
 - `FND-013` — Keep the full application shell usable in 1024×768 landscape, 768×1024 portrait, and 1366×1024 desktop/tablet rendering without page overflow; keep portrait token labels upright. Status: implemented and rendered in headless Chromium. Evidence: `styles.css`, `js/render.js`; three viewport render pass with zero page errors.
 
+- `FND-014` — Support drag-and-drop mini-goals/pug goals as drill props (PRD §7.2). Status: implemented; state normalization unit-tested. Evidence: `js/state.js` (`miniGoals`), `js/render.js` (`buildMiniGoal`), `js/app.js` (`minigoal` tool, `findObject`, remove-selected), `index.html`, `styles.css`, `tests/state.test.mjs`. Requires human/browser verification of the touch drag and hit area; not yet exercised in a browser.
+
 ## Partially implemented PRD areas
 
 - CPU-vs-CPU simulation: basic passing, dribbling movement, pressing, shooting, build-out retreat, spacing modes, and simplified offside support positioning exist. Explicit throw-in, corner, kickoff, and goal-kick restart state machines do not yet exist.
-- Coaching props: cones and extra movable soccer balls exist. Mini-goals/pug goals are not yet implemented.
+- Coaching props: cones, mini goals, and extra movable soccer balls exist. The PRD §7.2 prop list is complete.
 - Saved library: save/load/delete, backup import/export, and the four built-in teaching scenarios exist. Category filtering/editing is not yet implemented.
 - Zone teaching: highlights and overlap emphasis exist. Simulation zone-restriction constraints are not yet implemented.
 
@@ -42,7 +44,7 @@ Baseline before implementation: repository contained only `PRD.md`; no executabl
 
 Automated checks for this work unit:
 
-- `npm test` — must pass before integration; covers approved formation restriction, mirrored anchors, coordinate clamps, offside support boundaries, carrier acquisition, build-out retreat, and goalkeeper wait behavior.
+- `npm test` — must pass before integration; covers approved formation restriction, mirrored anchors, coordinate clamps, offside support boundaries, carrier acquisition, build-out retreat, goalkeeper wait behavior, built-in presets, and board-state normalization including `miniGoals`. Last run 2026-10-26: 17 tests, 17 pass, 0 fail.
 - JavaScript syntax checks — must pass for all `js/*.js` and `sw.js` before integration.
 - Headless Chromium render smoke test — actual application modules rendered at 1024×768, 768×1024, and 1366×1024 with 14 player tokens, eight zone overlays, and zero page errors. The connected remote Playwright service returned an upstream 404, so this validation used the local Chromium binary with an in-memory document rather than HTTP navigation. Service-worker behavior is therefore not covered by this render smoke test.
 

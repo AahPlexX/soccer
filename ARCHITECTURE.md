@@ -56,6 +56,10 @@ Each player keeps:
 - formation anchor position.
 - optional individual color override.
 
+## Drill props
+
+Board state holds three prop collections, all in normalized coordinates: `balls` (`{id, x, y, primary}`; exactly one primary match ball that cannot be removed), `cones` (`{id, x, y, color}`), and `miniGoals` (`{id, x, y}`). Props are draggable and keyboard-nudgeable through the shared `findObject()` lookup in `js/app.js`, and are rendered in `#prop-layer` / `#ball-layer` by `js/render.js`. `normalizeState()` defaults a missing or non-array `miniGoals` to `[]`, so saves from before mini goals load unchanged and `SCHEMA_VERSION` stays `1`. The simulation ignores props. Adding a new prop type requires: a state array plus `normalizeState` default, a `build*` renderer and `rebuildObjects`/`renderScene` entries, a `findObject` branch, an add tool in `index.html`/`handleDrawPointerDown`, the remove-selected handler, and CSS for its hit area.
+
 Applying a formation updates role, current position, and anchor position for that team. Free dragging changes only current position until the coach chooses another formation.
 
 ## State and persistence

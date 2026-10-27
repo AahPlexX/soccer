@@ -1,6 +1,16 @@
 import { ZONES } from './constants.js';
 
+const EPSILON = 1e-6;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const clamp01 = (value) => clamp(value, 0, 1);
+
+function selectedZones(selectedZoneIds) {
+  return selectedZoneIds.map((id) => ZONES[id]).filter(Boolean);
+}
+
+function pointInsideZone(point, zone) {
+  return point.x >= zone.x1 && point.x <= zone.x2 && point.y >= zone.y1 && point.y <= zone.y2;
+}
 
 function projectToZone(point, zone) {
   return {
@@ -16,7 +26,7 @@ function squaredDistance(a, b) {
 }
 
 export function constrainPointToZones(point, selectedZoneIds) {
-  const zones = selectedZoneIds.map((id) => ZONES[id]).filter(Boolean);
+  const zones = selectedZones(selectedZoneIds);
   if (!zones.length) return { ...point };
 
   let nearest = null;
@@ -33,11 +43,41 @@ export function constrainPointToZones(point, selectedZoneIds) {
   return nearest ?? { ...point };
 }
 
+export function constrainPointOutsideZones(point, selectedZoneIds) {
+  const zones = selectedZones(selectedZoneIds);
+  if (!zones.length || !zones.some((zone) => pointInsideZone(point, zone))) return { ...point };
+
+  const xs = [point.x];
+  const ys = [point.y];
+  for (const zone of zones) {
+    xs.push(clamp01(zone.x1 - EPSILON), clamp01(zone.x2 + EPSILON));
+    ys.push(clamp01(zone.y1 - EPSILON), clamp01(zone.y2 + EPSILON));
+  }
+
+  let nearest = null;
+  let nearestDistance = Infinity;
+  for (const x of xs) {
+    for (const y of ys) {
+      const candidate = { x, y };
+      if (zones.some((zone) => pointInsideZone(candidate, zone))) continue;
+      const distance = squaredDistance(point, candidate);
+      if (distance < nearestDistance) {
+        nearest = candidate;
+        nearestDistance = distance;
+      }
+    }
+  }
+
+  return nearest ?? { ...point };
+}
+
 export function shouldRestrictTeam(scope, team) {
   return scope === 'both' || scope === team;
 }
 
 export function constrainPlayerPositionForZones(state, player, point) {
-  if (!shouldRestrictTeam(state.zoneRestrictionScope, player.team)) return { ...point };
-  return constrainPointToZones(point, state.selectedZones ?? []);
+  if (state.zoneRestrictionMode === 'off' || !shouldRestrictTeam(state.zoneRestrictionScope, player.team)) return { ...point };
+  if (state.zoneRestrictionMode === 'keep-in') return constrainPointToZones(point, state.selectedZones ?? []);
+  if (state.zoneRestrictionMode === 'keep-out') return constrainPointOutsideZones(point, state.selectedZones ?? []);
+  return { ...point };
 }

@@ -21,6 +21,14 @@ test('pass-option toggle is a pressed-state button controlling the pitch', () =>
   assert.match(source, /dataset\.passOptions/);
 });
 
+test('pass-option toggle requests an immediate redraw while paused', () => {
+  const ui = read('js/pass-options-ui.js');
+  const renderer = read('js/render.js');
+  assert.match(ui, /dispatchEvent\(new Event\('pass-options-change'\)\)/);
+  assert.match(renderer, /addEventListener\('pass-options-change'/);
+  assert.match(renderer, /renderPassOptions\(latestPassOptionSvg, latestPassOptionState\)/);
+});
+
 test('renderer preallocates six noninteractive pass-line slots', () => {
   const source = read('js/render.js');
   assert.match(source, /id: 'pass-option-layer'/);

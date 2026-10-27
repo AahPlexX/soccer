@@ -7,11 +7,11 @@ Schema version: `1`
 
 ## Resume here
 
-Current state: the repository is a working offline-capable U9 7v7 tactical board with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player/team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, CPU-vs-CPU passing/dribbling/pressing with opponent-lane avoidance, deterministic varied shooting with goalkeeper catch/parry outcomes, U9 build-out behavior, explicit throw-in/goal-kick/corner/kickoff restart states, optional keep-inside/keep-out zone drill constraints, a categorized saved library with ARIA tabs plus compact select fallback, user-preset title/category editing, two-step in-app deletion, persistence/backup, PWA caching, and an automated validation gate on every push to `main`.
+Current state: the source implements an offline-capable U9 7v7 tactical board with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player/team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, CPU-vs-CPU passing/dribbling/pressing with opponent-lane avoidance and an optional dashed pass-options overlay, deterministic varied shooting with goalkeeper shot tracking and catch/parry outcomes, U9 build-out behavior, explicit throw-in/goal-kick/corner/kickoff restart states, optional keep-inside/keep-out zone drill constraints, a categorized saved library with ARIA tabs plus compact select fallback, user-preset title/category editing, two-step in-app deletion, persistence/backup, PWA caching, and an automated validation gate on every push to `main`.
 
-Next action: browser verification of the saved-library tabs/editor/two-step delete and the post-zone responsive layout; then goalkeeper movement toward incoming shots (with the deterministic shot cycle retuned so intended parry/goal outcomes remain reachable), the PRD's optional dashed pass-option lines for the ball carrier, remaining restart procedural detail where useful for teaching, and real-device iPad performance/accessibility/offline verification.
+Next action: investigate the GitHub Pages publishing source and deployment status, then verify the actual hosted app and saved-library tabs/editor/two-step delete, pass-options overlay, goalkeeper movement, and post-zone layout in a rendered browser at tablet and compact widths. Continue with remaining restart procedural detail where useful for teaching and real-device iPad performance/accessibility/offline verification. Check the latest validation workflow for the current `main` commit before continuing.
 
-Blockers: no source blocker. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
+Blockers: on 2026-10-27 the documented GitHub Pages URL returned GitHub's “Site not found” page in the cloud browser; GitHub repository metadata nevertheless reported Pages enabled, so the cause is unconfirmed. This session's cloud browser could not reach the local server (`127.0.0.1` refused the connection; `terminal.local` was blocked by the browser client), so the current source was not interactively browser-tested. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
 
 ## Completed requirements in this work unit
 
@@ -43,13 +43,15 @@ Blockers: no source blocker. Real-device validation on the 2018 iPad baseline ha
 - `FND-026` — Make carriers prefer receivers with a clear pass lane. Status: implemented with tests. A receiver is skipped when an opponent is within `SIMULATION.passLaneClearance` (0.05) of the carrier→receiver segment; if every lane is blocked the prior scoring remains the fallback. Evidence: `js/geometry.js` (`distanceToSegment`), `js/simulation.js` (`choosePassTarget`), `js/constants.js`, `tests/pass-lane.test.mjs`.
 - `FND-027` — Fix saved-library offline and row/preset identity defects. Status: implemented. `library.css`, `js/library.js`, and `js/library-ui.js` are precached and cache generation is `u9-tactical-board-v7`; saved rows carry stable `data-preset-id` and edit augmentation resolves presets by ID rather than DOM/list position or button text. `js/app.js` reuses `filterPresetsByCategory()`. Evidence: `sw.js`, `js/app.js`, `js/library-ui.js`, `tests/pwa-shell.test.mjs`.
 - `FND-028` — Keep one definition of an open pass lane. The on-screen pass options (`availablePassOptions`) had re-implemented the lane predicate that the CPU receiver choice (`choosePassTarget`) uses, so tuning one would have silently desynchronized what the coach sees from what the CPU does. Both now call `openPassReceivers()` in `js/pass-options.js`. Status: implemented with no behavior change (20-minute simulations produce identical restart counts); `tests/pass-lane.test.mjs` asserts the CPU's chosen receiver is always among the displayed options. Local `npm test` 2026-10-27: 76 tests, 76 pass, 0 fail. Evidence: `js/pass-options.js`, `js/simulation.js`, `tests/pass-lane.test.mjs`.
+- `FND-029` — Provide optional dashed pass-options lines and refresh them immediately while paused. Status: implemented in source and covered by model/markup tests, but not interactively browser-verified. Evidence: `js/pass-options.js`, `js/pass-options-ui.js`, `js/render.js`, `pass-options.css`, `tests/pass-options*.test.mjs`; cache `v8` included these assets.
+- `FND-030` — Move the defending goalkeeper toward an opposing shot's projected goal-line crossing. Status: implemented and locally tested at both ends; ordinary zone constraints apply and keepers outside their own penalty area cannot make a remote save. The fixed shot cycle was retuned and its actual catch/parry/goal/miss outcomes were exercised in a centered reference scenario at all three speeds. Evidence: `js/simulation.js`, `js/constants.js`, `js/restarts.js`, `tests/shots.test.mjs`; cache `v9` refreshes the runtime.
 
 ## Partially implemented PRD areas
 
 - CPU-vs-CPU simulation: passing with opponent-lane avoidance, dribbling movement, pressing, deterministic varied shooting, goalkeeper catch/parry outcomes, build-out retreat, spacing modes, simplified offside support, explicit restarts, and optional zone constraints exist. It remains a teaching simulation rather than a complete Laws-of-the-Game engine.
 - Restart procedures: ownership and placement flow exist; detailed procedural constraints such as opponent restart distances, throw-in body mechanics, kickoff-half restrictions, and the IFAB five-second anti-delay protocol are not modeled.
 - Goal-kick geometry: the board does not draw a separate IFAB goal area; goal kicks use the goalkeeper-side center (`x = 0.08` home / `x = 0.92` away, `y = 0.5`) to preserve existing U9 build-out teaching behavior.
-- Goalkeeping: keepers can catch or parry shots deterministically but do not yet use richer shot-tracking movement or positioning logic.
+- Goalkeeping: keepers track an incoming shot and can catch or parry it deterministically, but save reach is a simplified lateral threshold rather than a full collision or diving model.
 - Coaching props: cones, mini goals, and extra movable soccer balls exist; the PRD §7.2 prop list is complete.
 - Saved library: save/load/edit/delete, category tabs/filtering, built-in scenarios, backup import/export, and in-app two-step deletion exist. Browser interaction verification of the newest tabs/editor remains outstanding.
 - Zone teaching: highlights, overlap emphasis, Keep inside, and Keep out constraints exist using the same selected-zone geometry as rendering.
@@ -65,8 +67,9 @@ Automated and targeted checks for this work unit:
 - Zone TDD added keep-in, then keep-out/overlap union geometry after PRD tracing showed the opponent-exclusion requirement. State compatibility and mandatory build-out precedence are covered.
 - Saved-library helper TDD first failed before `js/library.js`, then passed category/filter and keyboard-cycling tests. Static markup tests cover tablist/tabpanel/editor asset wiring; storage regression coverage proves same-ID metadata editing preserves the board snapshot.
 - Pass-lane tests cover segment geometry, rerouting around a blocked best lane, and fallback when every lane is blocked.
+- Goalkeeper tests cover projected crossings at both ends, non-shot passes, zone restrictions, no remote saves, generated shot-cycle outcomes at 0.5×/1×/2×, normal-play restarts, and deterministic replay. On 2026-10-27 the full local suite passed 81/81 tests; syntax checks passed for all `js/*.js` and `sw.js`.
 - `tests/pwa-shell.test.mjs` verifies every app-shell path exists, every install-critical local HTML asset is precached, and every reachable static ES-module dependency is in `APP_SHELL`.
-- **Current combined integration evidence:** GitHub Actions run `40431555537` at head `ef6917a574ce2654885442ea2da88ebf22321c81` completed successfully: **68 tests, 68 pass, 0 fail, 0 skipped**, followed by successful `node --check` for every `js/*.js` module and `sw.js`.
+- **Last verified baseline integration evidence:** GitHub Actions run `40432564146` at `be1cd5a978d59fece42cf81cfde2859ed007e0bc` completed successfully: **77 tests, 77 pass, 0 fail, 0 skipped**, followed by successful `node --check` for every `js/*.js` module and `sw.js`. The subsequent goalkeeper-tracking change has local 81-test evidence; inspect Actions for its current-commit result.
 - Earlier headless Chromium smoke testing covered 1024×768 landscape, 768×1024 portrait, and 1366×1024 with zero page errors. Later zone/library layouts have source/automated validation but have not repeated that rendered-browser matrix.
 
 Research and standards checked in this work unit:
@@ -76,16 +79,18 @@ Research and standards checked in this work unit:
 - W3C WAI-ARIA Authoring Practices Tabs Pattern: `tablist`/`tab`/`tabpanel`, `aria-selected`, roving tabindex, Left/Right and Home/End keyboard behavior.
 - WCAG 2.2 Reflow and keyboard/focus guidance: controls reflow rather than forcing page-level horizontal scrolling; native controls retain keyboard operation/focus styling.
 - MDN native form/dialog/module guidance: labeled controls and native `<dialog>`/static ES modules remain the project pattern.
+- Rechecked 2026-10-27: [W3C WCAG 2.2 Reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html), [MDN responsive design](https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/CSS_layout/Responsive_Design), and [GitHub Pages publishing-source guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site). These references do not substitute for rendered or physical-device testing.
 
 ## Known risks
 
 - Locked 60 fps on the 2018 iPad 6th generation remains unverified on physical hardware.
-- iPad Safari/PWA offline/update behavior has not been exercised on physical iPad hardware after cache generation `v7`.
+- iPad Safari/PWA offline/update behavior has not been exercised on physical iPad hardware after cache generation `v9`.
 - Post-zone/post-library responsive layouts have automated/source validation but have not repeated the browser render matrix or physical-iPad usability check.
 - Mini-goal touch dragging/hit-area ergonomics remain physically unverified.
 - Saved-library tabs, compact fallback, metadata editor, and two-step delete have not yet been exercised in a rendered browser; automated tests verify markup/helper/storage contracts only.
 - Restart flow is intentionally simplified for teaching and is not a full referee/law engine.
-- Goalkeeper response is deterministic but goalkeeper locomotion/shot tracking remains simplified.
+- Goalkeeper tracking and save reach remain a simplified teaching model and have not been verified visually in a browser.
+- The documented Pages address returned a GitHub Pages 404 on 2026-10-27 even though repository metadata reported Pages enabled; publishing source and build/deployment status are unknown.
 
 ## Repository invariants
 

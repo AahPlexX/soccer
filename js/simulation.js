@@ -1,7 +1,7 @@
 import { PITCH, SIMULATION } from './constants.js';
 import { clamp, clampSupportForOffside, distance, moveToward } from './geometry.js';
 import { openPassReceivers } from './pass-options.js';
-import { classifyBoundaryRestart, restartPoint } from './restarts.js';
+import { classifyBoundaryRestart, GOAL_MAX_Y, GOAL_MIN_Y, restartPoint } from './restarts.js';
 import { constrainPlayerPositionForZones } from './zone-constraints.js';
 
 function attackingDirection(team) { return team === 'home' ? 1 : -1; }
@@ -41,6 +41,27 @@ function movePlayer(state, player, target, maxDistance, applyZoneRule = true) {
   const allowedPosition = applyZoneRule ? constrainPlayerPositionForZones(state, player, moved) : moved;
   player.x = clamp(allowedPosition.x);
   player.y = clamp(allowedPosition.y);
+}
+
+// A shot has no receiver and targets a goal line or beyond. Track its projected line crossing,
+// not the current ball position, while keeping the target between the posts and in the keeper's area.
+function goalkeeperShotTarget(state, keeper, ball) {
+  const { ballTarget, carrierId, receiverId, lastTouchTeam } = state.simulation;
+  if (!ballTarget || carrierId || receiverId || lastTouchTeam !== opponent(keeper.team)) return null;
+  const goalX = keeper.team === 'home' ? PITCH.homeGoalLineX : PITCH.awayGoalLineX;
+  const dx = ballTarget.x - ball.x;
+  if (keeper.team === 'home' ? dx >= 0 || ballTarget.x > goalX : dx <= 0 || ballTarget.x < goalX) return null;
+  const fraction = (goalX - ball.x) / dx;
+  if (fraction < 0 || fraction > 1) return null;
+  const crossingY = ball.y + (ballTarget.y - ball.y) * fraction;
+  // A path crossing a touchline first is not an incoming shot at the goal line.
+  if (!Number.isFinite(crossingY) || crossingY <= 0 || crossingY >= 1) return null;
+  return {
+    x: keeper.team === 'home'
+      ? clamp(keeper.x, PITCH.homeGoalLineX, PITCH.homePenaltyMaxX)
+      : clamp(keeper.x, PITCH.awayPenaltyMinX, PITCH.awayGoalLineX),
+    y: clamp(crossingY, GOAL_MIN_Y, GOAL_MAX_Y),
+  };
 }
 
 function choosePassTarget(state, carrier) {
@@ -88,6 +109,8 @@ function keeperResponse(state, goal, exitPoint) {
   const defending = goal.team;
   const keeper = state.players.find((p) => p.team === defending && p.role === 'GK');
   if (!keeper || state.simulation.lastTouchTeam === defending) return false;
+  const inOwnArea = defending === 'home' ? keeper.x <= PITCH.homePenaltyMaxX : keeper.x >= PITCH.awayPenaltyMinX;
+  if (!inOwnArea || keeper.y < PITCH.penaltyMinY || keeper.y > PITCH.penaltyMaxY) return false;
   const miss = Math.abs(keeper.y - exitPoint.y);
   if (miss > SIMULATION.keeperParryReach) return false;
   if (miss <= SIMULATION.keeperCatchReach) {
@@ -189,6 +212,11 @@ function advancePlayers(state, dt) {
     }
 
     const retreat = buildOut ? retreatTarget(player, state.simulation.possessionTeam) : null;
+    const shotTarget = !retreat && player.role === 'GK' ? goalkeeperShotTarget(state, player, ball) : null;
+    if (shotTarget) {
+      movePlayer(state, player, shotTarget, SIMULATION.keeperTrackingSpeed * dt);
+      return;
+    }
     let target = retreat ?? supportTarget(player, state, ball);
 
     if (!retreat && player.team !== state.simulation.possessionTeam && player.id === pressingPlayer?.id) {

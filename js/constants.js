@@ -70,10 +70,13 @@ export const SIMULATION = Object.freeze({
   // A pass lane is blocked when an opponent stands within this distance of the carrier→receiver line (just under the 0.055 pickup radius).
   passLaneClearance: 0.05,
   // A shot aims at 0.5 + shotAimOffsets[shotCount % length] + (shooter.y - 0.5) * shotAimSpread. The offsets repeat
-  // in a fixed order (no RNG, so teaching replays are repeatable): central (caught), near post (parried for a
-  // corner), far post (goal), wide of the goal (goal kick). The spread lets a wide shooter's angle shift the aim.
-  shotAimOffsets: Object.freeze([0, 0.04, -0.065, 0.12]),
-  shotAimSpread: 0.6,
+  // in a fixed order (no RNG, so teaching replays are repeatable): central, near post, far post, and wide.
+  // In the centered reference setup these produce a catch, parry, goal, and goal kick respectively; player positions
+  // and the shooter's angle can change those results.
+  shotAimOffsets: Object.freeze([0, 0.04, -0.07, 0.12]),
+  shotAimSpread: 0.15,
+  // A keeper tracks an incoming shot more slowly than an outfield player moves, leaving limited reaction time.
+  keeperTrackingSpeed: 0.03,
   // Goalkeeper vs. a shot crossing the line inside the goal mouth, by |keeper.y - shot.y|:
   // <= keeperCatchReach holds it, <= keeperParryReach deflects it behind for a corner, otherwise it is a goal.
   keeperCatchReach: 0.02,

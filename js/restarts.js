@@ -1,6 +1,6 @@
 const GOAL_WIDTH_RATIO = (18.5 / 3) / 40;
-const GOAL_MIN_Y = (1 - GOAL_WIDTH_RATIO) / 2;
-const GOAL_MAX_Y = 1 - GOAL_MIN_Y;
+export const GOAL_MIN_Y = (1 - GOAL_WIDTH_RATIO) / 2;
+export const GOAL_MAX_Y = 1 - GOAL_MIN_Y;
 
 const opponent = (team) => team === 'home' ? 'away' : 'home';
 const clamp01 = (value) => Math.min(1, Math.max(0, value));

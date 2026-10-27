@@ -22,11 +22,11 @@ npm test
 
 Every push to `main` runs `.github/workflows/validate.yml`. The workflow runs the behavior/integrity test suite and syntax-checks every runtime JavaScript module plus `sw.js`. The repository-integrity tests also verify that the service-worker app shell does not reference missing files and does not omit install-critical local assets or reachable static ES-module dependencies.
 
-The current combined runtime gate has passed 56/56 tests plus JavaScript syntax checks. A green workflow proves only those automated checks. Physical-iPad touch behavior, standalone Home Screen behavior, offline use, outdoor readability, and the PRD's 2018-iPad 60 fps target require separate browser or real-device evidence before they can be marked verified.
+On 2026-10-27 the `be1cd5a` baseline passed 77 tests and syntax checks in GitHub Actions. The subsequent goalkeeper-tracking change passed 81 tests and syntax checks locally; check the [latest Actions run](https://github.com/AahPlexX/soccer/actions/workflows/validate.yml) for the current commit. A green workflow proves only those automated checks. Physical-iPad touch behavior, standalone Home Screen behavior, offline use, outdoor readability, and the PRD's 2018-iPad 60 fps target require separate browser or real-device evidence before they can be marked verified.
 
 ## GitHub Pages
 
-Deployment target: `https://aahplexx.github.io/soccer/`.
+Deployment target: `https://aahplexx.github.io/soccer/`. On 2026-10-27 this address returned GitHub Pages' “Site not found” page in the test browser, although the repository reported Pages enabled. The publishing source and deployment status need investigation before the hosted app can be considered available.
 
 The repository is intentionally static. `index.html` loads native ES modules, and `sw.js` precaches the complete app shell for offline use after the first successful visit.
 
@@ -46,11 +46,11 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Player number, label, individual color editing, and team/goalkeeper color palettes.
 - Opponent visibility toggle, turf/dark/field themes, landscape and portrait pitch rendering.
 - Freehand telestration, arrows, cones, mini goals, extra soccer balls, clear drawings, play/pause/reset, 0.5×/1×/2× simulation speed, and good-spacing/bunching teaching modes.
-- CPU-vs-CPU passing (receivers with an opponent-blocked lane are skipped), dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
-- Deterministic varied shooting with goalkeeper catch/parry/goal outcomes; the fixed sequence keeps teaching replays reproducible instead of introducing random results.
+- CPU-vs-CPU passing (receivers with an opponent-blocked lane are skipped), an optional dashed pass-options overlay, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
+- Deterministic varied shooting with goalkeeper movement toward incoming shots and catch/parry/goal outcomes; the fixed aim sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
 - Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, category tabs over built-in and saved items, a title/category editor for saved presets, a two-step in-app delete confirmation, and JSON backup export/import.
-- Offline app-shell caching and installable web-app manifest; current cache generation `v7` includes the restart and zone-constraint module graph plus the current shot/goalkeeper runtime.
+- Offline app-shell caching and installable web-app manifest; cache generation `v9` includes the pass-option overlay and goalkeeper-tracking runtime. Actual offline operation on iPad remains to be verified.
 
 ## Documentation
 

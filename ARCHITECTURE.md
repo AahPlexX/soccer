@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-10-26
+Last updated: 2026-10-27
 
 ## Runtime shape
 
@@ -14,6 +14,8 @@ The main boundaries are:
 - `js/geometry.js`: normalized-coordinate math, pointer-to-pitch conversion, movement helpers, and offside boundaries.
 - `js/restarts.js`: pure out-of-bounds classification and normalized restart placement for throw-ins, goal kicks, corners, and kickoffs after goals.
 - `js/zone-constraints.js`: pure keep-inside/keep-out geometry over the existing selected-zone union plus team-scope checks.
+- `js/library.js` and `js/library-ui.js`: saved-library filtering, keyboard tabs, and metadata editing.
+- `js/pass-options.js` and `js/pass-options-ui.js`: shared open-lane calculation and the optional pass-options toggle.
 - `js/state.js`: board state creation and schema normalization.
 - `js/storage.js`: 120 ms autosave to localStorage, IndexedDB saved-position library, localStorage fallback, and JSON backup import/export.
 - `js/simulation.js`: CPU-vs-CPU state updates, build-out retreat, positional tethering, pressure, passing, deterministic shooting/goalkeeper outcomes, simplified offside positioning, automated restarts, and optional zone constraints.
@@ -89,6 +91,10 @@ Applying a formation updates role, current position, and anchor position for tha
 
 `js/app.js` (`refreshSavedList()`) renders the dialog list: built-in scenarios first, then saved presets, both through `filterPresetsByCategory()` from `js/library.js` using the view-only `savedFilter` (not persisted). `#saved-filter` (a native `<select>`) holds the filter value; the tab strip in `js/library-ui.js` (ARIA `tablist`; click, ArrowLeft/ArrowRight with wrap, Home, End) sets the select and dispatches `change`, and the select's listener re-syncs the tabs. Every saved row carries `data-preset-id`; `augmentCustomRows()` in `js/library-ui.js` looks the preset up by that id and inserts an Edit button before the row's Delete button. Edit opens `#preset-edit-dialog` (title up to 48 characters, category from `PRESET_CATEGORIES`) and persists through the existing `savePreset()`. Built-in scenarios have no Edit or Delete. Delete is a two-step in-app confirmation (first tap arms "Tap again to delete" for 4 seconds) instead of native `confirm()`, which is unreliable in standalone Home Screen apps.
 
+## Pass-options overlay
+
+The optional Pass options button is a view-only pressed-state toggle created by `js/pass-options-ui.js`. It dispatches `pass-options-change` to request an immediate redraw even while paused. `js/render.js` reuses six noninteractive, `aria-hidden` SVG lines and shows the open receivers returned by `availablePassOptions()`; no lines appear without a stationary visible carrier. `openPassReceivers()` is shared with the CPU pass selector, including its opponent-lane clearance calculation. The overlay itself is not persisted. The CPU falls back to a blocked receiver if no lane is open, so an empty overlay does not mean that the CPU cannot pass.
+
 ## Drill props
 
 Board state holds three prop collections, all in normalized coordinates: `balls` (`{id, x, y, primary}`; exactly one primary match ball that cannot be removed), `cones` (`{id, x, y, color}`), and `miniGoals` (`{id, x, y}`). Props are draggable and keyboard-nudgeable through the shared `findObject()` lookup in `js/app.js`, and are rendered in `#prop-layer` / `#ball-layer` by `js/render.js`. `normalizeState()` defaults a missing or non-array `miniGoals` to `[]`, so saves from before mini goals load unchanged and `SCHEMA_VERSION` stays `1`. The simulation ignores props.
@@ -145,8 +151,9 @@ Rules implemented now:
 - an attacking-team last touch over a goal line outside the goal mouth creates a goal kick for the defending team.
 - a defending-team last touch over its own goal line outside the goal mouth creates a corner for the attacking team.
 - a last touch over either touchline creates a throw-in for the opposing team at the exit `x` coordinate.
-- a shot aims at `0.5 + shotAimOffsets[shotCount % 4] + (shooter.y - 0.5) * shotAimSpread`. The offsets repeat in a fixed order with no RNG, so replays are identical: central, near post, far post, wide. The ball target is the aim point extended 0.05 past the goal line along the shot's own line, ensuring boundary classification actually receives the shot.
-- a shot crossing the goal line inside the goal mouth meets the defending goalkeeper first (`keeperResponse()`), by `|keeper.y - shot.y|`: at most `keeperCatchReach` (0.02) the keeper holds the ball and the U9 build-out gate applies; at most `keeperParryReach` (0.05) it is deflected behind for an attacking corner; otherwise it is a goal. A keeper cannot catch a ball its own team touched last.
+- a shot aims at `0.5 + shotAimOffsets[shotCount % 4] + (shooter.y - 0.5) * shotAimSpread`; the offsets are `[0, 0.04, -0.07, 0.12]` and spread is `0.15`. They repeat without RNG. In a centered reference scenario the sequence yields a catch, parry, goal, and miss, but positions and shot angles can change the outcome. The ball target is extended 0.05 past the goal line along the shot's own line so boundary classification receives it.
+- while an opposing shot is in flight (no receiver and a target at or beyond the keeper's goal line), the defending keeper moves at `keeperTrackingSpeed` (0.03 normalized units per simulated second) toward its projected goal-line crossing, clamped between the same goal posts used for restart classification. A keeper already inside its penalty-area x range tracks laterally; one outside moves back toward that range. A path crossing a touchline before the goal line is not tracked. Ordinary optional zone constraints still apply, and mandatory build-out retreat takes precedence.
+- a shot crossing the goal line inside the goal mouth meets the defending goalkeeper first (`keeperResponse()`), provided the keeper is inside its own penalty area and the last touch was by the opponent. By `|keeper.y - shot.y|`, at most `keeperCatchReach` (0.02) the keeper holds the ball and the U9 build-out gate applies; at most `keeperParryReach` (0.05) it is deflected behind for an attacking corner; otherwise it is a goal. Save reach is an intentionally simplified lateral threshold, not a physical collision model.
 - receiver choice (`choosePassTarget()`) skips teammates whose carrier→receiver line has any opponent within `SIMULATION.passLaneClearance` (0.05, just under the 0.055 pickup radius; the single definition is `openPassReceivers()` in `js/pass-options.js`, shared by this CPU choice and the on-screen pass options so they cannot drift apart; it measures with `distanceToSegment()` in `js/geometry.js`, so a closely marked receiver counts as blocked). Among clear receivers the existing forward-progress/lateral/distance score picks the winner; if every lane is blocked the choice falls back to all teammates, so a carrier always passes.
 - restart takers remain stationary until the next simulation decision releases the ball as a pass. Goal-kick takers use the goalkeeper, so the existing U9 build-out retreat gate remains in force before the restart is released.
 - ordinary player targets and positions can be constrained to remain inside or outside the coach-selected zone union for the selected team scope.
@@ -161,7 +168,7 @@ The engine does not yet enforce every procedural detail of the 2026/27 Laws of t
 
 Research basis checked 2026-10-26: IFAB Laws 8, 15, 16, and 17 for restart ownership/procedure; U.S. Soccer / US Youth Soccer Player Development Initiatives for the U9/U10 7v7 build-out retreat and no-punt/drop-kick behavior.
 
-Not yet implemented: foul handling; richer pass-lane scoring; richer goalkeeper movement toward shots; optional procedural restart-distance enforcement; deterministic seeded scenario playback beyond the current fixed deterministic simulation behavior.
+Not yet implemented: foul handling; richer pass-lane scoring; detailed goalkeeper diving/collision physics; optional procedural restart-distance enforcement; deterministic seeded scenario playback beyond the current fixed deterministic simulation behavior.
 
 ## Rendering, responsive layout, and performance
 
@@ -199,6 +206,8 @@ Cache history relevant to the current runtime:
 - `v5`: refreshes the combined deterministic shot/goalkeeper runtime plus the new zone-control HTML/CSS/app/state/simulation changes, and adds `js/zone-constraints.js` to `APP_SHELL`.
 - `v6`: refreshes the saved-library category filter and two-step delete confirmation in `index.html`, `styles.css`, and `js/app.js`; no `APP_SHELL` change.
 - `v7`: adds `./library.css`, `./js/library.js`, and `./js/library-ui.js` to `APP_SHELL`. They were referenced by `index.html` / the static module graph but were not precached, so the saved-library tabs, editor, and styling would have been missing offline (`tests/pwa-shell.test.mjs` failed on this at `431ef15`).
+- `v8`: adds the pass-option stylesheet and modules to the app shell.
+- `v9`: refreshes the shot, goalkeeper, and restart modules for goalkeeper tracking; the app-shell path list is unchanged.
 
 `tests/pwa-shell.test.mjs` protects this contract by verifying that every declared app-shell file exists, every install-critical local asset referenced by `index.html` is precached, and every static ES-module dependency reachable from the cached module graph is also in `APP_SHELL`.
 
@@ -211,6 +220,6 @@ The validation gate runs:
 1. `npm test`, which executes the Node standard-library behavior and repository-integrity test suite.
 2. `node --check` against every `js/*.js` runtime module and `sw.js`.
 
-Current combined automated evidence: GitHub Actions run `40430420966` at commit `3e80215e957c894941eeb3544a919ea18b4ec23f` completed with 56 tests, 56 pass, 0 fail, 0 skipped, followed by successful JavaScript syntax checks.
+Baseline automated evidence: GitHub Actions run `40432564146` at commit `be1cd5a978d59fece42cf81cfde2859ed007e0bc` completed with 77 tests, 77 pass, 0 fail, 0 skipped, followed by successful JavaScript syntax checks. The goalkeeper-tracking work subsequently passed 81 tests and syntax checks locally on 2026-10-27; inspect the latest workflow run for the current commit.
 
 A successful workflow run is repository evidence for those automated checks only. It does not replace rendered-browser checks or physical-iPad performance, touch, standalone-PWA, and offline verification.

@@ -1,0 +1,16 @@
+.pass-option-line {
+  fill: none;
+  stroke: #ffd43b;
+  stroke-width: 5;
+  stroke-dasharray: 14 10;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: .96;
+  pointer-events: none;
+}
+
+#pass-options-toggle[aria-pressed="true"] {
+  background: var(--accent);
+  color: #111;
+  border-color: transparent;
+}

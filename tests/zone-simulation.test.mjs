@@ -43,7 +43,9 @@ test('mandatory U9 build-out retreat overrides a conflicting optional zone rule'
   state.balls[0].x = 0.1;
   state.balls[0].y = 0.5;
 
-  for (let frame = 0; frame < 240; frame += 1) stepSimulation(state, 1 / 60);
+  // One simulated second is enough for retreat to finish but remains before the 1.15 s action/release decision.
+  for (let frame = 0; frame < 60; frame += 1) stepSimulation(state, 1 / 60);
 
+  assert.equal(state.simulation.carrierId, 'home-1');
   assert.ok(state.players.filter((player) => player.team === 'away').every((player) => player.x >= 0.35));
 });

@@ -15,6 +15,8 @@ const zonesToggle = document.querySelector('#zones-toggle');
 const zonePanel = document.querySelector('#zone-panel');
 const zoneButtons = document.querySelector('#zone-buttons');
 const zoneOpacity = document.querySelector('#zone-opacity');
+const zoneRestrictionMode = document.querySelector('#zone-restriction-mode');
+const zoneRestrictionScope = document.querySelector('#zone-restriction-scope');
 const zonesClear = document.querySelector('#zones-clear');
 const themeSelect = document.querySelector('#theme-select');
 const playToggle = document.querySelector('#play-toggle');
@@ -80,6 +82,8 @@ function syncControls() {
   awayVisible.textContent = state.awayVisible ? 'Hide opponents' : 'Show opponents';
   themeSelect.value = state.theme;
   zoneOpacity.value = String(state.zoneOpacity);
+  zoneRestrictionMode.value = state.zoneRestrictionMode;
+  zoneRestrictionScope.value = state.zoneRestrictionScope;
   speedSelect.value = String(state.speed);
   spacingSelect.value = state.spacingMode;
   playToggle.textContent = state.simulation.running ? 'Pause simulation' : 'Play simulation';
@@ -283,6 +287,8 @@ zonesToggle.addEventListener('click', () => {
 });
 zonesClear.addEventListener('click', () => { state.selectedZones = []; commitChange(); });
 zoneOpacity.addEventListener('input', () => { state.zoneOpacity = Number(zoneOpacity.value); commitChange(); });
+zoneRestrictionMode.addEventListener('change', () => { state.zoneRestrictionMode = zoneRestrictionMode.value; commitChange(); });
+zoneRestrictionScope.addEventListener('change', () => { state.zoneRestrictionScope = zoneRestrictionScope.value; commitChange(); });
 themeSelect.addEventListener('change', () => { state.theme = themeSelect.value; commitChange(); });
 speedSelect.addEventListener('change', () => { state.speed = Number(speedSelect.value); commitChange(); });
 spacingSelect.addEventListener('change', () => { state.spacingMode = spacingSelect.value; commitChange(); });

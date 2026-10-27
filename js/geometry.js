@@ -4,6 +4,15 @@ export const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, va
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const lerp = (from, to, amount) => from + (to - from) * amount;
 
+/** Shortest distance from `point` to the segment `from`→`to` (to `from` when the segment has no length). */
+export function distanceToSegment(point, from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const lengthSquared = dx * dx + dy * dy;
+  const t = lengthSquared ? clamp(((point.x - from.x) * dx + (point.y - from.y) * dy) / lengthSquared) : 0;
+  return distance(point, { x: from.x + t * dx, y: from.y + t * dy });
+}
+
 export function moveToward(point, target, maxDistance) {
   const dx = target.x - point.x;
   const dy = target.y - point.y;

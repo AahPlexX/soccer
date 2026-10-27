@@ -1,5 +1,6 @@
 import { PITCH, SIMULATION } from './constants.js';
 import { clamp, clampSupportForOffside, distance, moveToward } from './geometry.js';
+import { classifyBoundaryRestart, restartPoint } from './restarts.js';
 
 function attackingDirection(team) { return team === 'home' ? 1 : -1; }
 function opponent(team) { return team === 'home' ? 'away' : 'home'; }
@@ -41,12 +42,14 @@ function choosePassTarget(state, carrier) {
 }
 
 function beginPass(state, carrier, target) {
+  state.simulation.lastTouchTeam = carrier.team;
   state.simulation.carrierId = null;
   state.simulation.receiverId = target.id;
   state.simulation.ballTarget = { x: target.x, y: target.y };
 }
 
 function beginShot(state, carrier) {
+  state.simulation.lastTouchTeam = carrier.team;
   state.simulation.carrierId = null;
   state.simulation.receiverId = null;
   state.simulation.ballTarget = { x: teamGoalX(carrier.team), y: 0.5 };
@@ -61,6 +64,7 @@ function acquireLooseBall(state) {
   if (candidate && distance(candidate, ball) < 0.055) {
     state.simulation.carrierId = candidate.id;
     state.simulation.possessionTeam = candidate.team;
+    state.simulation.lastTouchTeam = candidate.team;
     state.simulation.receiverId = null;
     state.simulation.ballTarget = null;
     ball.x = candidate.x;
@@ -81,26 +85,40 @@ function advanceBall(state, dt) {
     return;
   }
   const next = moveToward(ball, state.simulation.ballTarget, SIMULATION.ballSpeed * dt);
+  const restart = classifyBoundaryRestart(next, state.simulation.lastTouchTeam);
+  if (restart) {
+    beginRestart(state, restart, next);
+    return;
+  }
   ball.x = clamp(next.x);
   ball.y = clamp(next.y);
-  if (distance(ball, state.simulation.ballTarget) < 0.015) {
-    if (ball.x <= 0.005 || ball.x >= 0.995) {
-      resetAfterGoal(state, ball.x >= 0.995 ? 'away' : 'home');
-      return;
-    }
-    acquireLooseBall(state);
-  }
+  if (distance(ball, state.simulation.ballTarget) < 0.015) acquireLooseBall(state);
 }
 
-function resetAfterGoal(state, possessionTeam) {
-  state.players.forEach((p) => { p.x = p.anchorX; p.y = p.anchorY; });
+function beginRestart(state, restart, exitPoint) {
+  if (restart.type === 'kickoff') {
+    state.players.forEach((player) => { player.x = player.anchorX; player.y = player.anchorY; });
+  }
+
+  const point = restartPoint(restart, exitPoint);
   const ball = state.balls[0];
-  ball.x = 0.5; ball.y = 0.5;
-  state.simulation.possessionTeam = possessionTeam;
-  state.simulation.carrierId = nearestPlayer(state.players, ball, (p) => p.team === possessionTeam)?.id ?? null;
+  ball.x = point.x;
+  ball.y = point.y;
+  state.simulation.possessionTeam = restart.team;
+  state.simulation.lastTouchTeam = restart.team;
+  state.simulation.restart = restart;
   state.simulation.receiverId = null;
   state.simulation.ballTarget = null;
   state.simulation.actionClock = 0;
+
+  const taker = restart.type === 'goal-kick'
+    ? state.players.find((player) => player.team === restart.team && player.role === 'GK')
+    : nearestPlayer(state.players, point, (player) => player.team === restart.team);
+  state.simulation.carrierId = taker?.id ?? null;
+  if (taker) {
+    taker.x = point.x;
+    taker.y = point.y;
+  }
 }
 
 function advancePlayers(state, dt) {
@@ -112,8 +130,7 @@ function advancePlayers(state, dt) {
 
   state.players.forEach((player) => {
     if (player.id === state.simulation.carrierId) {
-      // A goalkeeper holding the ball for a build-out restart stays put until opponents retreat.
-      if (buildOut && player.role === 'GK') return;
+      if (state.simulation.restart || (buildOut && player.role === 'GK')) return;
       const direction = attackingDirection(player.team);
       const target = { x: clamp(player.x + direction * 0.08), y: clamp(player.y + (0.5 - player.y) * 0.06) };
       const moved = moveToward(player, target, SIMULATION.playerSpeed * 0.78 * dt);
@@ -143,6 +160,15 @@ function decideAction(state) {
     if (!allRetreated) return;
   }
 
+  if (state.simulation.restart) {
+    const target = choosePassTarget(state, carrier);
+    if (target) {
+      beginPass(state, carrier, target);
+      state.simulation.restart = null;
+    }
+    return;
+  }
+
   const attackingX = carrier.team === 'home' ? carrier.x : 1 - carrier.x;
   if (attackingX > 0.82 && Math.abs(carrier.y - 0.5) < 0.28) {
     beginShot(state, carrier);
@@ -153,10 +179,12 @@ function decideAction(state) {
 }
 
 export function ensureCarrier(state) {
+  if (state.simulation.ballTarget) return;
   if (state.simulation.carrierId && state.players.some((p) => p.id === state.simulation.carrierId)) return;
   const ball = state.balls[0];
   const nearest = nearestPlayer(state.players, ball, (p) => p.team === state.simulation.possessionTeam);
   state.simulation.carrierId = nearest?.id ?? null;
+  if (nearest) state.simulation.lastTouchTeam = nearest.team;
 }
 
 export function stepSimulation(state, dt) {

@@ -92,6 +92,7 @@ The current engine is a deterministic teaching simulation with these states repr
 - ball target.
 - last-touch team.
 - explicit restart state or open play.
+- shot count: selects the next entry of the fixed shot-aim cycle (`SIMULATION.shotAimOffsets`).
 - action clock.
 - running/paused state.
 
@@ -111,6 +112,8 @@ Rules implemented now:
 - an attacking-team last touch over a goal line outside the goal mouth creates a goal kick for the defending team.
 - a defending-team last touch over its own goal line outside the goal mouth creates a corner for the attacking team.
 - a last touch over either touchline creates a throw-in for the opposing team at the exit `x` coordinate.
+- a shot aims at `0.5 + shotAimOffsets[shotCount % 4] + (shooter.y - 0.5) * shotAimSpread`. The offsets repeat in a fixed order with no RNG, so replays are identical: central, near post, far post, wide. The ball target is the aim point extended 0.05 past the goal line along the shot's own line, so the ball crosses the line exactly at the aim y; a target on the line itself would be collected by the 0.055 loose-ball pickup radius before crossing, and no goal, corner, or goal kick could ever occur.
+- a shot crossing the goal line inside the goal mouth meets the defending goalkeeper first (`keeperResponse()`), by `|keeper.y - shot.y|`: at most `keeperCatchReach` (0.02) the keeper holds the ball and the U9 build-out gate applies; at most `keeperParryReach` (0.05) it is deflected behind for an attacking corner; otherwise it is a goal. A keeper cannot catch a ball its own team touched last.
 - restart takers remain stationary until the next simulation decision releases the ball as a pass. Goal-kick takers use the goalkeeper, so the existing U9 build-out retreat gate remains in force before the restart is released.
 
 ### Restart geometry and deliberate simplifications
@@ -123,7 +126,7 @@ The engine does not yet enforce every procedural detail of the 2026/27 Laws of t
 
 Research basis checked 2026-10-26: IFAB Laws 8, 15, 16, and 17 for restart ownership/procedure; U.S. Soccer / US Youth Soccer Player Development Initiatives for the U9/U10 7v7 build-out retreat and no-punt/drop-kick behavior.
 
-Not yet implemented: foul handling; richer pass-lane scoring; goalkeeper catches; zone-restriction constraints; deterministic seeded scenario playback.
+Not yet implemented: foul handling; richer pass-lane scoring; goalkeeper movement toward the shot (the keeper only tracks the ball's y through the normal support shift); zone-restriction constraints; deterministic seeded scenario playback.
 
 ## Rendering and performance
 

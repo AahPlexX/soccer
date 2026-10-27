@@ -1,6 +1,7 @@
 import { PITCH, SIMULATION } from './constants.js';
 import { clamp, clampSupportForOffside, distance, moveToward } from './geometry.js';
 import { classifyBoundaryRestart, restartPoint } from './restarts.js';
+import { constrainPlayerPositionForZones } from './zone-constraints.js';
 
 function attackingDirection(team) { return team === 'home' ? 1 : -1; }
 function opponent(team) { return team === 'home' ? 'away' : 'home'; }
@@ -31,6 +32,14 @@ function supportTarget(player, state, ball) {
     y: clamp(player.anchorY + (ball.y - 0.5) * SIMULATION.supportBallShiftY),
   };
   return clampSupportForOffside(player, shifted, state.players, ball);
+}
+
+function movePlayer(state, player, target, maxDistance, applyZoneRule = true) {
+  const allowedTarget = applyZoneRule ? constrainPlayerPositionForZones(state, player, target) : target;
+  const moved = moveToward(player, allowedTarget, maxDistance);
+  const allowedPosition = applyZoneRule ? constrainPlayerPositionForZones(state, player, moved) : moved;
+  player.x = clamp(allowedPosition.x);
+  player.y = clamp(allowedPosition.y);
 }
 
 function choosePassTarget(state, carrier) {
@@ -168,11 +177,11 @@ function advancePlayers(state, dt) {
 
   state.players.forEach((player) => {
     if (player.id === state.simulation.carrierId) {
+      // Legal restart placement and the mandatory U9 goalkeeper build-out hold take precedence over drill constraints.
       if (state.simulation.restart || (buildOut && player.role === 'GK')) return;
       const direction = attackingDirection(player.team);
       const target = { x: clamp(player.x + direction * 0.08), y: clamp(player.y + (0.5 - player.y) * 0.06) };
-      const moved = moveToward(player, target, SIMULATION.playerSpeed * 0.78 * dt);
-      player.x = moved.x; player.y = moved.y;
+      movePlayer(state, player, target, SIMULATION.playerSpeed * 0.78 * dt);
       return;
     }
 
@@ -183,8 +192,8 @@ function advancePlayers(state, dt) {
       target = { x: ball.x, y: ball.y };
     }
 
-    const moved = moveToward(player, target, SIMULATION.playerSpeed * dt);
-    player.x = clamp(moved.x); player.y = clamp(moved.y);
+    // Build-out retreat is a mandatory U9 rule and therefore overrides an optional coach-created zone constraint.
+    movePlayer(state, player, target, SIMULATION.playerSpeed * dt, !retreat);
   });
 }
 

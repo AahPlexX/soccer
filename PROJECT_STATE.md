@@ -7,9 +7,9 @@ Schema version: `1`
 
 ## Resume here
 
-Current state: the repository has moved from PRD-only to a working static-board foundation with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player and team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, a first CPU-vs-CPU teaching simulation, persistence, JSON backup, PWA caching, and an automated validation gate on every push to `main`.
+Current state: the repository has moved from PRD-only to a working static-board foundation with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player and team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, CPU-vs-CPU passing/dribbling/pressing/shooting, U9 build-out behavior, explicit throw-in/goal-kick/corner/kickoff restart states, persistence, JSON backup, PWA caching, and an automated validation gate on every push to `main`.
 
-Next action: implement the remaining PRD coaching content and simulation completeness in this order: explicit set-piece restart states (out-of-bounds detection, goal kick, throw-in, corner, kickoff); zone-restriction drills; richer saved-library category filtering/editing and an in-app delete confirmation replacing `confirm()`; real-device iPad performance/accessibility verification.
+Next action: implement the remaining PRD coaching content and simulation completeness in this order: zone-restriction drills; richer saved-library category filtering/editing and an in-app delete confirmation replacing `confirm()`; richer pass-lane/goalkeeper behavior; real-device iPad performance/accessibility/offline verification.
 
 Blockers: no source blocker. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
 
@@ -28,13 +28,18 @@ Blockers: no source blocker. Real-device validation on the 2018 iPad baseline ha
 - `FND-011` — Provide the four required built-in U9 teaching scenarios. Status: implemented and unit-tested. Evidence: `js/builtins.js`, `tests/builtins.test.mjs`.
 - `FND-012` — Support extra movable soccer balls in addition to cones. Status: implemented. Evidence: `index.html`, `js/app.js`, `js/render.js`.
 - `FND-013` — Keep the full application shell usable in 1024×768 landscape, 768×1024 portrait, and 1366×1024 desktop/tablet rendering without page overflow; keep portrait token labels upright. Status: implemented and rendered in headless Chromium. Evidence: `styles.css`, `js/render.js`; three viewport render pass with zero page errors.
-- `FND-014` — Support drag-and-drop mini-goals/pug goals as drill props (PRD §7.2). Status: implemented; state normalization unit-tested. Evidence: `js/state.js` (`miniGoals`), `js/render.js` (`buildMiniGoal`), `js/app.js` (`minigoal` tool, `findObject`, remove-selected), `index.html`, `styles.css`, `tests/state.test.mjs`. Requires human/browser verification of the touch drag and hit area; not yet exercised in a browser.
-- `FND-015` — Run repository behavior/integrity tests and runtime syntax checks automatically on every push to `main`. Status: implemented and verified. Evidence: `.github/workflows/validate.yml`, `tests/pwa-shell.test.mjs`, GitHub Actions run `40407990306` at commit `7d14f8cbc2a0c4407f0a4db7da6b0061dd6c5dbf`.
-- `FND-016` — Refresh the offline app-shell cache after the mini-goal feature changed cached HTML/CSS/JS assets. Status: implemented. Evidence: mini-goal commit `403c587966a1de1485a1e9dfe919706128fc9a83` changed cached app-shell files without changing `sw.js`; commit `1d4643807a356a5185ce792f3db076536c3bcd18` advances `CACHE_NAME` from `u9-tactical-board-v2` to `u9-tactical-board-v3`, forcing existing installations to install the current app shell.
+- `FND-014` — Support drag-and-drop mini-goals/pug goals as drill props (PRD §7.2). Status: implemented; state normalization unit-tested. Evidence: `js/state.js` (`miniGoals`), `js/render.js` (`buildMiniGoal`), `js/app.js` (`minigoal` tool, `findObject`, remove-selected), `index.html`, `styles.css`, `tests/state.test.mjs`. Requires human/browser verification of the touch drag and hit area; not yet exercised on a physical iPad.
+- `FND-015` — Run repository behavior/integrity tests and runtime syntax checks automatically on every push to `main`. Status: implemented and verified. Evidence: `.github/workflows/validate.yml`, `tests/pwa-shell.test.mjs`.
+- `FND-016` — Refresh the offline app-shell cache after the mini-goal feature changed cached HTML/CSS/JS assets. Status: implemented. Evidence: commit `1d4643807a356a5185ce792f3db076536c3bcd18` advanced the cache generation from `v2` to `v3`.
+- `FND-017` — Add explicit automated restart states for throw-ins, goal kicks, corners, and kickoffs after goals. Status: implemented with pure rules tests and simulation integration tests. Evidence: `js/restarts.js`, `js/simulation.js`, `js/state.js`, `tests/restarts.test.mjs`, `tests/restart-integration.test.mjs`.
+- `FND-018` — Preserve loose-ball/pass travel instead of reacquiring a carrier while `ballTarget` is active. Status: implemented as a regression fix discovered during restart TDD. Evidence: `js/simulation.js`, `tests/restart-integration.test.mjs` (`a pass in flight is not immediately reacquired by ensureCarrier`).
+- `FND-019` — Keep the new restart module offline-capable. Status: implemented. Evidence: `sw.js` includes `./js/restarts.js` and advances cache generation from `u9-tactical-board-v3` to `u9-tactical-board-v4`.
 
 ## Partially implemented PRD areas
 
-- CPU-vs-CPU simulation: basic passing, dribbling movement, pressing, shooting, build-out retreat, spacing modes, and simplified offside support positioning exist. Explicit throw-in, corner, kickoff, and goal-kick restart state machines do not yet exist.
+- CPU-vs-CPU simulation: passing, dribbling movement, pressing, shooting, build-out retreat, spacing modes, simplified offside support positioning, and explicit boundary restarts exist. It is still a teaching simulation rather than a complete Laws-of-the-Game engine.
+- Restart procedures: ownership and placement flow for throw-ins, goal kicks, corners, and kickoffs are implemented. Detailed procedural constraints such as opponent restart distances, throw-in body mechanics, kickoff-half restrictions, and the IFAB five-second anti-delay protocol are not modeled.
+- Goal-kick geometry: the board does not draw a separate IFAB goal area; simulation goal kicks use the goalkeeper-side center (`x = 0.08` home / `x = 0.92` away, `y = 0.5`) to preserve the project’s existing U9 build-out teaching behavior.
 - Coaching props: cones, mini goals, and extra movable soccer balls exist. The PRD §7.2 prop list is complete.
 - Saved library: save/load/delete, backup import/export, and the four built-in teaching scenarios exist. Category filtering/editing is not yet implemented.
 - Zone teaching: highlights and overlap emphasis exist. Simulation zone-restriction constraints are not yet implemented.
@@ -43,33 +48,28 @@ Blockers: no source blocker. Real-device validation on the 2018 iPad baseline ha
 
 Baseline before implementation: repository contained only `PRD.md`; no executable application or tests existed.
 
-Automated checks for this work unit:
+Automated and targeted checks for this work unit:
 
-- `npm test` — covers approved formation restriction, mirrored anchors, coordinate clamps, offside support boundaries, carrier acquisition, build-out retreat, goalkeeper wait behavior, built-in presets, board-state normalization including `miniGoals`, and service-worker app-shell integrity. GitHub Actions run `40407990306` on 2026-10-26: 20 tests, 20 pass, 0 fail, 0 skipped.
-- `tests/pwa-shell.test.mjs` — verifies every declared app-shell path exists, every install-critical local `index.html` asset is precached, and every static ES-module dependency reachable from cached modules is included in `APP_SHELL`.
-- JavaScript syntax checks — GitHub Actions run `40407990306` passed `node --check` for all `js/*.js` files and `sw.js`.
-- Headless Chromium render smoke test — actual application modules rendered at 1024×768, 768×1024 portrait, and 1366×1024 with 14 player tokens, eight zone overlays, and zero page errors. The connected remote Playwright service returned an upstream 404, so this validation used the local Chromium binary with an in-memory document rather than HTTP navigation. Service-worker behavior is therefore not covered by this render smoke test, and the later mini-goal interaction remains browser-unverified.
-- Offline cache freshness repair — source-history inspection confirmed that the mini-goal feature changed files already listed in `APP_SHELL` while `sw.js` remained at cache generation `v2`; `sw.js` now uses generation `v3`. Physical iPad update behavior remains unverified until exercised on hardware.
+- Restart TDD cycle 1: `tests/restarts.test.mjs` was run before `js/restarts.js` existed and failed with `ERR_MODULE_NOT_FOUND`; after the minimal rules module was added, all five restart rules tests passed locally.
+- Restart TDD cycle 2: `tests/restart-integration.test.mjs` initially failed all four boundary-restart cases against the pre-change simulation. The cycle exposed the pre-existing `ensureCarrier()` in-flight reacquisition defect; after the minimum simulation/state changes, the targeted restart/simulation set passed 14/14 locally, including backward-compatible save normalization and the pass-in-flight regression.
+- Repository CI remains the authoritative automated integration gate: `npm test` plus `node --check` for all runtime modules and `sw.js` on every push to `main`. The post-integration run must be green before this work unit is considered fully verified.
+- `tests/pwa-shell.test.mjs` verifies every declared app-shell path exists, every install-critical local `index.html` asset is precached, and every static ES-module dependency reachable from cached modules is included in `APP_SHELL`. Adding `js/restarts.js` therefore required the `v4` cache update in the same work unit.
+- Earlier headless Chromium render smoke testing covered 1024×768 landscape, 768×1024 portrait, and 1366×1024 with zero page errors. The restart change has no new UI controls or layout surfaces, but physical-iPad simulation/restart behavior remains unverified.
 
-Validation pipeline facts:
+Research and standards checked in this work unit:
 
-- `.github/workflows/validate.yml` runs on pushes to `main` and manual dispatch.
-- Runtime: Ubuntu 24.04 with Node.js 24.22.1 LTS.
-- `actions/checkout` and `actions/setup-node` are pinned to full commit SHAs; checkout credentials are not persisted; workflow permissions are read-only for repository contents.
-
-Browser/source standards applied in this work unit:
-
-- Pointer Events with `touch-action` on the interactive surface.
-- WCAG 2.2 keyboard focus and non-drag alternative considerations.
-- Native service-worker install/activate/fetch caching for the fixed app shell.
-- Apple standalone web-app meta support without globally disabling viewport zoom.
+- IFAB Laws of the Game 2026/27: Law 8 (kick-off/start and restart), Law 15 (throw-in), Law 16 (goal kick), and Law 17 (corner kick).
+- U.S. Soccer / US Youth Soccer Player Development Initiatives: U9/U10 7v7 build-out-line retreat and goalkeeper pass/throw/roll distribution with punts/drop-kicks prohibited.
+- MDN JavaScript modules: static relative ES-module imports/exports remain the project pattern; the new module uses no dependency or bundler.
+- WCAG 2.2 keyboard-operability/focus requirements were rechecked; this work unit adds no UI control or interaction surface, so existing keyboard/touch behavior is unchanged.
 
 ## Known risks
 
 - Locked 60 fps on the 2018 iPad 6th generation is a PRD requirement but remains unverified on physical hardware.
-- iPad Safari/PWA offline behavior is implemented from current platform guidance but has not yet been exercised on physical iPad hardware.
-- Mini-goal touch dragging and hit-area ergonomics have not yet been verified in a rendered browser or physical iPad.
-- The current simulation is a teaching model, not a complete match-law engine. Remaining set-piece and goalkeeper behaviors are tracked above.
+- iPad Safari/PWA offline behavior is implemented from current platform guidance but has not yet been exercised on physical iPad hardware after cache generation `v4`.
+- Mini-goal touch dragging and hit-area ergonomics have not yet been verified on a physical iPad.
+- Restart flow is intentionally simplified for teaching and is not a full referee/law engine; procedural restart restrictions listed above remain unmodeled.
+- The simulation still lacks foul handling, richer pass-lane scoring, goalkeeper catches, zone-restriction constraints, and deterministic seeded scenario playback.
 - `confirm()` is currently used before deleting a saved preset. It is functional but should be replaced by an in-app confirmation dialog for consistent standalone-PWA presentation.
 
 ## Repository invariants
@@ -78,6 +78,7 @@ Browser/source standards applied in this work unit:
 - Do not add preset formations beyond 1-3-2-1 and 1-2-3-1.
 - Keep normalized tactical coordinates independent from rendered pixel dimensions.
 - Do not persist a running simulation state.
-- Changes to cached app-shell files must update `sw.js` cache version/list; `tests/pwa-shell.test.mjs` must remain green.
+- While `simulation.ballTarget` is active, do not synthesize a carrier before the moving ball reaches a player or a boundary restart.
+- Changes to cached app-shell files or static module dependencies must update `sw.js` cache version/list; `tests/pwa-shell.test.mjs` must remain green.
 - `.github/workflows/validate.yml` must remain green for automated checks on `main`; browser and physical-iPad checks are separate evidence and must not be inferred from CI.
 - Update `ARCHITECTURE.md` and this file in the same work unit as behavior changes.

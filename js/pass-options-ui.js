@@ -13,6 +13,7 @@ if (simulationGroup && !document.querySelector('#pass-options-toggle')) {
     const active = button.getAttribute('aria-pressed') !== 'true';
     button.setAttribute('aria-pressed', String(active));
     document.documentElement.dataset.passOptions = String(active);
+    document.dispatchEvent(new Event('pass-options-change'));
   });
   simulationGroup.insertBefore(button, resetButton ?? null);
 }

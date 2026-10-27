@@ -76,7 +76,7 @@ Research and standards checked in this work unit:
 ## Known risks
 
 - Locked 60 fps on the 2018 iPad 6th generation is a PRD requirement but remains unverified on physical hardware.
-- iPad Safari/PWA offline behavior is implemented from current platform guidance but has not yet been exercised on physical iPad hardware after cache generation `v5`.
+- iPad Safari/PWA offline behavior is implemented from current platform guidance but has not yet been exercised on physical iPad hardware after cache generation `v6`.
 - The post-zone-control responsive layout has automated/source validation but has not yet repeated the browser render matrix or physical-iPad usability check.
 - Mini-goal touch dragging and hit-area ergonomics have not yet been verified on a physical iPad.
 - Restart flow is intentionally simplified for teaching and is not a full referee/law engine; procedural restart restrictions listed above remain unmodeled.

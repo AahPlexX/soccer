@@ -192,6 +192,7 @@ Cache history relevant to the current runtime:
 
 - `v4`: added `js/restarts.js` to the offline module graph.
 - `v5`: refreshes the combined deterministic shot/goalkeeper runtime plus the new zone-control HTML/CSS/app/state/simulation changes, and adds `js/zone-constraints.js` to `APP_SHELL`.
+- `v6`: refreshes the saved-library category filter and two-step delete confirmation in `index.html`, `styles.css`, and `js/app.js`; no `APP_SHELL` change.
 
 `tests/pwa-shell.test.mjs` protects this contract by verifying that every declared app-shell file exists, every install-critical local asset referenced by `index.html` is precached, and every static ES-module dependency reachable from the cached module graph is also in `APP_SHELL`.
 

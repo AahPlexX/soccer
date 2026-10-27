@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { distanceToSegment } from '../js/geometry.js';
+import { availablePassOptions } from '../js/pass-options.js';
 import { createInitialState } from '../js/state.js';
 import { stepSimulation } from '../js/simulation.js';
 
@@ -42,6 +43,13 @@ test('the carrier passes to a different teammate when an opponent blocks the bes
   const rerouted = chosenReceiver((state, carrier) => onLane(state, carrier, best, 'away-2'));
   assert.match(rerouted, /^home-/);
   assert.notEqual(rerouted, best);
+});
+
+test('the pass options shown to the coach contain the receiver the CPU actually chooses', () => {
+  let shown;
+  const chosen = chosenReceiver((state) => { shown = availablePassOptions(state).map((p) => p.id); });
+  assert.ok(shown.length > 0);
+  assert.ok(shown.includes(chosen), `${chosen} not in ${shown}`);
 });
 
 test('when every lane is blocked the carrier still passes to a teammate', () => {

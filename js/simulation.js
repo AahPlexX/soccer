@@ -1,5 +1,6 @@
 import { PITCH, SIMULATION } from './constants.js';
-import { clamp, clampSupportForOffside, distance, distanceToSegment, moveToward } from './geometry.js';
+import { clamp, clampSupportForOffside, distance, moveToward } from './geometry.js';
+import { openPassReceivers } from './pass-options.js';
 import { classifyBoundaryRestart, restartPoint } from './restarts.js';
 import { constrainPlayerPositionForZones } from './zone-constraints.js';
 
@@ -46,7 +47,7 @@ function choosePassTarget(state, carrier) {
   const direction = attackingDirection(carrier.team);
   const teammates = state.players.filter((p) => p.team === carrier.team && p.id !== carrier.id);
   // Prefer receivers whose lane no opponent blocks; if every lane is blocked, choose among all teammates as before.
-  const open = teammates.filter((p) => state.players.every((o) => o.team === carrier.team || distanceToSegment(o, carrier, p) > SIMULATION.passLaneClearance));
+  const open = openPassReceivers(state, carrier);
   return (open.length ? open : teammates)
     .map((p) => ({ player: p, score: direction * (p.x - carrier.x) * 2 - Math.abs(p.y - carrier.y) - distance(p, carrier) * 0.25 }))
     .sort((a, b) => b.score - a.score)[0]?.player ?? null;

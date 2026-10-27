@@ -1,4 +1,4 @@
-import { LIBRARY_FILTERS, PRESET_CATEGORIES, filterPresetsByCategory, nextLibraryFilter } from './library.js';
+import { LIBRARY_FILTERS, PRESET_CATEGORIES, nextLibraryFilter } from './library.js';
 import { listPresets, savePreset } from './storage.js';
 
 const savedDialog = document.querySelector('#saved-dialog');
@@ -42,33 +42,23 @@ function openPresetEditor(preset) {
   presetEditTitle.focus();
 }
 
-function customPresetRows() {
-  if (!savedList) return [];
-  return [...savedList.querySelectorAll('.saved-item')].filter((item) =>
-    [...item.querySelectorAll('button')].some((button) => button.textContent === 'Delete' || button.textContent === 'Tap again to delete'),
-  );
-}
-
+// Saved rows carry data-preset-id (set by refreshSavedList in app.js); the Edit button goes before the row's Delete button.
 async function augmentCustomRows() {
-  if (!savedFilterSelect || !savedList) return;
+  if (!savedList) return;
   const sequence = ++augmentationSequence;
-  const presets = filterPresetsByCategory(await listPresets(), savedFilterSelect.value);
+  const presets = new Map((await listPresets()).map((preset) => [preset.id, preset]));
   if (sequence !== augmentationSequence) return;
 
-  customPresetRows().forEach((item, index) => {
-    const preset = presets[index];
+  savedList.querySelectorAll('.saved-item[data-preset-id]').forEach((item) => {
+    const preset = presets.get(item.dataset.presetId);
     if (!preset || item.querySelector('[data-library-edit]')) return;
-    item.dataset.presetId = preset.id;
     item.classList.add('is-user-preset');
     const edit = document.createElement('button');
     edit.type = 'button';
     edit.textContent = 'Edit';
     edit.dataset.libraryEdit = 'true';
     edit.addEventListener('click', () => openPresetEditor(preset));
-    const deleteButton = [...item.querySelectorAll('button')].find((button) =>
-      button.textContent === 'Delete' || button.textContent === 'Tap again to delete',
-    );
-    item.insertBefore(edit, deleteButton ?? null);
+    item.insertBefore(edit, item.lastElementChild);
   });
 }
 

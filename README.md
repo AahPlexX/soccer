@@ -46,11 +46,11 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Player number, label, individual color editing, and team/goalkeeper color palettes.
 - Opponent visibility toggle, turf/dark/field themes, landscape and portrait pitch rendering.
 - Freehand telestration, arrows, cones, mini goals, extra soccer balls, clear drawings, play/pause/reset, 0.5×/1×/2× simulation speed, and good-spacing/bunching teaching modes.
-- CPU-vs-CPU passing, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
+- CPU-vs-CPU passing (receivers with an opponent-blocked lane are skipped), dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
 - Deterministic varied shooting with goalkeeper catch/parry/goal outcomes; the fixed sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
-- Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, a category filter over built-in and saved items, a two-step in-app delete confirmation, and JSON backup export/import.
-- Offline app-shell caching and installable web-app manifest; current cache generation `v6` includes the restart and zone-constraint module graph plus the current shot/goalkeeper runtime.
+- Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, category tabs over built-in and saved items, a title/category editor for saved presets, a two-step in-app delete confirmation, and JSON backup export/import.
+- Offline app-shell caching and installable web-app manifest; current cache generation `v7` includes the restart and zone-constraint module graph plus the current shot/goalkeeper runtime.
 
 ## Documentation
 

@@ -85,6 +85,10 @@ Each player keeps:
 
 Applying a formation updates role, current position, and anchor position for that team. Free dragging changes only current position until the coach chooses another formation.
 
+## Saved library UI
+
+`js/app.js` (`refreshSavedList()`) renders the dialog list: built-in scenarios first, then saved presets, both through `filterPresetsByCategory()` from `js/library.js` using the view-only `savedFilter` (not persisted). `#saved-filter` (a native `<select>`) holds the filter value; the tab strip in `js/library-ui.js` (ARIA `tablist`; click, ArrowLeft/ArrowRight with wrap, Home, End) sets the select and dispatches `change`, and the select's listener re-syncs the tabs. Every saved row carries `data-preset-id`; `augmentCustomRows()` in `js/library-ui.js` looks the preset up by that id and inserts an Edit button before the row's Delete button. Edit opens `#preset-edit-dialog` (title up to 48 characters, category from `PRESET_CATEGORIES`) and persists through the existing `savePreset()`. Built-in scenarios have no Edit or Delete. Delete is a two-step in-app confirmation (first tap arms "Tap again to delete" for 4 seconds) instead of native `confirm()`, which is unreliable in standalone Home Screen apps.
+
 ## Drill props
 
 Board state holds three prop collections, all in normalized coordinates: `balls` (`{id, x, y, primary}`; exactly one primary match ball that cannot be removed), `cones` (`{id, x, y, color}`), and `miniGoals` (`{id, x, y}`). Props are draggable and keyboard-nudgeable through the shared `findObject()` lookup in `js/app.js`, and are rendered in `#prop-layer` / `#ball-layer` by `js/render.js`. `normalizeState()` defaults a missing or non-array `miniGoals` to `[]`, so saves from before mini goals load unchanged and `SCHEMA_VERSION` stays `1`. The simulation ignores props.
@@ -143,6 +147,7 @@ Rules implemented now:
 - a last touch over either touchline creates a throw-in for the opposing team at the exit `x` coordinate.
 - a shot aims at `0.5 + shotAimOffsets[shotCount % 4] + (shooter.y - 0.5) * shotAimSpread`. The offsets repeat in a fixed order with no RNG, so replays are identical: central, near post, far post, wide. The ball target is the aim point extended 0.05 past the goal line along the shot's own line, ensuring boundary classification actually receives the shot.
 - a shot crossing the goal line inside the goal mouth meets the defending goalkeeper first (`keeperResponse()`), by `|keeper.y - shot.y|`: at most `keeperCatchReach` (0.02) the keeper holds the ball and the U9 build-out gate applies; at most `keeperParryReach` (0.05) it is deflected behind for an attacking corner; otherwise it is a goal. A keeper cannot catch a ball its own team touched last.
+- receiver choice (`choosePassTarget()`) skips teammates whose carrier→receiver line has any opponent within `SIMULATION.passLaneClearance` (0.05, just under the 0.055 pickup radius; measured with `distanceToSegment()` in `js/geometry.js`, so a closely marked receiver counts as blocked). Among clear receivers the existing forward-progress/lateral/distance score picks the winner; if every lane is blocked the choice falls back to all teammates, so a carrier always passes.
 - restart takers remain stationary until the next simulation decision releases the ball as a pass. Goal-kick takers use the goalkeeper, so the existing U9 build-out retreat gate remains in force before the restart is released.
 - ordinary player targets and positions can be constrained to remain inside or outside the coach-selected zone union for the selected team scope.
 
@@ -193,6 +198,7 @@ Cache history relevant to the current runtime:
 - `v4`: added `js/restarts.js` to the offline module graph.
 - `v5`: refreshes the combined deterministic shot/goalkeeper runtime plus the new zone-control HTML/CSS/app/state/simulation changes, and adds `js/zone-constraints.js` to `APP_SHELL`.
 - `v6`: refreshes the saved-library category filter and two-step delete confirmation in `index.html`, `styles.css`, and `js/app.js`; no `APP_SHELL` change.
+- `v7`: adds `./library.css`, `./js/library.js`, and `./js/library-ui.js` to `APP_SHELL`. They were referenced by `index.html` / the static module graph but were not precached, so the saved-library tabs, editor, and styling would have been missing offline (`tests/pwa-shell.test.mjs` failed on this at `431ef15`).
 
 `tests/pwa-shell.test.mjs` protects this contract by verifying that every declared app-shell file exists, every install-critical local asset referenced by `index.html` is precached, and every static ES-module dependency reachable from the cached module graph is also in `APP_SHELL`.
 

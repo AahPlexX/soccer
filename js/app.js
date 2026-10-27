@@ -1,6 +1,7 @@
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { createLocalId, PALETTE, ZONES } from './constants.js';
 import { applyFormation } from './formations.js';
+import { filterPresetsByCategory } from './library.js';
 import { clamp, pitchPointFromClient } from './geometry.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { stepSimulation } from './simulation.js';
@@ -419,11 +420,10 @@ saveForm.addEventListener('submit', async (event) => {
 });
 
 async function refreshSavedList() {
-  const matchesFilter = (preset) => savedFilter === 'All' || preset.category === savedFilter;
-  const presets = (await listPresets()).filter(matchesFilter);
+  const presets = filterPresetsByCategory(await listPresets(), savedFilter);
   savedList.replaceChildren();
 
-  BUILT_IN_PRESETS.filter(matchesFilter).forEach((preset) => {
+  filterPresetsByCategory(BUILT_IN_PRESETS, savedFilter).forEach((preset) => {
     const item = document.createElement('div');
     item.className = 'saved-item';
     const text = document.createElement('div');
@@ -489,6 +489,7 @@ async function refreshSavedList() {
       await refreshSavedList();
       showToast('Saved position deleted');
     });
+    item.dataset.presetId = preset.id;
     item.append(text, load, remove);
     savedList.append(item);
   });

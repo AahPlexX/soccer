@@ -7,6 +7,12 @@ const W = 1000;
 const H = 680;
 const sx = (x) => x * W;
 const sy = (y) => y * H;
+let latestPassOptionSvg = null;
+let latestPassOptionState = null;
+
+document.addEventListener('pass-options-change', () => {
+  if (latestPassOptionSvg && latestPassOptionState) renderPassOptions(latestPassOptionSvg, latestPassOptionState);
+});
 
 function el(name, attrs = {}, text = '') {
   const node = document.createElementNS(SVG_NS, name);
@@ -228,6 +234,8 @@ export function setSceneOrientation(svg, portrait) {
 }
 
 export function renderScene(svg, state) {
+  latestPassOptionSvg = svg;
+  latestPassOptionState = state;
   document.documentElement.dataset.theme = state.theme;
   svg.querySelectorAll('.zone-overlay').forEach((node) => {
     const active = state.selectedZones.includes(node.dataset.zoneId);

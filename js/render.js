@@ -1,5 +1,6 @@
 import { PITCH, ZONES } from './constants.js';
 import { playerColor } from './formations.js';
+import { availablePassOptions } from './pass-options.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const W = 1000;
@@ -54,6 +55,38 @@ function buildPitchMarkings(parent) {
   markings.append(el('path', { d: `M ${W} ${H - arcRadius} A ${arcRadius} ${arcRadius} 0 0 0 ${W - arcRadius} ${H}`, class: 'field-line field-fill-none' }));
   markings.append(el('path', { d: `M ${arcRadius} ${H} A ${arcRadius} ${arcRadius} 0 0 0 0 ${H - arcRadius}`, class: 'field-line field-fill-none' }));
   parent.append(markings);
+}
+
+function buildPassOptionLayer() {
+  const layer = el('g', { id: 'pass-option-layer', 'aria-hidden': 'true' });
+  for (let index = 0; index < 6; index += 1) {
+    layer.append(el('line', {
+      class: 'pass-option-line',
+      'data-pass-slot': index,
+      style: 'display:none',
+    }));
+  }
+  return layer;
+}
+
+function renderPassOptions(svg, state) {
+  const lines = [...svg.querySelectorAll('.pass-option-line')];
+  const enabled = document.documentElement.dataset.passOptions === 'true';
+  const carrier = enabled ? state.players.find((player) => player.id === state.simulation.carrierId) : null;
+  const receivers = carrier ? availablePassOptions(state) : [];
+
+  lines.forEach((node, index) => {
+    const receiver = receivers[index];
+    if (!carrier || !receiver) {
+      node.style.display = 'none';
+      return;
+    }
+    node.style.display = '';
+    node.setAttribute('x1', String(sx(carrier.x)));
+    node.setAttribute('y1', String(sy(carrier.y)));
+    node.setAttribute('x2', String(sx(receiver.x)));
+    node.setAttribute('y2', String(sy(receiver.y)));
+  });
 }
 
 function buildPlayer(player, state) {
@@ -156,6 +189,7 @@ export function initializeScene(svg, state) {
 
   const world = el('g', { id: 'pitch-world' });
   buildPitchMarkings(world);
+  world.append(buildPassOptionLayer());
   world.append(el('g', { id: 'drawing-layer', 'aria-hidden': 'true' }));
   world.append(el('g', { id: 'prop-layer' }));
   world.append(el('g', { id: 'player-layer' }));
@@ -200,6 +234,7 @@ export function renderScene(svg, state) {
     node.classList.toggle('is-active', active);
     node.style.setProperty('--zone-opacity', String(state.zoneOpacity));
   });
+  renderPassOptions(svg, state);
 
   state.players.forEach((player) => {
     const node = svg.querySelector(`#object-${player.id}`);

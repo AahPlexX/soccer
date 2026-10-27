@@ -1,8 +1,8 @@
-const CACHE_NAME = 'u9-tactical-board-v6';
+const CACHE_NAME = 'u9-tactical-board-v7';
 const APP_SHELL = [
-  './', './index.html', './styles.css', './manifest.webmanifest',
+  './', './index.html', './styles.css', './library.css', './manifest.webmanifest',
   './js/app.js', './js/builtins.js', './js/constants.js', './js/formations.js', './js/geometry.js',
-  './js/render.js', './js/restarts.js', './js/simulation.js', './js/state.js', './js/storage.js', './js/zone-constraints.js',
+  './js/library.js', './js/library-ui.js', './js/render.js', './js/restarts.js', './js/simulation.js', './js/state.js', './js/storage.js', './js/zone-constraints.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
 ];
 

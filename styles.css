@@ -195,6 +195,7 @@ input[type="text"], input[type="number"] {
 .ball-core { fill: #fff; stroke: #111; stroke-width: 2; }
 .ball-patch { fill: #111; }
 .ball-token.is-selected .ball-hit, .cone-token.is-selected .cone-hit, .minigoal-token.is-selected .minigoal-hit { fill: rgba(255,212,59,.34); }
+.saved-filter { display: flex; align-items: center; gap: .6rem; margin: 0 0 .75rem; font-weight: 600; }
 .minigoal-net { fill: rgba(255,255,255,.28); }
 .minigoal-frame { fill: none; stroke: #fff; stroke-width: 4; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(0,0,0,.6)); }
 .cone-shape, .cone-base { stroke: rgba(20,20,20,.45); stroke-width: 1.5; }

@@ -46,6 +46,8 @@ const colorsForm = document.querySelector('#colors-form');
 const savedDialog = document.querySelector('#saved-dialog');
 const savedClose = document.querySelector('#saved-close');
 const savedList = document.querySelector('#saved-list');
+const savedFilterSelect = document.querySelector('#saved-filter');
+let savedFilter = 'All'; // view-only library filter; not persisted
 const toast = document.querySelector('#toast');
 const dragStatus = document.querySelector('#drag-status');
 
@@ -417,10 +419,11 @@ saveForm.addEventListener('submit', async (event) => {
 });
 
 async function refreshSavedList() {
-  const presets = await listPresets();
+  const matchesFilter = (preset) => savedFilter === 'All' || preset.category === savedFilter;
+  const presets = (await listPresets()).filter(matchesFilter);
   savedList.replaceChildren();
 
-  BUILT_IN_PRESETS.forEach((preset) => {
+  BUILT_IN_PRESETS.filter(matchesFilter).forEach((preset) => {
     const item = document.createElement('div');
     item.className = 'saved-item';
     const text = document.createElement('div');
@@ -446,7 +449,9 @@ async function refreshSavedList() {
   if (!presets.length) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.textContent = 'Your saved positions will appear below the built-in teaching scenarios.';
+    empty.textContent = savedFilter === 'All'
+      ? 'Your saved positions will appear below the built-in teaching scenarios.'
+      : `No saved ${savedFilter.toLowerCase()} yet. Use Save as to add one.`;
     savedList.append(empty);
     return;
   }
@@ -472,7 +477,14 @@ async function refreshSavedList() {
     const remove = document.createElement('button');
     remove.type = 'button'; remove.textContent = 'Delete';
     remove.addEventListener('click', async () => {
-      if (!confirm(`Delete “${preset.title}”?`)) return;
+      // Two-step in-app confirmation (confirm() is unreliable in standalone Home Screen apps).
+      if (remove.dataset.armed !== 'true') {
+        remove.dataset.armed = 'true';
+        remove.textContent = 'Tap again to delete';
+        showToast(`Tap Delete again to remove “${preset.title}”`);
+        setTimeout(() => { remove.dataset.armed = ''; remove.textContent = 'Delete'; }, 4000);
+        return;
+      }
       await deletePreset(preset.id);
       await refreshSavedList();
       showToast('Saved position deleted');
@@ -481,6 +493,7 @@ async function refreshSavedList() {
     savedList.append(item);
   });
 }
+savedFilterSelect.addEventListener('change', () => { savedFilter = savedFilterSelect.value; refreshSavedList(); });
 savedOpen.addEventListener('click', async () => { await refreshSavedList(); savedDialog.showModal(); });
 savedClose.addEventListener('click', () => savedDialog.close());
 

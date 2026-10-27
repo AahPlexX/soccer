@@ -9,7 +9,7 @@ Schema version: `1`
 
 Current state: the repository has moved from PRD-only to a working static-board foundation with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player and team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, CPU-vs-CPU passing/dribbling/pressing, deterministic varied shooting with goalkeeper catch/parry outcomes, U9 build-out behavior, explicit throw-in/goal-kick/corner/kickoff restart states, optional keep-inside/keep-out zone drill constraints, persistence, JSON backup, PWA caching, and an automated validation gate on every push to `main`.
 
-Next action: implement the remaining PRD coaching/library completeness in this order: richer saved-library category filtering/editing and an in-app delete confirmation replacing `confirm()`; richer pass-lane and goalkeeper movement behavior; remaining restart procedural detail where useful for teaching; real-device iPad performance/accessibility/offline verification.
+Next action: implement the remaining PRD coaching/library completeness in this order: browser verification of the saved-library category filter and two-step delete (never run in a real browser); optional saved-preset rename/re-categorize; richer pass-lane and goalkeeper movement behavior; remaining restart procedural detail where useful for teaching; real-device iPad performance/accessibility/offline verification.
 
 Blockers: no source blocker. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
 
@@ -37,6 +37,7 @@ Blockers: no source blocker. Real-device validation on the 2018 iPad baseline ha
 - `FND-020` — Make shots cross the goal line with a varied, deterministic aim and a goalkeeper response, so goals, corners, and goal kicks occur in normal play. Status: implemented with tests. Evidence: `js/simulation.js` (`beginShot`, `keeperResponse`), `js/constants.js` (`SIMULATION.shotAimOffsets`, `shotAimSpread`, `keeperCatchReach`, `keeperParryReach`), `js/state.js` (`shotCount`), `tests/shots.test.mjs`. Before this change a 10-minute simulated match produced no goals, corners, or goal kicks because the pickup radius collected every shot before it crossed the line.
 - `FND-021` — Let the coach turn selected zone overlays into optional simulation constraints. Status: implemented. `Zone rule` supports Off, Keep inside, and Keep out; `Applies to` supports Our team, Opponents, and Both teams. Selected zones form a union. Evidence: `js/zone-constraints.js`, `js/simulation.js`, `js/state.js`, `index.html`, `js/app.js`, `styles.css`, `tests/zone-constraints.test.mjs`, `tests/zone-restriction-state.test.mjs`, `tests/zone-simulation.test.mjs`.
 - `FND-022` — Preserve mandatory U9 and legal-restart behavior when optional zone constraints conflict. Status: implemented. Build-out retreat and explicit restart-taker placement take precedence over a coach-created zone rule; after the mandatory phase ends, the optional rule becomes active again. Evidence: `js/simulation.js`, `tests/zone-simulation.test.mjs`.
+- `FND-024` — Filter the saved-position library by category and replace native `confirm()` with an in-app two-step delete (PRD §8.1 category tabs; standalone-PWA presentation). Status: implemented in source, awaiting browser verification (see Known risks). Evidence: `index.html` (`#saved-filter`), `js/app.js` (`refreshSavedList`, `savedFilter`), `styles.css` (`.saved-filter`). No schema change; `sw.js` advances `CACHE_NAME` to `u9-tactical-board-v6` because cached app-shell files changed (no new file, so `APP_SHELL` is unchanged).
 - `FND-023` — Keep the combined shot/keeper and zone-drill runtime offline-capable. Status: implemented. Evidence: `sw.js` advances to `u9-tactical-board-v5` and precaches `./js/zone-constraints.js` along with the rest of the static ES-module graph.
 
 ## Partially implemented PRD areas
@@ -46,7 +47,7 @@ Blockers: no source blocker. Real-device validation on the 2018 iPad baseline ha
 - Goal-kick geometry: the board does not draw a separate IFAB goal area; simulation goal kicks use the goalkeeper-side center (`x = 0.08` home / `x = 0.92` away, `y = 0.5`) to preserve the project’s existing U9 build-out teaching behavior.
 - Goalkeeping: keepers can catch or parry shots deterministically, but they do not yet use richer shot-tracking movement or decision logic.
 - Coaching props: cones, mini goals, and extra movable soccer balls exist. The PRD §7.2 prop list is complete.
-- Saved library: save/load/delete, backup import/export, and the four built-in teaching scenarios exist. Category filtering/editing is not yet implemented, and delete still uses browser-native `confirm()`.
+- Saved library: save/load/delete, backup import/export, and the four built-in teaching scenarios exist. The library dialog has a category filter (All, Formations, Positions, Plays, Drills, Rules) covering built-in and saved items, and delete uses a two-step in-app confirmation. Renaming or re-categorizing an existing saved preset is not implemented; the coach saves a new one with Save as.
 - Zone teaching: highlights, overlap emphasis, Keep inside, and Keep out constraints exist. The rule is deliberately optional and uses the same selected-zone geometry as the overlays rather than a second zone model.
 
 ## Verification evidence
@@ -80,7 +81,7 @@ Research and standards checked in this work unit:
 - Mini-goal touch dragging and hit-area ergonomics have not yet been verified on a physical iPad.
 - Restart flow is intentionally simplified for teaching and is not a full referee/law engine; procedural restart restrictions listed above remain unmodeled.
 - Goalkeeper response is deterministic and useful for teaching simulation, but goalkeeper locomotion/positioning toward an incoming shot remains simplified.
-- `confirm()` is currently used before deleting a saved preset. It is functional but should be replaced by an in-app confirmation dialog for consistent standalone-PWA presentation.
+- The saved-library filter (`#saved-filter`, `savedFilter` in `js/app.js`) and the two-step "Tap again to delete" confirmation have only been checked by syntax, the static id check, and the existing test suite. The DOM behavior was not exercised in a browser because browser automation from Bash was blocked by a session hook; a human or browser run should confirm filtering built-in and saved items, the filtered empty state, the 4 s disarm, and 48 px touch targets.
 
 ## Repository invariants
 

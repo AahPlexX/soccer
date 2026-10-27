@@ -169,6 +169,16 @@
 
   <dialog id="saved-dialog" class="library-dialog">
     <div class="dialog-heading"><div><h2>Saved positions</h2><p>Load a formation, position, play, drill, or rule setup.</p></div><button id="saved-close" class="icon-button" type="button" aria-label="Close saved positions">×</button></div>
+    <label class="saved-filter" for="saved-filter">Show
+      <select id="saved-filter">
+        <option value="All">All</option>
+        <option value="Formations">Formations</option>
+        <option value="Positions">Positions</option>
+        <option value="Plays">Plays</option>
+        <option value="Drills">Drills</option>
+        <option value="Rules">Rules</option>
+      </select>
+    </label>
     <div id="saved-list" class="saved-list"></div>
   </dialog>
 

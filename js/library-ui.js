@@ -59,6 +59,7 @@ async function augmentCustomRows() {
     const preset = presets[index];
     if (!preset || item.querySelector('[data-library-edit]')) return;
     item.dataset.presetId = preset.id;
+    item.classList.add('is-user-preset');
     const edit = document.createElement('button');
     edit.type = 'button';
     edit.textContent = 'Edit';

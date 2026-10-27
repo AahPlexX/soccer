@@ -1,6 +1,9 @@
 import { DEFAULT_COLORS, SCHEMA_VERSION } from './constants.js';
 import { defaultPlayers } from './formations.js';
 
+const ZONE_RESTRICTION_MODES = Object.freeze(['off', 'keep-in', 'keep-out']);
+const ZONE_RESTRICTION_SCOPES = Object.freeze(['home', 'away', 'both']);
+
 export function createInitialState() {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -12,6 +15,8 @@ export function createInitialState() {
     speed: 1,
     spacingMode: 'good',
     selectedZones: [],
+    zoneRestrictionMode: 'off',
+    zoneRestrictionScope: 'home',
     zoneOpacity: 0.2,
     colors: { ...DEFAULT_COLORS },
     players: defaultPlayers(),
@@ -50,6 +55,12 @@ export function normalizeState(candidate) {
     miniGoals: Array.isArray(candidate.miniGoals) ? candidate.miniGoals : [],
     drawings: Array.isArray(candidate.drawings) ? candidate.drawings : [],
     selectedZones: Array.isArray(candidate.selectedZones) ? candidate.selectedZones : [],
+    zoneRestrictionMode: ZONE_RESTRICTION_MODES.includes(candidate.zoneRestrictionMode)
+      ? candidate.zoneRestrictionMode
+      : base.zoneRestrictionMode,
+    zoneRestrictionScope: ZONE_RESTRICTION_SCOPES.includes(candidate.zoneRestrictionScope)
+      ? candidate.zoneRestrictionScope
+      : base.zoneRestrictionScope,
   };
 }
 

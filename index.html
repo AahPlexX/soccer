@@ -53,6 +53,20 @@
       <label class="opacity-control" for="zone-opacity">Zone opacity
         <input id="zone-opacity" type="range" min="0.1" max="0.45" step="0.05" value="0.2">
       </label>
+      <label class="zone-setting-control" for="zone-restriction-mode">Zone rule
+        <select id="zone-restriction-mode">
+          <option value="off">Off</option>
+          <option value="keep-in">Keep inside</option>
+          <option value="keep-out">Keep out</option>
+        </select>
+      </label>
+      <label class="zone-setting-control" for="zone-restriction-scope">Applies to
+        <select id="zone-restriction-scope">
+          <option value="home">Our team</option>
+          <option value="away">Opponents</option>
+          <option value="both">Both teams</option>
+        </select>
+      </label>
       <button id="zones-clear" type="button">Clear zones</button>
     </section>
 
@@ -128,7 +142,6 @@
       <div class="dialog-actions"><button value="cancel">Cancel</button><button id="player-save" value="default" class="primary-action">Save changes</button></div>
     </form>
   </dialog>
-
 
   <dialog id="colors-dialog" class="editor-dialog">
     <form method="dialog" id="colors-form">

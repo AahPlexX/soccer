@@ -49,8 +49,8 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - CPU-vs-CPU passing, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
 - Deterministic varied shooting with goalkeeper catch/parry/goal outcomes; the fixed sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
-- Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, JSON backup export/import.
-- Offline app-shell caching and installable web-app manifest; current cache generation `v5` includes the restart and zone-constraint module graph plus the current shot/goalkeeper runtime.
+- Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, a category filter over built-in and saved items, a two-step in-app delete confirmation, and JSON backup export/import.
+- Offline app-shell caching and installable web-app manifest; current cache generation `v6` includes the restart and zone-constraint module graph plus the current shot/goalkeeper runtime.
 
 ## Documentation
 

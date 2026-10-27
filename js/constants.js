@@ -67,4 +67,13 @@ export const SIMULATION = Object.freeze({
   supportBallShiftX: 0.16,
   supportBallShiftY: 0.12,
   pressureDistance: 0.1,
+  // A shot aims at 0.5 + shotAimOffsets[shotCount % length] + (shooter.y - 0.5) * shotAimSpread. The offsets repeat
+  // in a fixed order (no RNG, so teaching replays are repeatable): central (caught), near post (parried for a
+  // corner), far post (goal), wide of the goal (goal kick). The spread lets a wide shooter's angle shift the aim.
+  shotAimOffsets: Object.freeze([0, 0.04, -0.065, 0.12]),
+  shotAimSpread: 0.6,
+  // Goalkeeper vs. a shot crossing the line inside the goal mouth, by |keeper.y - shot.y|:
+  // <= keeperCatchReach holds it, <= keeperParryReach deflects it behind for a corner, otherwise it is a goal.
+  keeperCatchReach: 0.02,
+  keeperParryReach: 0.05,
 });

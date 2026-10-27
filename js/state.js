@@ -29,6 +29,8 @@ export function createInitialState() {
       ballTarget: null,
       receiverId: null,
       lastTouchTeam: 'home',
+      // Shots taken so far; selects the next entry of SIMULATION.shotAimOffsets.
+      shotCount: 0,
       restart: null,
     },
   };

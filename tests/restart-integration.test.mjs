@@ -16,7 +16,8 @@ function setupLooseBall(state, point, target, lastTouchTeam) {
 
 test('shot entering the away goal creates an explicit away kickoff state', () => {
   const state = createInitialState();
-  setupLooseBall(state, { x: 0.998, y: 0.5 }, { x: 1, y: 0.5 }, 'home');
+  // y 0.57 is inside the goal mouth but beyond the goalkeeper's reach; a shot at the keeper is caught (tests/shots.test.mjs).
+  setupLooseBall(state, { x: 0.998, y: 0.57 }, { x: 1, y: 0.57 }, 'home');
 
   stepSimulation(state, 1 / 60);
 

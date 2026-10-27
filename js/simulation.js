@@ -52,7 +52,44 @@ function beginShot(state, carrier) {
   state.simulation.lastTouchTeam = carrier.team;
   state.simulation.carrierId = null;
   state.simulation.receiverId = null;
-  state.simulation.ballTarget = { x: teamGoalX(carrier.team), y: 0.5 };
+  const offsets = SIMULATION.shotAimOffsets;
+  const offset = offsets[state.simulation.shotCount % offsets.length];
+  state.simulation.shotCount += 1;
+  // The target is the aim point extended 0.05 past the goal line along the shot's own line: the ball must cross the
+  // line (so boundary classification decides the outcome) instead of being collected by the loose-ball pickup
+  // radius just before it, and it crosses exactly at the aim y.
+  const aimY = 0.5 + offset + (carrier.y - 0.5) * SIMULATION.shotAimSpread;
+  const run = teamGoalX(carrier.team) - carrier.x;
+  const stretch = 1 + 0.05 / Math.max(Math.abs(run), 0.01);
+  state.simulation.ballTarget = {
+    x: carrier.x + run * stretch,
+    y: carrier.y + (aimY - carrier.y) * stretch,
+  };
+}
+
+/**
+ * A shot crossing the goal line inside the goal mouth meets the defending goalkeeper first: within
+ * SIMULATION.keeperCatchReach the keeper holds it (possession, so the build-out rule follows); within
+ * keeperParryReach it is deflected behind for an attacking corner. Returns true when the keeper dealt with it.
+ */
+function keeperResponse(state, goal, exitPoint) {
+  const defending = goal.team;
+  const keeper = state.players.find((p) => p.team === defending && p.role === 'GK');
+  if (!keeper || state.simulation.lastTouchTeam === defending) return false;
+  const miss = Math.abs(keeper.y - exitPoint.y);
+  if (miss > SIMULATION.keeperParryReach) return false;
+  if (miss <= SIMULATION.keeperCatchReach) {
+    Object.assign(state.simulation, {
+      possessionTeam: defending, lastTouchTeam: defending, carrierId: keeper.id,
+      receiverId: null, ballTarget: null, actionClock: 0,
+    });
+    state.balls[0].x = keeper.x;
+    state.balls[0].y = keeper.y;
+    return true;
+  }
+  state.simulation.lastTouchTeam = defending;
+  beginRestart(state, { type: 'corner', team: opponent(defending), side: goal.side }, exitPoint);
+  return true;
 }
 
 function acquireLooseBall(state) {
@@ -87,6 +124,7 @@ function advanceBall(state, dt) {
   const next = moveToward(ball, state.simulation.ballTarget, SIMULATION.ballSpeed * dt);
   const restart = classifyBoundaryRestart(next, state.simulation.lastTouchTeam);
   if (restart) {
+    if (restart.type === 'kickoff' && keeperResponse(state, restart, next)) return;
     beginRestart(state, restart, next);
     return;
   }

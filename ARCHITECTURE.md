@@ -220,6 +220,6 @@ The validation gate runs:
 1. `npm test`, which executes the Node standard-library behavior and repository-integrity test suite.
 2. `node --check` against every `js/*.js` runtime module and `sw.js`.
 
-Baseline automated evidence: GitHub Actions run `40432564146` at commit `be1cd5a978d59fece42cf81cfde2859ed007e0bc` completed with 77 tests, 77 pass, 0 fail, 0 skipped, followed by successful JavaScript syntax checks. The goalkeeper-tracking work subsequently passed 81 tests and syntax checks locally on 2026-10-27; inspect the latest workflow run for the current commit.
+Automated evidence: GitHub Actions run `40565756748` at implementation commit `5da47a0f0117e43477ff1053f3724fda1309032c` completed with 81 tests, 81 pass, 0 fail, 0 skipped, followed by successful JavaScript syntax checks. Inspect the latest workflow run for later commits.
 
 A successful workflow run is repository evidence for those automated checks only. It does not replace rendered-browser checks or physical-iPad performance, touch, standalone-PWA, and offline verification.

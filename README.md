@@ -22,7 +22,7 @@ npm test
 
 Every push to `main` runs `.github/workflows/validate.yml`. The workflow runs the behavior/integrity test suite and syntax-checks every runtime JavaScript module plus `sw.js`. The repository-integrity tests also verify that the service-worker app shell does not reference missing files and does not omit install-critical local assets or reachable static ES-module dependencies.
 
-On 2026-10-27 the `be1cd5a` baseline passed 77 tests and syntax checks in GitHub Actions. The subsequent goalkeeper-tracking change passed 81 tests and syntax checks locally; check the [latest Actions run](https://github.com/AahPlexX/soccer/actions/workflows/validate.yml) for the current commit. A green workflow proves only those automated checks. Physical-iPad touch behavior, standalone Home Screen behavior, offline use, outdoor readability, and the PRD's 2018-iPad 60 fps target require separate browser or real-device evidence before they can be marked verified.
+On 2026-10-27 the goalkeeper-tracking implementation commit `5da47a0` passed 81 tests and syntax checks in [GitHub Actions](https://github.com/AahPlexX/soccer/actions/runs/40565756748); check the [latest Actions run](https://github.com/AahPlexX/soccer/actions/workflows/validate.yml) for later commits. A green workflow proves only those automated checks. Physical-iPad touch behavior, standalone Home Screen behavior, offline use, outdoor readability, and the PRD's 2018-iPad 60 fps target require separate browser or real-device evidence before they can be marked verified.
 
 ## GitHub Pages
 

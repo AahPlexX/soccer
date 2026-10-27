@@ -11,7 +11,7 @@ Current state: the source implements an offline-capable U9 7v7 tactical board wi
 
 Next action: investigate the GitHub Pages publishing source and deployment status, then verify the actual hosted app and saved-library tabs/editor/two-step delete, pass-options overlay, goalkeeper movement, and post-zone layout in a rendered browser at tablet and compact widths. Continue with remaining restart procedural detail where useful for teaching and real-device iPad performance/accessibility/offline verification. Check the latest validation workflow for the current `main` commit before continuing.
 
-Blockers: on 2026-10-27 the documented GitHub Pages URL returned GitHub's “Site not found” page in the cloud browser; GitHub repository metadata nevertheless reported Pages enabled, so the cause is unconfirmed. This session's cloud browser could not reach the local server (`127.0.0.1` refused the connection; `terminal.local` was blocked by the browser client), so the current source was not interactively browser-tested. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
+Blockers: on 2026-10-27 the documented GitHub Pages URL returned GitHub's “Site not found” page in the cloud browser; GitHub repository metadata nevertheless reported Pages enabled, so the cause is unconfirmed. The GitHub connector could not retrieve the Pages settings endpoint and the available browser was signed out, so the publishing source and deployment status could not be inspected. This session's cloud browser could not reach the local server (`127.0.0.1` refused the connection; `terminal.local` was blocked by the browser client), so the current source was not interactively browser-tested. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
 
 ## Completed requirements in this work unit
 
@@ -69,7 +69,7 @@ Automated and targeted checks for this work unit:
 - Pass-lane tests cover segment geometry, rerouting around a blocked best lane, and fallback when every lane is blocked.
 - Goalkeeper tests cover projected crossings at both ends, non-shot passes, zone restrictions, no remote saves, generated shot-cycle outcomes at 0.5×/1×/2×, normal-play restarts, and deterministic replay. On 2026-10-27 the full local suite passed 81/81 tests; syntax checks passed for all `js/*.js` and `sw.js`.
 - `tests/pwa-shell.test.mjs` verifies every app-shell path exists, every install-critical local HTML asset is precached, and every reachable static ES-module dependency is in `APP_SHELL`.
-- **Last verified baseline integration evidence:** GitHub Actions run `40432564146` at `be1cd5a978d59fece42cf81cfde2859ed007e0bc` completed successfully: **77 tests, 77 pass, 0 fail, 0 skipped**, followed by successful `node --check` for every `js/*.js` module and `sw.js`. The subsequent goalkeeper-tracking change has local 81-test evidence; inspect Actions for its current-commit result.
+- **Implementation integration evidence:** GitHub Actions run `40565756748` at `5da47a0f0117e43477ff1053f3724fda1309032c` completed successfully: **81 tests, 81 pass, 0 fail, 0 skipped**, followed by successful `node --check` for every `js/*.js` module and `sw.js`. Inspect Actions for any later commit.
 - Earlier headless Chromium smoke testing covered 1024×768 landscape, 768×1024 portrait, and 1366×1024 with zero page errors. Later zone/library layouts have source/automated validation but have not repeated that rendered-browser matrix.
 
 Research and standards checked in this work unit:

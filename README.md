@@ -22,7 +22,7 @@ npm test
 
 Every push to `main` runs `.github/workflows/validate.yml`. The workflow runs the behavior/integrity test suite and syntax-checks every runtime JavaScript module plus `sw.js`. The repository-integrity tests also verify that the service-worker app shell does not reference missing files and does not omit install-critical local assets or reachable static ES-module dependencies.
 
-A green workflow proves only those automated checks. Physical-iPad touch behavior, standalone Home Screen behavior, offline use, outdoor readability, and the PRD's 2018-iPad 60 fps target require separate browser or real-device evidence before they can be marked verified.
+The current combined runtime gate has passed 56/56 tests plus JavaScript syntax checks. A green workflow proves only those automated checks. Physical-iPad touch behavior, standalone Home Screen behavior, offline use, outdoor readability, and the PRD's 2018-iPad 60 fps target require separate browser or real-device evidence before they can be marked verified.
 
 ## GitHub Pages
 
@@ -42,13 +42,15 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Independent 1-3-2-1 and 1-2-3-1 formations for both teams. No other preset formations exist.
 - Touch, pen, mouse, and keyboard player/ball movement through Pointer Events and keyboard nudging.
 - Multi-select teaching zones with adjustable opacity; overlaps naturally emphasize intersections.
+- Optional zone drill rules: keep Our team, Opponents, or Both teams inside or out of the currently selected zone union. Mandatory U9 build-out retreat and legal restart placement take precedence over optional drill constraints.
 - Player number, label, individual color editing, and team/goalkeeper color palettes.
 - Opponent visibility toggle, turf/dark/field themes, landscape and portrait pitch rendering.
 - Freehand telestration, arrows, cones, mini goals, extra soccer balls, clear drawings, play/pause/reset, 0.5×/1×/2× simulation speed, and good-spacing/bunching teaching modes.
-- CPU-vs-CPU passing, dribbling movement, pressing, shooting, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
+- CPU-vs-CPU passing, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
+- Deterministic varied shooting with goalkeeper catch/parry/goal outcomes; the fixed sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
 - Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, JSON backup export/import.
-- Offline app-shell caching and installable web-app manifest.
+- Offline app-shell caching and installable web-app manifest; current cache generation `v5` includes the restart and zone-constraint module graph plus the current shot/goalkeeper runtime.
 
 ## Documentation
 

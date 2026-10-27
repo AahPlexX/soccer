@@ -28,6 +28,8 @@ export function createInitialState() {
       actionClock: 0,
       ballTarget: null,
       receiverId: null,
+      lastTouchTeam: 'home',
+      restart: null,
     },
   };
 }

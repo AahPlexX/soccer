@@ -13,13 +13,14 @@ The main boundaries are:
 - `js/formations.js`: the only permitted formation definitions and player anchor creation.
 - `js/geometry.js`: normalized-coordinate math, pointer-to-pitch conversion, movement helpers, and offside boundaries.
 - `js/restarts.js`: pure out-of-bounds classification and normalized restart placement for throw-ins, goal kicks, corners, and kickoffs after goals.
+- `js/zone-constraints.js`: pure keep-inside/keep-out geometry over the existing selected-zone union plus team-scope checks.
 - `js/state.js`: board state creation and schema normalization.
 - `js/storage.js`: 120 ms autosave to localStorage, IndexedDB saved-position library, localStorage fallback, and JSON backup import/export.
-- `js/simulation.js`: CPU-vs-CPU state updates, build-out retreat, positional tethering, pressure, passing, shooting, simplified offside positioning, and automated restart integration.
+- `js/simulation.js`: CPU-vs-CPU state updates, build-out retreat, positional tethering, pressure, passing, deterministic shooting/goalkeeper outcomes, simplified offside positioning, automated restarts, and optional zone constraints.
 - `js/render.js`: SVG pitch construction, orientation transform, zone overlays, tokens, props, and drawings.
-- `js/app.js`: UI event wiring, Pointer Events, keyboard alternatives, dialogs, persistence triggers, service-worker registration, and the requestAnimationFrame loop.
+- `js/app.js`: UI event wiring, Pointer Events, keyboard alternatives, dialogs, persisted zone controls, service-worker registration, and the requestAnimationFrame loop.
 - `sw.js`: app-shell precache, stale-cache cleanup, same-origin cache-first fetch handling with index fallback.
-- `tests/`: Node standard-library behavior and integrity tests, including simulation restart rules and the service-worker app-shell contract.
+- `tests/`: Node standard-library behavior and integrity tests, including simulation, restart, shot/goalkeeper, zone-constraint, state-compatibility, and service-worker app-shell coverage.
 - `.github/workflows/validate.yml`: automatic `main` validation using the pinned Node.js LTS runtime, behavior/integrity tests, and JavaScript syntax checks.
 
 ## Coordinate system
@@ -34,7 +35,7 @@ All tactical state uses normalized coordinates from the PRD:
 
 The SVG world is 1000 × 680 units. Landscape maps `(x, y)` directly to `(x × 1000, y × 680)`. Portrait changes the SVG viewBox to 680 × 1000 and rotates the field world 90 degrees. Player, ball, cone, and mini-goal visual groups counter-rotate so their visual orientation remains usable to the coach. Pointer positions are converted through the inverse `getScreenCTM()` transform, so the normalized model does not change with orientation.
 
-## Pitch constants
+## Pitch constants and zones
 
 The implementation currently uses the PRD's exact normalized boundaries:
 
@@ -45,7 +46,30 @@ The implementation currently uses the PRD's exact normalized boundaries:
 - left zone: `y = 0.00..0.50`.
 - right zone: `y = 0.50..1.00`.
 
-Zone rectangles are independent SVG overlays. Selecting overlapping zones causes ordinary alpha compositing, making their intersection visually stronger without introducing a second geometry model.
+Zone rectangles are independent SVG overlays backed by the single `ZONES` object in `js/constants.js`. Selecting overlapping zones causes ordinary alpha compositing, making their intersection visually stronger without introducing a second geometry model. The simulation constraint layer consumes the same selected zone IDs and the same `ZONES` rectangles, so rendering and rules cannot silently drift into two incompatible definitions.
+
+### Zone-constraint model
+
+The coach controls two persisted fields:
+
+- `zoneRestrictionMode`: `off`, `keep-in`, or `keep-out`.
+- `zoneRestrictionScope`: `home`, `away`, or `both`.
+
+The selected zones form a union.
+
+- **Keep inside:** a scoped player's requested target and resulting movement position are projected to the nearest point in the selected-zone union when they would otherwise leave it.
+- **Keep out:** if a scoped player occupies the selected-zone union, the point is projected to the nearest legal point outside that union. Candidate x/y coordinates are derived from rectangle boundaries plus a small epsilon and checked against every selected rectangle, so overlapping zone selections are exited as a union rather than one rectangle at a time.
+- **Off or no selected zones:** movement is unchanged.
+
+Simulation movement constrains both the target and the post-step position. This prevents a large step from crossing through a restricted boundary between frames.
+
+Rule precedence is intentional:
+
+1. explicit legal restart-taker placement and the goalkeeper's mandatory U9 build-out hold remain fixed;
+2. mandatory U9 opponent build-out retreat ignores optional coach zone constraints until retreat/release requirements are satisfied;
+3. ordinary open-play movement then applies the coach's optional zone rule.
+
+After the mandatory phase ends, the optional zone constraint becomes active again. This priority prevents a drill setting from making the project's required U9 rule behavior impossible.
 
 ## Formation model
 
@@ -59,11 +83,13 @@ Each player keeps:
 - formation anchor position.
 - optional individual color override.
 
+Applying a formation updates role, current position, and anchor position for that team. Free dragging changes only current position until the coach chooses another formation.
+
 ## Drill props
 
-Board state holds three prop collections, all in normalized coordinates: `balls` (`{id, x, y, primary}`; exactly one primary match ball that cannot be removed), `cones` (`{id, x, y, color}`), and `miniGoals` (`{id, x, y}`). Props are draggable and keyboard-nudgeable through the shared `findObject()` lookup in `js/app.js`, and are rendered in `#prop-layer` / `#ball-layer` by `js/render.js`. `normalizeState()` defaults a missing or non-array `miniGoals` to `[]`, so saves from before mini goals load unchanged and `SCHEMA_VERSION` stays `1`. The simulation ignores props. Adding a new prop type requires: a state array plus `normalizeState` default, a `build*` renderer and `rebuildObjects`/`renderScene` entries, a `findObject` branch, an add tool in `index.html`/`handleDrawPointerDown`, the remove-selected handler, and CSS for its hit area.
+Board state holds three prop collections, all in normalized coordinates: `balls` (`{id, x, y, primary}`; exactly one primary match ball that cannot be removed), `cones` (`{id, x, y, color}`), and `miniGoals` (`{id, x, y}`). Props are draggable and keyboard-nudgeable through the shared `findObject()` lookup in `js/app.js`, and are rendered in `#prop-layer` / `#ball-layer` by `js/render.js`. `normalizeState()` defaults a missing or non-array `miniGoals` to `[]`, so saves from before mini goals load unchanged and `SCHEMA_VERSION` stays `1`. The simulation ignores props.
 
-Applying a formation updates role, current position, and anchor position for that team. Free dragging changes only current position until the coach chooses another formation.
+Adding a new prop type requires: a state array plus `normalizeState` default, a `build*` renderer and `rebuildObjects`/`renderScene` entries, a `findObject` branch, an add tool in `index.html`/`handleDrawPointerDown`, the remove-selected handler, and CSS for its hit area.
 
 ## State and persistence
 
@@ -75,12 +101,15 @@ Saved positions are stored in IndexedDB database `u9_tactical_board_v1`, object 
 
 A saved preset contains title, category, timestamp, schema version, and the full board state. JSON export contains the current board plus all presets. Import requires the same schema version and merges presets by ID.
 
-The restart integration adds two backward-compatible simulation fields without changing the schema version:
+Backward-compatible additive state currently includes:
 
-- `lastTouchTeam`: `home` or `away`, used to determine possession for throw-ins, goal kicks, and corners.
-- `restart`: `null` during open play, otherwise an object describing the current explicit restart (`type`, `team`, `side`, and `scoredBy` for a kickoff after a goal).
+- `simulation.lastTouchTeam`: `home` or `away`, used to determine restart ownership.
+- `simulation.restart`: `null` during open play, otherwise the current explicit restart object.
+- `simulation.shotCount`: selects the next deterministic shot-aim offset.
+- `zoneRestrictionMode`: defaults to `off` for saves created before zone constraints existed.
+- `zoneRestrictionScope`: defaults to `home`; invalid persisted values normalize to safe supported values.
 
-`normalizeState()` merges an older saved simulation object over the new defaults, so saves created before these fields existed receive `lastTouchTeam: 'home'` and `restart: null` automatically. Persisted simulations still always resume paused.
+`normalizeState()` merges older saved state over current defaults and validates zone-rule enums while leaving `SCHEMA_VERSION` at `1`. Persisted simulations always resume paused.
 
 ## Simulation state machine
 
@@ -112,9 +141,10 @@ Rules implemented now:
 - an attacking-team last touch over a goal line outside the goal mouth creates a goal kick for the defending team.
 - a defending-team last touch over its own goal line outside the goal mouth creates a corner for the attacking team.
 - a last touch over either touchline creates a throw-in for the opposing team at the exit `x` coordinate.
-- a shot aims at `0.5 + shotAimOffsets[shotCount % 4] + (shooter.y - 0.5) * shotAimSpread`. The offsets repeat in a fixed order with no RNG, so replays are identical: central, near post, far post, wide. The ball target is the aim point extended 0.05 past the goal line along the shot's own line, so the ball crosses the line exactly at the aim y; a target on the line itself would be collected by the 0.055 loose-ball pickup radius before crossing, and no goal, corner, or goal kick could ever occur.
+- a shot aims at `0.5 + shotAimOffsets[shotCount % 4] + (shooter.y - 0.5) * shotAimSpread`. The offsets repeat in a fixed order with no RNG, so replays are identical: central, near post, far post, wide. The ball target is the aim point extended 0.05 past the goal line along the shot's own line, ensuring boundary classification actually receives the shot.
 - a shot crossing the goal line inside the goal mouth meets the defending goalkeeper first (`keeperResponse()`), by `|keeper.y - shot.y|`: at most `keeperCatchReach` (0.02) the keeper holds the ball and the U9 build-out gate applies; at most `keeperParryReach` (0.05) it is deflected behind for an attacking corner; otherwise it is a goal. A keeper cannot catch a ball its own team touched last.
 - restart takers remain stationary until the next simulation decision releases the ball as a pass. Goal-kick takers use the goalkeeper, so the existing U9 build-out retreat gate remains in force before the restart is released.
+- ordinary player targets and positions can be constrained to remain inside or outside the coach-selected zone union for the selected team scope.
 
 ### Restart geometry and deliberate simplifications
 
@@ -126,13 +156,23 @@ The engine does not yet enforce every procedural detail of the 2026/27 Laws of t
 
 Research basis checked 2026-10-26: IFAB Laws 8, 15, 16, and 17 for restart ownership/procedure; U.S. Soccer / US Youth Soccer Player Development Initiatives for the U9/U10 7v7 build-out retreat and no-punt/drop-kick behavior.
 
-Not yet implemented: foul handling; richer pass-lane scoring; goalkeeper movement toward the shot (the keeper only tracks the ball's y through the normal support shift); zone-restriction constraints; deterministic seeded scenario playback.
+Not yet implemented: foul handling; richer pass-lane scoring; richer goalkeeper movement toward shots; optional procedural restart-distance enforcement; deterministic seeded scenario playback beyond the current fixed deterministic simulation behavior.
 
-## Rendering and performance
+## Rendering, responsive layout, and performance
 
 Static pitch geometry is built once. During live simulation, the animation loop mutates only token transforms and active presentation state. Object layers are rebuilt only when object count/content changes, such as adding a cone or mini goal or editing a player label.
 
 `requestAnimationFrame` drives rendering. Simulation delta time is capped at 50 ms to avoid large jumps after backgrounding. The PRD's locked 60 fps target on the 2018 iPad baseline is not yet hardware-verified.
+
+The shell uses named CSS Grid areas (`top`, `zones`, `workspace`, `bottom`) so hiding the zone panel cannot change auto-placement order. The expanded zone panel uses responsive reflow rather than shrinking all controls into one row:
+
+- wide layouts: zone buttons plus opacity/rule/scope/clear controls share the panel row;
+- portrait and landscape widths up to 1100 px: zone buttons occupy their own horizontally scrollable row and four settings reflow beneath;
+- widths up to 760 px: the panel becomes two columns, keeps rule/scope controls side by side, preserves the prior compact behavior of hiding the opacity slider, and gives Clear zones a full row.
+
+This keeps the tactical workspace from being squeezed by the new controls and avoids page-level horizontal overflow. The pitch remains an intentionally two-dimensional interactive surface.
+
+The exact post-zone-control layout has source/automated validation but has not yet repeated the earlier browser-render matrix or physical-iPad validation.
 
 ## Input and accessibility
 
@@ -140,17 +180,18 @@ Pointer Events provide one input path for touch, pen, and mouse. The pitch alone
 
 Players, balls, cones, and mini goals are keyboard focusable. Extra balls, cones, and mini goals can be removed without exposing deletion for players or the primary match ball. Arrow keys nudge movable objects by 1% of the pitch; Shift+Arrow uses 2.5%. Pressing Enter on a player opens the editor. The player dialog also provides nudge controls, so player positioning is not drag-only.
 
-Every primary control is a native button, select, input, or dialog control. Focus-visible styling uses a 3 px high-contrast outline. The intended minimum interactive target is 48 CSS px.
-
-The shell uses named CSS Grid areas (`top`, `zones`, `workspace`, `bottom`) so hiding the zone panel cannot change auto-placement order. At narrower landscape widths, top controls reflow into a four-column grid and dock control groups wrap. In portrait, the top rail reflows to three columns and the bottom dock stacks its three functional groups, preserving the tactical surface without horizontal page overflow.
+Every primary control is a native button, select, input, or dialog control. The zone-rule and zone-scope additions are native `<select>` elements with explicit `<label for>` associations. Focus-visible styling uses a 3 px high-contrast outline. The intended minimum interactive target remains 48 CSS px, while zone selectors retain at least 44 px internal height in the compact zone panel.
 
 ## Offline model
 
 `sw.js` precaches the current app shell during install, removes older `u9-tactical-board-*` caches during activation, claims clients, and serves cached same-origin requests before the network. Cache misses that return a successful same-origin basic response are cached for later use.
 
-Any app-shell file added, removed, or renamed requires both `APP_SHELL` and `CACHE_NAME` to be updated in the same change.
+Any app-shell file added, removed, renamed, or changed in a way that must replace an installed cache requires `CACHE_NAME` to advance. New static module dependencies must also be added to `APP_SHELL`.
 
-The restart integration adds `js/restarts.js` to the static ES-module graph, so the app shell includes it and advances the cache generation to `u9-tactical-board-v4`.
+Cache history relevant to the current runtime:
+
+- `v4`: added `js/restarts.js` to the offline module graph.
+- `v5`: refreshes the combined deterministic shot/goalkeeper runtime plus the new zone-control HTML/CSS/app/state/simulation changes, and adds `js/zone-constraints.js` to `APP_SHELL`.
 
 `tests/pwa-shell.test.mjs` protects this contract by verifying that every declared app-shell file exists, every install-critical local asset referenced by `index.html` is precached, and every static ES-module dependency reachable from the cached module graph is also in `APP_SHELL`.
 
@@ -162,5 +203,7 @@ The validation gate runs:
 
 1. `npm test`, which executes the Node standard-library behavior and repository-integrity test suite.
 2. `node --check` against every `js/*.js` runtime module and `sw.js`.
+
+Current combined automated evidence: GitHub Actions run `40430420966` at commit `3e80215e957c894941eeb3544a919ea18b4ec23f` completed with 56 tests, 56 pass, 0 fail, 0 skipped, followed by successful JavaScript syntax checks.
 
 A successful workflow run is repository evidence for those automated checks only. It does not replace rendered-browser checks or physical-iPad performance, touch, standalone-PWA, and offline verification.

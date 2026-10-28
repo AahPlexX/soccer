@@ -108,6 +108,7 @@ function normalizePlayers(players, fallback) {
       number: Number.isInteger(player.number) && player.number >= 1 && player.number <= 99 ? player.number : teamIndex[player.team],
       label: typeof player.label === 'string' && player.label.trim() ? player.label : player.role,
       colorOverride: isHexColor(player.colorOverride) ? player.colorOverride : null,
+      benched: player.benched === true,
     };
   });
 }

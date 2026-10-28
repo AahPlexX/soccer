@@ -6,8 +6,9 @@ import { distanceToSegment } from './geometry.js';
  * The single definition of an open lane: the CPU's receiver choice and the on-screen pass options both use it.
  */
 export function openPassReceivers(state, carrier) {
-  const opponents = state.players.filter((player) => player.team !== carrier.team);
-  return state.players.filter((player) => player.team === carrier.team && player.id !== carrier.id
+  const onPitch = state.players.filter((player) => !player.benched); // benched players are neither receivers nor blockers
+  const opponents = onPitch.filter((player) => player.team !== carrier.team);
+  return onPitch.filter((player) => player.team === carrier.team && player.id !== carrier.id
     && opponents.every((defender) => distanceToSegment(defender, carrier, player) > SIMULATION.passLaneClearance));
 }
 

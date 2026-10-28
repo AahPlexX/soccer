@@ -37,6 +37,7 @@ export function createTeamPlayers(team, formation) {
     anchorX: x,
     anchorY: y,
     colorOverride: null,
+    benched: false, // true takes the player off the pitch (small-sided drills); see stepSimulation
   }));
 }
 

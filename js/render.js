@@ -263,7 +263,7 @@ export function renderScene(svg, state) {
     const node = svg.querySelector(`#object-${player.id}`);
     if (!node) return;
     node.setAttribute('transform', `translate(${sx(player.x)} ${sy(player.y)})`);
-    node.toggleAttribute('hidden', player.team === 'away' && !state.awayVisible);
+    node.toggleAttribute('hidden', (player.team === 'away' && !state.awayVisible) || player.benched === true);
     node.classList.toggle('is-selected', state.selectedObjectId === player.id);
     const disc = node.querySelector('.player-disc');
     if (disc) disc.setAttribute('fill', playerColor(player, state));

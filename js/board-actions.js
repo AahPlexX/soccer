@@ -75,7 +75,8 @@ export function isPlayerId(state, id) {
  */
 export function settlePlayers(state) {
   const before = state.players.map(({ x, y }) => [x, y]);
-  separatePlayers(state.players, SIMULATION.playerSpacing, [state.selectedObjectId]);
+  // Benched players are off the pitch, so they neither push nor get pushed.
+  separatePlayers(state.players.filter((player) => !player.benched), SIMULATION.playerSpacing, [state.selectedObjectId]);
   state.players.forEach((player, index) => {
     if (player.x !== before[index][0] || player.y !== before[index][1]) recordPlayerPosition(player);
   });
@@ -182,13 +183,17 @@ export function applyTeamFormation(state, team, formation) {
  * Applies player-editor values. The number must be an integer from 1 to 99; an empty label falls back to the role and
  * an empty or invalid color clears the override. Returns 'missing', 'invalid-number', or 'updated'.
  */
-export function updatePlayerDetails(state, id, { number, label, colorOverride } = {}) {
+export function updatePlayerDetails(state, id, { number, label, colorOverride, benched } = {}) {
   const player = state.players.find((item) => item.id === id);
   if (!player) return 'missing';
   if (!Number.isInteger(number) || number < 1 || number > 99) return 'invalid-number';
   player.number = number;
   player.label = typeof label === 'string' && label.trim() ? label.trim() : player.role;
   player.colorOverride = isHexColor(colorOverride) ? colorOverride : null;
+  if (typeof benched === 'boolean') {
+    player.benched = benched;
+    if (benched) releaseManuallyMovedObject(state, id); // a benched player cannot keep the ball
+  }
   return 'updated';
 }
 

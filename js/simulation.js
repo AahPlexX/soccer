@@ -319,8 +319,21 @@ export function ensureCarrier(state) {
   acquireLooseBall(state);
 }
 
+// Benched players are off the pitch: the simulation runs on the players who remain and the full roster is restored
+// afterwards, so none of the rules below needs to know about the bench.
 export function stepSimulation(state, dt) {
   if (!state.simulation.running) return state;
+  const roster = state.players;
+  state.players = roster.filter((player) => !player.benched);
+  try {
+    stepOnPitch(state, dt);
+  } finally {
+    state.players = roster;
+  }
+  return state;
+}
+
+function stepOnPitch(state, dt) {
   ensureCarrier(state);
   state.simulation.actionClock += dt * state.speed;
   const scaledDt = dt * state.speed;

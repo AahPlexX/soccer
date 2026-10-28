@@ -78,6 +78,7 @@
       <section class="pitch-stage" aria-label="Interactive U9 soccer pitch">
         <svg id="pitch" class="pitch" aria-label="Tactical soccer pitch. Players and ball are keyboard focusable." role="group"></svg>
         <div id="view3d" class="view3d" hidden></div>
+        <div id="bench" class="bench" role="group" aria-label="Benched players" hidden></div>
         <div id="drag-status" class="visually-hidden" aria-live="polite"></div>
       </section>
     </main>
@@ -159,6 +160,7 @@
           <option value="#111111">Black</option><option value="#7b4dff">Purple</option>
         </select>
       </label>
+      <label for="player-benched" class="check-row"><input id="player-benched" name="benched" type="checkbox"> On the bench (off the pitch)</label>
       <fieldset class="nudge-fieldset"><legend>Move without dragging</legend>
         <div class="nudge-grid">
           <span></span><button type="button" data-nudge="up" aria-label="Move player up">↑</button><span></span>

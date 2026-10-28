@@ -57,6 +57,8 @@ const playerId = document.querySelector('#player-id');
 const playerNumber = document.querySelector('#player-number');
 const playerLabel = document.querySelector('#player-label');
 const playerColor = document.querySelector('#player-color');
+const playerBenched = document.querySelector('#player-benched');
+const benchStrip = document.querySelector('#bench');
 const saveDialog = document.querySelector('#save-dialog');
 const saveForm = document.querySelector('#save-form');
 const saveError = document.querySelector('#save-error');
@@ -169,7 +171,25 @@ function render({ rebuild = false } = {}) {
     world = svg.querySelector('#pitch-world');
   }
   renderScene(svg, state);
+  renderBench();
   syncControls();
+}
+
+// Benched players are invisible on the pitch, so each gets a chip over the pitch that returns them.
+function renderBench() {
+  const benched = state.players.filter((player) => player.benched);
+  benchStrip.hidden = benched.length === 0;
+  benchStrip.replaceChildren(...benched.map((player) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.textContent = `Return ${player.team === 'home' ? '' : 'opp. '}#${player.number} ${player.label}`;
+    chip.addEventListener('click', () => {
+      updatePlayerDetails(state, player.id, { number: player.number, label: player.label, colorOverride: player.colorOverride, benched: false });
+      state.selectedObjectId = player.id;
+      commitChange();
+    });
+    return chip;
+  }));
 }
 
 function commitChange(options) {
@@ -415,6 +435,7 @@ function openPlayerEditor(id) {
   playerNumber.setCustomValidity('');
   playerLabel.value = player.label ?? player.role;
   playerColor.value = player.colorOverride ?? '';
+  playerBenched.checked = player.benched === true;
   if (!playerDialog.open) playerDialog.showModal();
   playerNumber.focus();
 }
@@ -590,6 +611,7 @@ playerForm.addEventListener('submit', (event) => {
     number: Number(playerNumber.value),
     label: playerLabel.value,
     colorOverride: playerColor.value,
+    benched: playerBenched.checked,
   });
   if (result === 'missing') return;
   if (result === 'invalid-number') {

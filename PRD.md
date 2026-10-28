@@ -257,6 +257,7 @@ Because the tool is designed for a single coach on GitHub Pages without user aut
 ### 10.1 Clean GitHub Pages Architecture
 - **GitHub Pages deployment:** The application must build and deploy cleanly and reliably to GitHub Pages (`https://aahplexx.github.io/soccer/`). Frameworks, languages, build tools, and client-side dependencies may be chosen based on product and engineering needs. The deployed output must work on GitHub Pages and support the offline requirements.
 - **Retina Canvas / SVG Rendering:** Scales automatically using `window.devicePixelRatio` so pitch markings, text labels, and player tokens remain razor-sharp on all Retina iPad screens.
+- **Amendment 2026-10-28 (owner request: real-time perspective, camera angle, and zoom control):** the 2D SVG board remains the default view and the precise editing surface. An optional **3D camera view** (perspective camera, orbit, tilt, zoom, preset angles) may use the Three.js library as the project's first runtime dependency, vendored as a pinned file so deployment stays a static, build-step-free GitHub Pages site and the file is precached for offline use. The 3D view is lazy-loaded and must fail gracefully (2D unaffected) on devices without WebGL. Requirements `CAM-001` to `CAM-007` are tracked in `PROJECT_STATE.md`. Migrating to a bundler, React, or TypeScript is not required by this amendment (see the decision log in `PROJECT_STATE.md`).
 
 ### 10.2 App versions and updates
 

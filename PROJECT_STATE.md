@@ -73,6 +73,28 @@ Blockers: real-device validation on the 2018 iPad baseline has not been executed
 - `FND-031` — Place and hold players in their own half for a post-goal kickoff until release, including when custom anchors and optional zone constraints conflict. Status: implemented with integration coverage; cache `v10` refreshes the simulation and compact layout. Evidence: `js/simulation.js`, `tests/restart-integration.test.mjs`.
 - `FND-030` — Move the defending goalkeeper toward an opposing shot's projected goal-line crossing. Status: implemented and locally tested at both ends; ordinary zone constraints apply and keepers outside their own penalty area cannot make a remote save. The fixed shot cycle was retuned and its actual catch/parry/goal/miss outcomes were exercised in a centered reference scenario at all three speeds. Evidence: `js/simulation.js`, `js/constants.js`, `js/restarts.js`, `tests/shots.test.mjs`; cache `v9` refreshes the runtime.
 
+## Camera and view requirements
+
+Source: owner request 2026-10-28, "in real time change perspectives, change camera angles, zoom in and out". Each requirement is one observable behavior; statuses are planned, in progress, done, deferred, rejected. Real-device or rendered-browser criteria stay "awaiting human testing" until a person verifies them.
+
+- `CAM-001` 2D zoom and pan: zoom in, zoom out, and fit using buttons, the mouse wheel, and a two-finger pinch; pan while zoomed; moving, drawing, and placing stay accurate at any zoom. Status: planned.
+- `CAM-002` 3D view: a toggle shows the same board through a perspective camera with the pitch, markings, goals, numbered and colored players, balls, cones, mini goals, and zone highlights, updating live while the simulation plays. Status: planned.
+- `CAM-003` Camera control and presets in 3D: drag to orbit and tilt, wheel or pinch to zoom, two-finger or right-drag to pan, plus one-tap presets (Top-down, Broadcast, Behind our goal, Sideline low). Status: planned.
+- `CAM-004` Edit in 3D: drag players and balls on the ground plane in the 3D view. Status: planned (after CAM-002 and CAM-003).
+- `CAM-005` Drawings and pass-option lines are visible in 3D. Status: planned (after CAM-004).
+- `CAM-006` Follow cameras: follow the ball, follow a selected player, and a player's-eye view. Status: deferred.
+- `CAM-007` Graceful failure: the 3D module loads only when 3D is first requested; with no WebGL or a load error the app shows a message and stays in 2D. Status: planned.
+
+Open questions for the owner: whether about 1 MB of extra offline cache for the vendored Three.js file is acceptable; which presets matter most; whether editing in 3D (`CAM-004`) should ship before follow cameras.
+
+## Decision log
+
+Newest first, one fact per line.
+
+- 2026-10-28 Adopt Three.js (`three@0.186.1`, MIT, zero dependencies, no install scripts, no known vulnerabilities per npmscan 2026-10-28) for the 3D camera view, vendored as a pinned file; the 2D SVG board stays the default and editing surface.
+- 2026-10-28 Do not migrate to Vite, React, TypeScript, or pnpm now. Reasons: a 3D view needs only one dependency that a vendored file serves without a build; Vite would force a rewrite of the custom offline cache pipeline (`sw.js`, `tests/pwa-shell.test.mjs`) and the Pages workflow and conflicts with PRD §10.1; React would rewrite a mostly static control surface covered by 166 passing tests with no benefit to a canvas view; a full TypeScript conversion is large and unneeded for the 3D work; pnpm adds nothing for one dependency. Revisit when a second runtime dependency is added, when the 3D code needs tree-shaking, or when the owner approves a TypeScript migration (the lighter first step is `// @ts-check` on new modules).
+- 2026-10-28 PRD §10.1 amended (owner request) to allow the optional 3D view and its single vendored dependency.
+
 ## Coach workflow backlog
 
 Synthesized 2026-10-28 from the product's use (one U9 7v7 coach on an iPad running drill teaching, the CPU simulation, and general coaching) against a control inventory of `index.html` and `js/` (code read, no browser). IDs are stable and never reused; statuses are planned, in progress, done, deferred, rejected.

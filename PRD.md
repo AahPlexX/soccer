@@ -113,6 +113,8 @@ Both formations account for $7$ players on the field per team ($1$ Goalkeeper + 
 - **Single-Team or Full-Pitch View:** The coach can toggle the opposing team on or off (or move specific players off-pitch to the bench) when running unopposed drills or half-field exercises.
 - **Custom Positional Overrides:** While **1-3-2-1** and **1-2-3-1** are the only two formation presets, the coach can freely drag any player token to any coordinate on the pitch and save that custom arrangement as a named **Saved Position / Play / Drill**.
 
+The ball must remain visible during possession and play in both 2D and 3D views, including when a player body would otherwise obscure it.
+
 ### 5.2 Player Tokens & Customization
 Each of the $14$ players on the pitch ($7$ Home, $7$ Away) must support:
 1. **Player Numbering:**

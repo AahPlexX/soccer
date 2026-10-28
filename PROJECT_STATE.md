@@ -4,11 +4,15 @@ Last updated: 2026-10-28
 Branch: `main`
 PRD status: in progress
 Schema version: `1`
-Application version: `1.0.1`
+Application version: `1.0.2`
 
 ## Latest continuation — 1.0.1
 
 Reconciled with main through `2a88e56`, preserving the newer overlap, board actions, undo/redo, zoom/pan and 3D camera work. Added a fallback for dense player clusters at pitch boundaries and a regression covering all 14 players coincident at a corner with a fixed restart player. Local suite: 199/199 tests passed; physical-iPad performance remains unverified.
+
+## Ball visibility — 1.0.2
+
+Confirmed that a possessed ball was embedded inside the 3D player cylinder: both used the same x/z, with the sphere inside the body at ground level. Added a display-only offset outside the carrier body and foreground ball rendering through occluders. Loose/extra balls retain exact coordinates; simulation possession and legal restart positions are unchanged. Regression tests cover both teams, pitch edges, loose and extra balls and rendering priority. Chromium verified possession and all four camera presets during play without page errors. Physical iPad WebGL behavior remains unverified.
 
 ## Resume here
 

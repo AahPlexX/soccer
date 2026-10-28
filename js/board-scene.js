@@ -165,7 +165,12 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
   }
 
   function createBall() {
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 12), new THREE.MeshStandardMaterial({ color: '#ffffff' }));
+    // Render the teaching ball last, including over players and zone overlays.
+    // It must remain trackable from low camera angles and while passing a body.
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 12), new THREE.MeshStandardMaterial({
+      color: '#ffffff', transparent: true, depthTest: false, depthWrite: false,
+    }));
+    mesh.renderOrder = 100;
     return { group: mesh };
   }
 
@@ -206,8 +211,19 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     }
     reconcile(players, state.players, createPlayer, (entry, player) => updatePlayer(entry, player, state));
     reconcile(balls, state.balls, createBall, (entry, ball) => {
-      const { x, z } = toWorld(ball.x, ball.y);
-      entry.group.position.set(x, 0.45, z);
+      const position = toWorld(ball.x, ball.y);
+      const carrier = ball.id === state.balls[0]?.id
+        ? state.players.find((player) => player.id === state.simulation.carrierId && !player.benched
+          && (player.team === 'home' || state.awayVisible)) : null;
+      if (carrier) {
+        // Presentation only: keep possession physics at the player's coordinate,
+        // but show the ball outside the radius-1 body rather than embedded in it.
+        const direction = carrier.team === 'home' ? 1 : -1;
+        const offset = 1.65;
+        const ahead = position.x + direction * offset;
+        position.x = Math.abs(ahead) <= L / 2 - 0.45 ? ahead : position.x - direction * offset;
+      }
+      entry.group.position.set(position.x, 0.45, position.z);
     });
     reconcile(cones, state.cones, createCone, (entry, cone) => {
       const { x, z } = toWorld(cone.x, cone.y);

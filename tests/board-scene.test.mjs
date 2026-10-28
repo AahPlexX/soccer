@@ -154,3 +154,38 @@ test('the texture painters draw using only the canvas calls they are given', () 
   drawNumberLabel(ctx, 128, 128, 7);
   assert.ok(calls.length > before && calls.includes('fillText'));
 });
+
+test('possession displays the 3D ball outside either carrier body without moving the tactical ball', () => {
+  const { state, board } = setup();
+  for (const team of ['home', 'away']) for (const x of [0, 0.5, 1]) {
+    const carrier = state.players.find((p) => p.id === `${team}-7`);
+    Object.assign(carrier, { x, y: 0.5 });
+    Object.assign(state.balls[0], { x, y: 0.5 });
+    state.simulation.carrierId = carrier.id;
+    board.sync(state);
+    const mesh = board.objectFor('ball-main');
+    const body = board.objectFor(carrier.id);
+    assert.ok(Math.abs(mesh.position.x - body.position.x) > 1.45);
+    assert.ok(Math.abs(mesh.position.x) <= PITCH_WORLD.length / 2);
+    assert.equal(state.balls[0].x, x);
+    assert.equal(state.balls[0].y, 0.5);
+  }
+});
+
+test('loose and extra balls retain their coordinates and remain visible through player occlusion', () => {
+  const { state, board } = setup();
+  const player = state.players[0];
+  state.balls = [{ id: 'ball-main', x: player.x, y: player.y, primary: true }, { id: 'extra', x: 0.3, y: 0.4 }];
+  state.simulation.carrierId = null;
+  board.sync(state);
+  for (const ball of state.balls) {
+    const mesh = board.objectFor(ball.id);
+    const point = toWorld(ball.x, ball.y);
+    near(mesh.position.x, point.x); near(mesh.position.z, point.z);
+    assert.equal(mesh.visible, true);
+    assert.equal(mesh.material.depthTest, false);
+    assert.equal(mesh.material.depthWrite, false);
+    assert.equal(mesh.material.transparent, true);
+    assert.ok(mesh.renderOrder > 0);
+  }
+});

@@ -1,14 +1,20 @@
-const CACHE_NAME = 'u9-tactical-board-v12';
+const APP_VERSION = '1.0.0';
+const BUILD_ID = 'development'; // Replaced with the commit SHA, workflow run and attempt in the Pages artifact.
+const CACHE_NAME = `u9-tactical-board-${APP_VERSION}-${BUILD_ID}`;
 const APP_SHELL = [
   './', './index.html', './styles.css', './library.css', './pass-options.css', './manifest.webmanifest',
-  './js/app.js', './js/builtins.js', './js/constants.js', './js/formations.js', './js/geometry.js',
+  './js/app.js', './js/update.js', './js/builtins.js', './js/constants.js', './js/formations.js', './js/geometry.js',
   './js/library.js', './js/library-ui.js', './js/pass-options.js', './js/pass-options-ui.js', './js/render.js', './js/restarts.js', './js/simulation.js', './js/state.js', './js/storage.js', './js/zone-constraints.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL.map((path) => new Request(path, { cache: 'reload' })))));
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'GET_VERSION') event.ports[0]?.postMessage({ version: APP_VERSION });
+  if (event.data?.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
@@ -25,11 +31,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+    caches.open(CACHE_NAME).then((cache) => cache.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
       if (!response || response.status !== 200 || response.type !== 'basic') return response;
       const clone = response.clone();
-      caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      cache.put(event.request, clone).catch(() => {});
       return response;
-    }).catch(() => event.request.mode === 'navigate' ? caches.match('./index.html') : Response.error())),
+    }).catch(() => event.request.mode === 'navigate' ? cache.match('./index.html') : Response.error()))),
   );
 });

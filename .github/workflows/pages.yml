@@ -39,6 +39,7 @@ jobs:
           mkdir _site
           cp index.html ./*.css manifest.webmanifest sw.js _site/
           cp -R js icons _site/
+          sed -i "s/const BUILD_ID = 'development';/const BUILD_ID = '${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}';/" _site/sw.js
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:

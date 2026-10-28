@@ -201,7 +201,7 @@ Every primary control is a native button, select, input, or dialog control. The 
 
 `sw.js` precaches the current app shell during install, removes older `u9-tactical-board-*` caches during activation, claims clients, and serves cached same-origin requests before the network. Cache misses that return a successful same-origin basic response are cached for later use.
 
-Any app-shell file added, removed, renamed, or changed in a way that must replace an installed cache requires `CACHE_NAME` to advance. New static module dependencies must also be added to `APP_SHELL`.
+The Pages deployment stamp changes the cache identity for each deployment. Increment the app patch version for significant updates and keep the package and worker versions in sync. New static module dependencies must also be added to `APP_SHELL`.
 
 Cache history relevant to the current runtime:
 
@@ -233,3 +233,9 @@ The Pages workflow runs the same tests and syntax checks before uploading only t
 A successful workflow run is repository evidence for those automated checks only. It does not replace rendered-browser checks or physical-iPad performance, touch, standalone-PWA, and offline verification.
 
 Formation templates start both teams in their own half with distinct defensive, midfield, and forward lines. Away positions rotate the home anchors to face the opposite goal. Shape changes and explicit reapply buttons preserve custom player labels, numbers, and colors; when the affected team has the carrier, the ball is released in place before repositioning. Existing saved and autosaved positions are not migrated.
+
+## Versioned deployments and update consent
+
+`APP_VERSION` in `sw.js` and the `package.json` version are both 1.0.0 and must match; each significant update increments the patch component. The Pages workflow stamps its staged worker with a unique build ID for each deployment, even when the displayed version does not change. Each worker uses its own cache, so an installing build does not replace the active shell.
+
+A waiting worker reports its version by message. `js/update.js` prompts the coach to Update or Cancel, defers the prompt while another dialog is open, and checks for updates on visibility, reconnect and periodically. Update saves the current board before activating and reloading; if storage fails, the coach can explicitly choose to update without saving. Cancel does not reload the page. When another tab activates an update, the current tab is offered a reload instead of being reloaded automatically. The pre-1.0 client lacks this code and must be closed and reopened before it can receive future prompts. Physical iPad Safari behavior remains to be verified.

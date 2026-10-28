@@ -1,4 +1,5 @@
 import { BUILT_IN_PRESETS } from './builtins.js';
+import { setupUpdates } from './update.js';
 import { createLocalId, PALETTE, ZONES } from './constants.js';
 import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
 import { filterPresetsByCategory } from './library.js';
@@ -607,7 +608,8 @@ saveAutosave(state);
 requestAnimationFrame(animationLoop);
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {
-    showToast('Offline mode could not be enabled in this browser.');
-  }));
+  window.addEventListener('load', () => setupUpdates(() => {
+    clearTimeout(autosaveTimer);
+    return saveAutosave(state);
+  }, () => showToast('Offline mode could not be enabled in this browser.')));
 }

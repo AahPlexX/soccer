@@ -4,6 +4,7 @@ Last updated: 2026-10-28
 Branch: `main`
 PRD status: in progress
 Schema version: `1`
+Application version: `1.0.0`
 
 ## Resume here
 
@@ -12,6 +13,12 @@ Current state: the source implements an offline-capable U9 7v7 tactical board wi
 Next action: verify goalkeeper movement, passing lines, and post-zone layout on a physical iPad and continue testing interactions across real device conditions. Continue with remaining restart procedural detail where useful for teaching and real-device iPad performance/accessibility/offline verification. Check the latest validation workflow for the current `main` commit before continuing.
 
 Blockers: real-device validation on the 2018 iPad baseline has not been executed in this repository session.
+
+## Versioned update prompt
+
+- Official application version begins at `1.0.0`. Increment its patch component by one for each significant update; keep `package.json` and `APP_VERSION` in `sw.js` synchronized. Each Pages deployment receives its own build identifier even if the version is unchanged.
+- A waiting worker announces its version to a modal with Update and Cancel. The coach can defer, update after the current board is saved, or explicitly update without saving if storage fails. Existing open dialogs are respected. The pre-1.0 client cannot show its first update prompt; close all old tabs or standalone windows and reopen it to adopt the new worker.
+- Local Chromium verified first install, a 1.0.0→1.0.1 upgrade, Cancel and reoffer, board preservation, another tab, and offline reload. Physical iPad Safari and standalone update behavior remain unverified.
 
 ## Formation correction
 
@@ -117,6 +124,6 @@ Research and standards checked in this work unit:
 - Keep zone constraints optional; selected zones are the single source of zone geometry for both highlighting and simulation constraints.
 - Mandatory U9 build-out retreat and explicit legal restart placement take precedence over optional coach-created zone constraints.
 - Built-in saved scenarios are immutable; metadata editing applies only to user presets and must preserve the saved board snapshot.
-- Changes to cached app-shell files or static module dependencies must update `sw.js`; `tests/pwa-shell.test.mjs` must remain green.
+- Keep new static module dependencies in the `sw.js` app shell and `tests/pwa-shell.test.mjs` green. Each Pages deployment stamps a new cache identity; bump the application patch version for significant updates.
 - `.github/workflows/validate.yml` must remain green for automated checks on `main`; browser and physical-iPad checks are separate evidence and must not be inferred from CI.
 - Update `ARCHITECTURE.md`, `PROJECT_STATE.md`, and relevant README status in the same work unit as behavior changes.

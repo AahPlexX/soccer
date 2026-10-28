@@ -258,7 +258,12 @@ Because the tool is designed for a single coach on GitHub Pages without user aut
 - **GitHub Pages deployment:** The application must build and deploy cleanly and reliably to GitHub Pages (`https://aahplexx.github.io/soccer/`). Frameworks, languages, build tools, and client-side dependencies may be chosen based on product and engineering needs. The deployed output must work on GitHub Pages and support the offline requirements.
 - **Retina Canvas / SVG Rendering:** Scales automatically using `window.devicePixelRatio` so pitch markings, text labels, and player tokens remain razor-sharp on all Retina iPad screens.
 
-### 10.2 Normalized Pitch Coordinate System
+### 10.2 App versions and updates
+
+- The initial official application version is **1.0.0**. Each significant update increments the patch component by one (for example, 1.0.0 → 1.0.1).
+- When a new deployment is available, show a modal with its available version and **Update** and **Cancel** choices. Update applies the new version; Cancel leaves the current session in use. No release description is required.
+
+### 10.3 Normalized Pitch Coordinate System
 All internal pitch logic, zone boundaries, saved positions, and CPU simulation physics operate on a resolution-independent normalized coordinate space:
 - **Horizontal Length:** $x \in [0.0, 1.0]$ (where $x = 0.0$ is Our Goal Line, $x = 0.50$ is the Midfield Line, and $x = 1.0$ is the Opposing Goal Line).
 - **Vertical Width:** $y \in [0.0, 1.0]$ (where $y = 0.0$ is the Left Touchline and $y = 1.0$ is the Right Touchline when attacking left-to-right).
@@ -272,7 +277,7 @@ All internal pitch logic, zone boundaries, saved positions, and CPU simulation p
   - **Between Opposing Build-Out Line and Opposing Goal:** $x \in [0.65, 1.0], y \in [0.0, 1.0]$
   - **Opposing Goalkeeper Box:** $x \in [0.80, 1.0], y \in [0.20, 0.80]$
 
-### 10.3 Mandatory Repository Documentation Files
+### 10.4 Mandatory Repository Documentation Files
 In accordance with Section 1, the repository must maintain the following documentation files at all times:
 1. **README.md** — Project overview, iPad setup instructions ("Add to Home Screen"), feature guide, and GitHub Pages URL.
 2. **PRD.md** — This Product Requirements Document.

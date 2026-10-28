@@ -118,6 +118,13 @@
     </footer>
   </div>
 
+  <dialog id="update-dialog" class="editor-dialog" aria-labelledby="update-heading" aria-describedby="update-message">
+    <div class="dialog-heading"><h2 id="update-heading">Update available</h2></div>
+    <p id="update-message">Version <strong id="update-version"></strong> is ready.</p>
+    <p id="update-error" role="alert" hidden></p>
+    <div class="dialog-actions"><button id="update-cancel" type="button">Cancel</button><button id="update-accept" type="button" class="primary-action">Update</button></div>
+  </dialog>
+
   <dialog id="player-dialog" class="editor-dialog">
     <form method="dialog" id="player-form">
       <div class="dialog-heading"><h2>Edit player</h2><button value="cancel" formnovalidate class="icon-button" aria-label="Close player editor">×</button></div>

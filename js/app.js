@@ -6,6 +6,7 @@ import { BUILT_IN_PRESETS } from './builtins.js';
 import { PALETTE, ZONES } from './constants.js';
 import { createHistory } from './history.js';
 import { IDENTITY_VIEW, ZOOM_RANGE, clampView, panBy, viewBoxSize, viewTransform, zoomAt } from './view-zoom.js';
+import { CAMERA_PRESETS, DEFAULT_PRESET } from './camera-orbit.js';
 import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
 import { filterPresetsByCategory } from './library.js';
@@ -28,6 +29,10 @@ const redoButton = document.querySelector('#redo');
 const zoomInButton = document.querySelector('#zoom-in');
 const zoomOutButton = document.querySelector('#zoom-out');
 const zoomFitButton = document.querySelector('#zoom-fit');
+const view3dToggle = document.querySelector('#view-3d-toggle');
+const view3dContainer = document.querySelector('#view3d');
+const cameraPresetControl = document.querySelector('#camera-preset-control');
+const cameraPresetSelect = document.querySelector('#camera-preset');
 const zonesToggle = document.querySelector('#zones-toggle');
 const zonePanel = document.querySelector('#zone-panel');
 const zoneButtons = document.querySelector('#zone-buttons');
@@ -218,11 +223,14 @@ const ZOOM_STEP = 1.4;
 const gesturePointers = new Map(); // active touch pointers: id -> { x, y }
 let gesture = null; // two-finger pinch: last finger distance and midpoint
 let panSession = null; // one-pointer pan of the zoomed board
+let view3d = null; // the 3D camera view, created on first use (js/view3d.js)
+let mode3d = false; // true while the 3D view is showing instead of the 2D board
 
 function applyView(next) {
   const { width, height } = viewBoxSize(svg.getAttribute('viewBox'));
   view = clampView(next, width, height);
   viewGroup.setAttribute('transform', viewTransform(view));
+  if (mode3d) return; // the 3D camera owns the zoom buttons while it is showing
   zoomInButton.disabled = view.scale >= ZOOM_RANGE.max;
   zoomOutButton.disabled = view.scale <= ZOOM_RANGE.min;
   zoomFitButton.disabled = view === IDENTITY_VIEW || (view.scale === 1 && view.x === 0 && view.y === 0);
@@ -266,9 +274,9 @@ function pinchState() {
   return { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
-zoomInButton.addEventListener('click', () => zoomBy(ZOOM_STEP));
-zoomOutButton.addEventListener('click', () => zoomBy(1 / ZOOM_STEP));
-zoomFitButton.addEventListener('click', () => applyView(IDENTITY_VIEW));
+zoomInButton.addEventListener('click', () => (mode3d ? view3d.zoom(ZOOM_STEP) : zoomBy(ZOOM_STEP)));
+zoomOutButton.addEventListener('click', () => (mode3d ? view3d.zoom(1 / ZOOM_STEP) : zoomBy(1 / ZOOM_STEP)));
+zoomFitButton.addEventListener('click', () => (mode3d ? view3d.reset() : applyView(IDENTITY_VIEW)));
 svg.addEventListener('wheel', (event) => {
   event.preventDefault();
   zoomBy(Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.0015)), event.clientX, event.clientY);
@@ -310,6 +318,62 @@ const endGesturePointer = (event) => {
 };
 svg.addEventListener('pointerup', endGesturePointer, true);
 svg.addEventListener('pointercancel', endGesturePointer, true);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 3D camera view (CAM-002, CAM-003, CAM-007). js/view3d.js and Three.js load on first use; the 2D board stays the
+// editing view, and any failure to start 3D leaves the app in 2D.
+// ---------------------------------------------------------------------------------------------------------------------
+
+Object.entries(CAMERA_PRESETS).forEach(([id, preset]) => {
+  const option = document.createElement('option');
+  option.value = id;
+  option.textContent = preset.label;
+  cameraPresetSelect.append(option);
+});
+cameraPresetSelect.value = DEFAULT_PRESET;
+
+async function setView3D(on) {
+  if (on && !view3d) {
+    view3dToggle.disabled = true;
+    showToast('Loading the 3D view…');
+    try {
+      const { createView3D } = await import('./view3d.js');
+      view3d = await createView3D({
+        container: view3dContainer,
+        getState: () => state,
+        onContextLost: () => {
+          view3d?.dispose();
+          view3d = null;
+          setView3D(false);
+          showToast('The 3D view stopped. Back to the 2D board.');
+        },
+      });
+      view3d.setPreset(cameraPresetSelect.value);
+    } catch (error) {
+      view3d = null;
+      showToast('The 3D view is not available on this device. Staying in 2D.');
+      return;
+    } finally {
+      view3dToggle.disabled = false;
+    }
+  }
+  mode3d = on;
+  view3dToggle.setAttribute('aria-pressed', String(on));
+  svg.style.display = on ? 'none' : '';
+  view3dContainer.hidden = !on;
+  cameraPresetControl.hidden = !on;
+  if (on) {
+    [zoomInButton, zoomOutButton, zoomFitButton].forEach((button) => { button.disabled = false; });
+    view3d.start();
+    showToast('3D view: drag to rotate, scroll or pinch to zoom, two fingers to pan. Switch back to 2D to edit.');
+  } else {
+    view3d?.stop();
+    applyView(view);
+  }
+}
+
+view3dToggle.addEventListener('click', () => setView3D(!mode3d));
+cameraPresetSelect.addEventListener('change', () => view3d?.setPreset(cameraPresetSelect.value));
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Zones.

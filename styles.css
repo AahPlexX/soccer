@@ -206,6 +206,10 @@ input[type="text"], input[type="number"] {
 .drawing-arrow { stroke-width: 7; }
 .drawing-run { stroke-dasharray: 18 12; }
 .view-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.view3d { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.view3d[hidden], .camera-preset-control[hidden] { display: none; }
+.view3d canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.camera-preset-control { display: flex; align-items: center; gap: .4rem; font-weight: 600; }
 .cone-color-control { display: flex; align-items: center; gap: .4rem; font-weight: 600; }
 .arrow-head { fill: #fff24d; }
 

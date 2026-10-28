@@ -77,6 +77,7 @@
     <main id="workspace" class="workspace" tabindex="-1">
       <section class="pitch-stage" aria-label="Interactive U9 soccer pitch">
         <svg id="pitch" class="pitch" aria-label="Tactical soccer pitch. Players and ball are keyboard focusable." role="group"></svg>
+        <div id="view3d" class="view3d" hidden></div>
         <div id="drag-status" class="visually-hidden" aria-live="polite"></div>
       </section>
     </main>
@@ -102,6 +103,10 @@
         <button id="zoom-out" class="tool-button" type="button" title="Zoom out (pinch, or mouse wheel)">Zoom out</button>
         <button id="zoom-in" class="tool-button" type="button" title="Zoom in (pinch, or mouse wheel)">Zoom in</button>
         <button id="zoom-fit" class="tool-button" type="button" title="Show the whole pitch">Fit</button>
+        <button id="view-3d-toggle" class="tool-button" type="button" aria-pressed="false" title="Switch between the 2D board and a 3D camera view">3D view</button>
+        <label id="camera-preset-control" class="camera-preset-control" for="camera-preset" hidden>Camera
+          <select id="camera-preset" name="cameraPreset"></select>
+        </label>
       </div>
       <div class="simulation-group">
         <button id="play-toggle" class="primary-action" type="button">Play simulation</button>

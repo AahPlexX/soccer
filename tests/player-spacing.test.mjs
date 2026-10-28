@@ -102,3 +102,10 @@ test('built-in scenarios load with no overlapping players once settled, without 
     });
   }
 });
+
+ test('fourteen coincident players at a corner settle with full disc separation', () => {
+  const players = Array.from({length:14}, (_,i)=>player(String(i),0,0));
+  separatePlayers(players,MIN,['0']);
+  assert.deepEqual([players[0].x,players[0].y],[0,0]);
+  assert.ok(smallestGap(players)>=MIN-EPSILON);
+});

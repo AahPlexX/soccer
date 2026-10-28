@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.0.0**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.0.1**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Run locally
 
@@ -67,3 +67,5 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - [PROJECT_STATE.md](./PROJECT_STATE.md) — live implementation status, verification evidence, known gaps, and next work.
 
 Keep these files synchronized with code changes. `PROJECT_STATE.md` is the handoff entry point for continuation work.
+
+Version 1.0.1 completes player separation at crowded pitch edges, including fixed restart takers.

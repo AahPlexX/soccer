@@ -49,6 +49,24 @@ export function separatePlayers(players, minimum, fixedIds = []) {
       }
     }
   }
+  // Resolve dense edge clusters that iterative pushes cannot fully settle.
+  // Fixed restart takers are placed first; other players take nearby free space.
+  const placed = players.filter((p) => fixedIds.includes(p.id));
+  for (const player of players.filter((p) => !fixedIds.includes(p.id))) {
+    const free = (point) => placed.every((other) => spacingDistance(point, other) >= minimum - 1e-9);
+    if (!free(player)) {
+      const origin = { x: player.x, y: player.y };
+      search: for (let r = minimum / 10; r <= 1.3; r += minimum / 10) {
+        const count = Math.max(16, Math.ceil(2 * Math.PI * r / (minimum / 4)));
+        for (let i = 0; i < count; i++) {
+          const angle = i * 2 * Math.PI / count;
+          const point = { x: clamp(origin.x + Math.cos(angle) * r), y: clamp(origin.y + Math.sin(angle) * r / PITCH_ASPECT) };
+          if (free(point)) { Object.assign(player, point); break search; }
+        }
+      }
+    }
+    placed.push(player);
+  }
 }
 
 export function moveToward(point, target, maxDistance) {

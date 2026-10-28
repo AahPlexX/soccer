@@ -4,7 +4,11 @@ Last updated: 2026-10-28
 Branch: `main`
 PRD status: in progress
 Schema version: `1`
-Application version: `1.0.0`
+Application version: `1.0.1`
+
+## Latest continuation — 1.0.1
+
+Reconciled with main through `2a88e56`, preserving the newer overlap, board actions, undo/redo, zoom/pan and 3D camera work. Added a fallback for dense player clusters at pitch boundaries and a regression covering all 14 players coincident at a corner with a fixed restart player. Local suite: 199/199 tests passed; physical-iPad performance remains unverified.
 
 ## Resume here
 

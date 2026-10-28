@@ -255,6 +255,8 @@ Formation templates start both teams in their own half with distinct defensive, 
 
 ## Versioned deployments and update consent
 
-`APP_VERSION` in `sw.js` and the `package.json` version are both 1.0.0 and must match; each significant update increments the patch component. The Pages workflow stamps its staged worker with a unique build ID for each deployment, even when the displayed version does not change. Each worker uses its own cache, so an installing build does not replace the active shell.
+`APP_VERSION` in `sw.js` and the `package.json` version are both 1.0.1 and must match; each significant update increments the patch component. The Pages workflow stamps its staged worker with a unique build ID for each deployment, even when the displayed version does not change. Each worker uses its own cache, so an installing build does not replace the active shell.
 
 A waiting worker reports its version by message. `js/update.js` prompts the coach to Update or Cancel, defers the prompt while another dialog is open, and checks for updates on visibility, reconnect and periodically. Update saves the current board before activating and reloading; if storage fails, the coach can explicitly choose to update without saving. Cancel does not reload the page. When another tab activates an update, the current tab is offered a reload instead of being reloaded automatically. The pre-1.0 client lacks this code and must be closed and reopened before it can receive future prompts. Physical iPad Safari behavior remains to be verified.
+
+Player separation first relaxes pairwise overlaps, then places any unresolved dense edge clusters in nearby free positions using the 1000×680 pitch metric. Fixed restart players retain priority in both passes.

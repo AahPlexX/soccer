@@ -26,7 +26,7 @@ On 2026-10-27 the goalkeeper-tracking implementation commit `5da47a0` passed 81 
 
 ## GitHub Pages
 
-Deployment target: `https://aahplexx.github.io/soccer/`. On 2026-10-27 the Pages API reported a GitHub Actions publishing source, but no Pages deployment existed and the address returned HTTP 404. `.github/workflows/pages.yml` is configured to validate and deploy the static app on pushes to `main` or manual dispatch. The workflow and hosted app still need to be verified after deployment.
+Deployment target: `https://aahplexx.github.io/soccer/`. On 2026-10-27 the Pages API reported a GitHub Actions publishing source, but no Pages deployment existed and the address returned HTTP 404. `.github/workflows/pages.yml` is configured to validate and deploy the static app on pushes to `main` or manual dispatch. On 2026-10-28 the [deployment workflow](https://github.com/AahPlexX/soccer/actions/runs/40610498638) succeeded, and the hosted board loaded in Chromium without page errors.
 
 The repository is intentionally static. `index.html` loads native ES modules, and `sw.js` precaches the complete app shell for offline use after the first successful visit.
 

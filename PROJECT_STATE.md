@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
 Branch: `main`
 PRD status: in progress
 Schema version: `1`
@@ -9,9 +9,9 @@ Schema version: `1`
 
 Current state: the source implements an offline-capable U9 7v7 tactical board with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player/team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, CPU-vs-CPU passing/dribbling/pressing with opponent-lane avoidance and an optional dashed pass-options overlay, deterministic varied shooting with goalkeeper shot tracking and catch/parry outcomes, U9 build-out behavior, explicit throw-in/goal-kick/corner/kickoff restart states with post-goal kickoff half restrictions, optional keep-inside/keep-out zone drill constraints, a categorized saved library with ARIA tabs plus compact select fallback, user-preset title/category editing, two-step in-app deletion, persistence/backup, PWA caching, and an automated validation gate on every push to `main`.
 
-Next action: run and verify the GitHub Pages deployment workflow after it reaches `main`, then verify the actual hosted app, pass-options overlay, goalkeeper movement, and post-zone layout in a rendered browser. Continue with remaining restart procedural detail where useful for teaching and real-device iPad performance/accessibility/offline verification. Check the latest validation workflow for the current `main` commit before continuing.
+Next action: verify the pass-options overlay, goalkeeper movement, and post-zone layout in a rendered browser. Continue with remaining restart procedural detail where useful for teaching and real-device iPad performance/accessibility/offline verification. Check the latest validation workflow for the current `main` commit before continuing.
 
-Blockers: on 2026-10-27 the Pages API reported `build_type: workflow` with no Pages builds or deployments, and the documented URL returned HTTP 404. A deployment workflow has been added locally but has not yet run; hosted availability remains unverified. Real-device validation on the 2018 iPad baseline has not been executed in this repository session.
+Blockers: real-device validation on the 2018 iPad baseline has not been executed in this repository session.
 
 ## Completed requirements in this work unit
 
@@ -91,7 +91,7 @@ Research and standards checked in this work unit:
 - Saved-library controls have rendered Chromium interaction coverage; physical-iPad touch usability remains unverified.
 - Restart flow is intentionally simplified for teaching and is not a full referee/law engine.
 - Goalkeeper tracking and save reach remain a simplified teaching model and have not been verified visually in a browser.
-- The documented Pages address returned HTTP 404 on 2026-10-27. Pages uses the Actions publishing source, and no deployment existed before the new workflow; verify its first deployment and the hosted app.
+- Pages returned HTTP 404 on 2026-10-27 before the deployment workflow existed. On 2026-10-28 [deployment run 40610498638](https://github.com/AahPlexX/soccer/actions/runs/40610498638) succeeded; the hosted URL returned HTTP 200 and the board loaded in Chromium at 1024×768 without page errors. [Validation run 40610498524](https://github.com/AahPlexX/soccer/actions/runs/40610498524) passed for commit `eb53a03`.
 
 ## Repository invariants
 

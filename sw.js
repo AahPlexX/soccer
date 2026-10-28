@@ -3,7 +3,7 @@ const BUILD_ID = 'development'; // Replaced with the commit SHA, workflow run an
 const CACHE_NAME = `u9-tactical-board-${APP_VERSION}-${BUILD_ID}`;
 const APP_SHELL = [
   './', './index.html', './styles.css', './library.css', './pass-options.css', './manifest.webmanifest',
-  './js/app.js', './js/board-actions.js', './js/update.js', './js/builtins.js', './js/constants.js', './js/formations.js', './js/geometry.js',
+  './js/app.js', './js/board-actions.js', './js/update.js', './js/builtins.js', './js/constants.js', './js/formations.js', './js/geometry.js', './js/history.js',
   './js/library.js', './js/library-ui.js', './js/pass-options.js', './js/pass-options-ui.js', './js/render.js', './js/restarts.js', './js/simulation.js', './js/state.js', './js/storage.js', './js/zone-constraints.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
 ];

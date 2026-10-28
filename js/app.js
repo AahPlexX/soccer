@@ -4,6 +4,7 @@ import {
 } from './board-actions.js';
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { PALETTE, ZONES } from './constants.js';
+import { createHistory } from './history.js';
 import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
 import { filterPresetsByCategory } from './library.js';
@@ -21,6 +22,8 @@ const homeFormation = document.querySelector('#home-formation');
 const awayFormation = document.querySelector('#away-formation');
 const awayVisible = document.querySelector('#away-visible');
 const coneColorSelect = document.querySelector('#cone-color');
+const undoButton = document.querySelector('#undo');
+const redoButton = document.querySelector('#redo');
 const zonesToggle = document.querySelector('#zones-toggle');
 const zonePanel = document.querySelector('#zone-panel');
 const zoneButtons = document.querySelector('#zone-buttons');
@@ -79,6 +82,8 @@ let state = loadAutosave() ?? createInitialState();
 let world = initializeScene(svg, state);
 let resetSnapshot = snapshotState(state);
 let resetSnapshotVersion = 0;
+const boardHistory = createHistory();
+boardHistory.reset(state);
 let resetBaselineReady;
 let autosaveTimer = null;
 let toastTimer = null;
@@ -129,6 +134,8 @@ function syncControls() {
   awayVisible.textContent = state.awayVisible ? 'Hide opponents' : 'Show opponents';
   themeSelect.value = state.theme;
   coneColorSelect.value = state.coneColor;
+  undoButton.disabled = !boardHistory.canUndo;
+  redoButton.disabled = !boardHistory.canRedo;
   zoneOpacity.value = String(state.zoneOpacity);
   zoneRestrictionMode.value = state.zoneRestrictionMode;
   zoneRestrictionScope.value = state.zoneRestrictionScope;
@@ -156,6 +163,8 @@ function render({ rebuild = false } = {}) {
 
 function commitChange(options) {
   settlePlayers(state);
+  // While the simulation runs it moves players on its own; that is not an edit, so the baseline follows silently.
+  if (state.simulation.running) boardHistory.rebase(state); else boardHistory.record(state);
   render(options);
   scheduleAutosave();
 }
@@ -166,6 +175,33 @@ function replaceBoard(next, { baseline = true } = {}) {
   if (baseline) setResetSnapshot(state);
   commitChange({ rebuild: true });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Undo / redo.
+// ---------------------------------------------------------------------------------------------------------------------
+
+function stepHistory(direction) {
+  if (!boardHistory[direction](state)) { showToast(direction === 'undo' ? 'Nothing to undo' : 'Nothing to redo'); return; }
+  // The restored board has its own ball and players, so any pass, restart, or run in progress no longer applies.
+  state.selectedObjectId = null;
+  Object.assign(state.simulation, {
+    running: false, carrierId: null, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0,
+  });
+  render({ rebuild: true });
+  scheduleAutosave();
+  showToast(direction === 'undo' ? 'Undid the last change' : 'Redid the change');
+}
+
+undoButton.addEventListener('click', () => stepHistory('undo'));
+redoButton.addEventListener('click', () => stepHistory('redo'));
+// Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z or Ctrl+Y redoes; text fields and open dialogs keep their own behavior.
+document.addEventListener('keydown', (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.target.closest?.('input, textarea, select, dialog[open]')) return;
+  const key = event.key.toLowerCase();
+  if (key !== 'z' && key !== 'y') return;
+  event.preventDefault();
+  stepHistory(key === 'y' || event.shiftKey ? 'redo' : 'undo');
+});
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Zones.

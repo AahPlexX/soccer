@@ -24,6 +24,7 @@ The main boundaries are:
 - `sw.js`: app-shell precache, stale-cache cleanup, same-origin cache-first fetch handling with index fallback.
 - `tests/`: Node standard-library behavior and integrity tests, including simulation, restart, shot/goalkeeper, zone-constraint, state-compatibility, and service-worker app-shell coverage.
 - `.github/workflows/validate.yml`: automatic `main` validation using the pinned Node.js LTS runtime, behavior/integrity tests, and JavaScript syntax checks.
+- `.github/workflows/pages.yml`: validates and stages the static app for deployment to the GitHub Pages environment on `main` pushes or manual dispatch.
 
 ## Coordinate system
 
@@ -147,7 +148,7 @@ Rules implemented now:
 - attacking support targets are clamped by a simplified build-out-line/second-last-defender/ball offside boundary.
 - passes remain loose/in flight until the ball reaches a receiver; `ensureCarrier()` intentionally does not acquire a new carrier while `ballTarget` is active.
 - boundary classification creates explicit throw-in, goal-kick, corner, or kickoff states rather than treating every goal-line arrival as a goal.
-- a goal through the scaled goal mouth resets both teams to formation anchors and creates a kickoff for the team that conceded.
+- a goal through the scaled goal mouth resets both teams to formation anchors and creates a kickoff for the team that conceded. Each player is placed and held in their own half until the kickoff is released, even when custom anchors or optional zone constraints conflict; the taker occupies the center spot.
 - an attacking-team last touch over a goal line outside the goal mouth creates a goal kick for the defending team.
 - a defending-team last touch over its own goal line outside the goal mouth creates a corner for the attacking team.
 - a last touch over either touchline creates a throw-in for the opposing team at the exit `x` coordinate.
@@ -208,6 +209,7 @@ Cache history relevant to the current runtime:
 - `v7`: adds `./library.css`, `./js/library.js`, and `./js/library-ui.js` to `APP_SHELL`. They were referenced by `index.html` / the static module graph but were not precached, so the saved-library tabs, editor, and styling would have been missing offline (`tests/pwa-shell.test.mjs` failed on this at `431ef15`).
 - `v8`: adds the pass-option stylesheet and modules to the app shell.
 - `v9`: refreshes the shot, goalkeeper, and restart modules for goalkeeper tracking; the app-shell path list is unchanged.
+- `v10`: refreshes the simulation module for kickoff half restrictions and the compact portrait control layout; the app-shell path list is unchanged.
 
 `tests/pwa-shell.test.mjs` protects this contract by verifying that every declared app-shell file exists, every install-critical local asset referenced by `index.html` is precached, and every static ES-module dependency reachable from the cached module graph is also in `APP_SHELL`.
 
@@ -221,5 +223,7 @@ The validation gate runs:
 2. `node --check` against every `js/*.js` runtime module and `sw.js`.
 
 Automated evidence: GitHub Actions run `40565756748` at implementation commit `5da47a0f0117e43477ff1053f3724fda1309032c` completed with 81 tests, 81 pass, 0 fail, 0 skipped, followed by successful JavaScript syntax checks. Inspect the latest workflow run for later commits.
+
+The Pages workflow runs the same tests and syntax checks before uploading only the static application files and deploying with environment-scoped Pages and OIDC permissions. Deployment requires a successful workflow run; adding the workflow alone does not establish hosted availability.
 
 A successful workflow run is repository evidence for those automated checks only. It does not replace rendered-browser checks or physical-iPad performance, touch, standalone-PWA, and offline verification.

@@ -26,7 +26,7 @@ On 2026-10-27 the goalkeeper-tracking implementation commit `5da47a0` passed 81 
 
 ## GitHub Pages
 
-Deployment target: `https://aahplexx.github.io/soccer/`. On 2026-10-27 this address returned GitHub Pages' “Site not found” page in the test browser, although the repository reported Pages enabled. The publishing source and deployment status need investigation before the hosted app can be considered available.
+Deployment target: `https://aahplexx.github.io/soccer/`. On 2026-10-27 the Pages API reported a GitHub Actions publishing source, but no Pages deployment existed and the address returned HTTP 404. `.github/workflows/pages.yml` is configured to validate and deploy the static app on pushes to `main` or manual dispatch. The workflow and hosted app still need to be verified after deployment.
 
 The repository is intentionally static. `index.html` loads native ES modules, and `sw.js` precaches the complete app shell for offline use after the first successful visit.
 
@@ -46,11 +46,11 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Player number, label, individual color editing, and team/goalkeeper color palettes.
 - Opponent visibility toggle, turf/dark/field themes, landscape and portrait pitch rendering.
 - Freehand telestration, arrows, cones, mini goals, extra soccer balls, clear drawings, play/pause/reset, 0.5×/1×/2× simulation speed, and good-spacing/bunching teaching modes.
-- CPU-vs-CPU passing (receivers with an opponent-blocked lane are skipped), an optional dashed pass-options overlay, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states.
+- CPU-vs-CPU passing (receivers with an opponent-blocked lane are skipped), an optional dashed pass-options overlay, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states, with players held in their own half until a post-goal kickoff is released.
 - Deterministic varied shooting with goalkeeper movement toward incoming shots and catch/parry/goal outcomes; the fixed aim sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
 - Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, category tabs over built-in and saved items, a title/category editor for saved presets, a two-step in-app delete confirmation, and JSON backup export/import.
-- Offline app-shell caching and installable web-app manifest; cache generation `v9` includes the pass-option overlay and goalkeeper-tracking runtime. Actual offline operation on iPad remains to be verified.
+- Offline app-shell caching and installable web-app manifest; cache generation `v10` includes the pass-option overlay, goalkeeper tracking, and kickoff half restrictions. Actual offline operation on iPad remains to be verified.
 
 ## Documentation
 

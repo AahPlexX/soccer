@@ -317,6 +317,18 @@ dialog::backdrop { background: rgba(0,0,0,.58); backdrop-filter: blur(4px); }
   .bottom-dock button { padding-inline: 10px; }
 }
 
+@media (max-width: 620px) and (orientation: portrait) {
+  .top-rail { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .formation-control, .theme-control { grid-column: span 3; }
+  .formation-control select, .theme-control select { padding-inline: 8px 24px; }
+  .rail-button { grid-column: span 2; }
+  #colors-open { grid-column: span 3; }
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  .formation-control { grid-template-columns: 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }

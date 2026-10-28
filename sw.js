@@ -1,4 +1,4 @@
-const CACHE_NAME = 'u9-tactical-board-v9';
+const CACHE_NAME = 'u9-tactical-board-v10';
 const APP_SHELL = [
   './', './index.html', './styles.css', './library.css', './pass-options.css', './manifest.webmanifest',
   './js/app.js', './js/builtins.js', './js/constants.js', './js/formations.js', './js/geometry.js',

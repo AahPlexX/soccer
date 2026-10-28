@@ -7,6 +7,9 @@ import { constrainPlayerPositionForZones } from './zone-constraints.js';
 function attackingDirection(team) { return team === 'home' ? 1 : -1; }
 function opponent(team) { return team === 'home' ? 'away' : 'home'; }
 function teamGoalX(team) { return team === 'home' ? 1 : 0; }
+function keepInOwnHalf(player) {
+  player.x = player.team === 'home' ? Math.min(player.x, 0.5) : Math.max(player.x, 0.5);
+}
 
 function nearestPlayer(players, point, predicate) {
   return players.filter(predicate).sort((a, b) => distance(a, point) - distance(b, point))[0] ?? null;
@@ -170,7 +173,11 @@ function advanceBall(state, dt) {
 
 function beginRestart(state, restart, exitPoint) {
   if (restart.type === 'kickoff') {
-    state.players.forEach((player) => { player.x = player.anchorX; player.y = player.anchorY; });
+    state.players.forEach((player) => {
+      player.x = player.anchorX;
+      player.y = player.anchorY;
+      keepInOwnHalf(player);
+    });
   }
 
   const point = restartPoint(restart, exitPoint);
@@ -225,6 +232,8 @@ function advancePlayers(state, dt) {
 
     // Build-out retreat is a mandatory U9 rule and therefore overrides an optional coach-created zone constraint.
     movePlayer(state, player, target, SIMULATION.playerSpeed * dt, !retreat);
+    // Kickoff placement takes precedence when a drill zone or support target crosses halfway.
+    if (state.simulation.restart?.type === 'kickoff') keepInOwnHalf(player);
   });
 }
 

@@ -90,3 +90,31 @@ test('older saved simulation state gains restart defaults without a schema bump'
   assert.equal(normalized.simulation.lastTouchTeam, 'home');
   assert.equal(normalized.simulation.restart, null);
 });
+
+test('kickoff places both teams in their own half and keeps them there until the restart', () => {
+  for (const scoringTeam of ['home', 'away']) {
+    const state = createInitialState();
+    // Customized anchors can be on the opposing half; keep the defending keeper away from the shot.
+    for (const player of state.players) {
+      player.anchorX = player.team === 'home' ? 0.85 : 0.15;
+      if (player.role === 'GK') player.y = 0.1;
+    }
+    // The away team's optional zone conflicts with its mandatory kickoff half.
+    state.zoneRestrictionMode = 'keep-in';
+    state.zoneRestrictionScope = 'away';
+    state.selectedZones = ['homeBuild'];
+    const goalX = scoringTeam === 'home' ? 1 : 0;
+    setupLooseBall(state, { x: goalX === 1 ? 0.998 : 0.002, y: 0.57 }, { x: goalX, y: 0.57 }, scoringTeam);
+    stepSimulation(state, 1 / 60);
+    assert.equal(state.simulation.restart?.type, 'kickoff');
+    for (let i = 0; i < 30; i++) {
+      for (const player of state.players) {
+        assert.ok(player.team === 'home' ? player.x <= 0.5 : player.x >= 0.5, `${player.id} crossed halfway before kickoff`);
+      }
+      stepSimulation(state, 1 / 60);
+      assert.equal(state.simulation.restart?.type, 'kickoff');
+    }
+    for (let i = 0; i < 100 && state.simulation.restart; i++) stepSimulation(state, 1 / 60);
+    assert.equal(state.simulation.restart, null, 'the kickoff is eventually released');
+  }
+});

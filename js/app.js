@@ -1,13 +1,20 @@
+import {
+  addProp, applyTeamFormation, findObject, isPlayerId, keyboardNudge, loadPresetState, moveObjectBy, nudgePlayer,
+  removeSelectedProp, resetBoardState, settlePlayers, toggleZone, updatePlayerDetails, updateTeamColors,
+} from './board-actions.js';
 import { BUILT_IN_PRESETS } from './builtins.js';
-import { setupUpdates } from './update.js';
-import { createLocalId, PALETTE, SIMULATION, ZONES } from './constants.js';
-import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
+import { PALETTE, ZONES } from './constants.js';
+import { recordPlayerPosition } from './formations.js';
+import { pitchPointFromClient } from './geometry.js';
 import { filterPresetsByCategory } from './library.js';
-import { clamp, pitchPointFromClient, separatePlayers } from './geometry.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
-import { releaseFormationCarrier, releaseManuallyMovedObject, stepSimulation } from './simulation.js';
-import { createInitialState, normalizeState } from './state.js';
+import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
+import { createInitialState, snapshotState } from './state.js';
 import { deletePreset, exportBackup, importBackup, listPresets, loadAutosave, saveAutosave, savePreset } from './storage.js';
+import { setupUpdates } from './update.js';
+
+// app.js owns the DOM: element lookup, event wiring, rendering, autosave, dialogs and toasts.
+// Board mutations live in board-actions.js so they stay testable without a browser.
 
 const svg = document.querySelector('#pitch');
 const homeFormation = document.querySelector('#home-formation');
@@ -50,13 +57,26 @@ const savedDialog = document.querySelector('#saved-dialog');
 const savedClose = document.querySelector('#saved-close');
 const savedList = document.querySelector('#saved-list');
 const savedFilterSelect = document.querySelector('#saved-filter');
-let savedFilter = 'All'; // view-only library filter; not persisted
 const toast = document.querySelector('#toast');
 const dragStatus = document.querySelector('#drag-status');
 
+const AUTOSAVE_DELAY_MS = 120;
+const TOAST_DURATION_MS = 2600;
+const DELETE_CONFIRM_MS = 4000;
+const DRAG_THRESHOLD_PX = 5;
+const PALETTE_LABELS = Object.freeze({
+  blue: 'Blue', red: 'Red', yellow: 'Yellow', neonGreen: 'Neon green', orange: 'Orange', white: 'White', black: 'Black', purple: 'Purple',
+});
+const REMOVE_MESSAGES = Object.freeze({
+  'none-selected': 'Select a cone, mini goal, or extra ball first',
+  protected: 'Players and the main ball cannot be removed',
+  removed: 'Prop removed',
+});
+
+let savedFilter = 'All'; // view-only library filter; not persisted
 let state = loadAutosave() ?? createInitialState();
 let world = initializeScene(svg, state);
-let resetSnapshot = structuredCloneSafe(state);
+let resetSnapshot = snapshotState(state);
 let resetSnapshotVersion = 0;
 let resetBaselineReady;
 let autosaveTimer = null;
@@ -64,16 +84,15 @@ let toastTimer = null;
 let drag = null;
 let drawSession = null;
 let lastFrame = performance.now();
-let orientationPortrait = matchMedia('(orientation: portrait)').matches;
 
-function structuredCloneSafe(value) {
-  return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
-}
+// ---------------------------------------------------------------------------------------------------------------------
+// Reset baseline, autosave, toast, rendering.
+// ---------------------------------------------------------------------------------------------------------------------
 
 // Restore the saved preset's original snapshot after a reload, while allowing a newer
 // formation/load/save action to win over the asynchronous IndexedDB lookup.
 function setResetSnapshot(snapshot) {
-  resetSnapshot = structuredCloneSafe(snapshot);
+  resetSnapshot = snapshotState(snapshot);
   resetSnapshotVersion += 1;
 }
 
@@ -90,14 +109,14 @@ resetBaselineReady = restoreResetBaseline();
 
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(() => saveAutosave(state), 120);
+  autosaveTimer = setTimeout(() => saveAutosave(state), AUTOSAVE_DELAY_MS);
 }
 
 function showToast(message) {
   clearTimeout(toastTimer);
   toast.textContent = message;
   toast.hidden = false;
-  toastTimer = setTimeout(() => { toast.hidden = true; }, 2600);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, TOAST_DURATION_MS);
 }
 
 function syncControls() {
@@ -131,21 +150,22 @@ function render({ rebuild = false } = {}) {
   syncControls();
 }
 
-// Players are physical: after any coaching change, no two may overlap. The selected player (the one the coach just
-// placed) stays put and others step aside, adopting their new spot as their anchor.
-function settlePlayers() {
-  const before = state.players.map(({ x, y }) => [x, y]);
-  separatePlayers(state.players, SIMULATION.playerSpacing, [state.selectedObjectId]);
-  state.players.forEach((player, i) => {
-    if (player.x !== before[i][0] || player.y !== before[i][1]) recordPlayerPosition(player);
-  });
-}
-
 function commitChange(options) {
-  settlePlayers();
+  settlePlayers(state);
   render(options);
   scheduleAutosave();
 }
+
+/** Replaces the whole board (load, reset, import) and makes it the new reset baseline. */
+function replaceBoard(next, { baseline = true } = {}) {
+  state = next;
+  if (baseline) setResetSnapshot(state);
+  commitChange({ rebuild: true });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Zones.
+// ---------------------------------------------------------------------------------------------------------------------
 
 function buildZoneButtons() {
   const fragment = document.createDocumentFragment();
@@ -155,41 +175,32 @@ function buildZoneButtons() {
     button.dataset.zone = id;
     button.textContent = zone.label;
     button.setAttribute('aria-pressed', 'false');
-    button.addEventListener('click', () => {
-      state.selectedZones = state.selectedZones.includes(id)
-        ? state.selectedZones.filter((zoneId) => zoneId !== id)
-        : [...state.selectedZones, id];
-      commitChange();
-    });
+    button.addEventListener('click', () => { if (toggleZone(state, id)) commitChange(); });
     fragment.append(button);
   });
   zoneButtons.append(fragment);
 }
 
-function findObject(id) {
-  return state.players.find((item) => item.id === id)
-    ?? state.balls.find((item) => item.id === id)
-    ?? state.cones.find((item) => item.id === id)
-    ?? state.miniGoals.find((item) => item.id === id)
-    ?? null;
-}
+zonesToggle.addEventListener('click', () => {
+  const expanded = zonesToggle.getAttribute('aria-expanded') === 'true';
+  zonesToggle.setAttribute('aria-expanded', String(!expanded));
+  zonePanel.hidden = expanded;
+});
+zonesClear.addEventListener('click', () => { state.selectedZones = []; commitChange(); });
+zoneOpacity.addEventListener('input', () => { state.zoneOpacity = Number(zoneOpacity.value); commitChange(); });
+zoneRestrictionMode.addEventListener('change', () => { state.zoneRestrictionMode = zoneRestrictionMode.value; commitChange(); });
+zoneRestrictionScope.addEventListener('change', () => { state.zoneRestrictionScope = zoneRestrictionScope.value; commitChange(); });
 
-function nudgeObject(id, dx, dy) {
-  const object = findObject(id);
-  if (!object) return;
-  releaseManuallyMovedObject(state, id);
-  object.x = clamp(object.x + dx);
-  object.y = clamp(object.y + dy);
-  if (object.team) recordPlayerPosition(object);
-  state.selectedObjectId = id;
-  commitChange();
-}
+// ---------------------------------------------------------------------------------------------------------------------
+// Pitch pointer and keyboard input.
+// ---------------------------------------------------------------------------------------------------------------------
 
 function openPlayerEditor(id) {
   const player = state.players.find((item) => item.id === id);
   if (!player) return;
   playerId.value = player.id;
   playerNumber.value = String(player.number);
+  playerNumber.setCustomValidity('');
   playerLabel.value = player.label ?? player.role;
   playerColor.value = player.colorOverride ?? '';
   if (!playerDialog.open) playerDialog.showModal();
@@ -197,10 +208,8 @@ function openPlayerEditor(id) {
 }
 
 function handleObjectPointerDown(event, target) {
-  if (state.tool !== 'move') return;
   const id = target.dataset.objectId;
-  const object = findObject(id);
-  if (!object) return;
+  if (!findObject(state, id)) return;
   state.selectedObjectId = id;
   drag = { id, pointerId: event.pointerId, moved: false, startX: event.clientX, startY: event.clientY };
   target.setPointerCapture(event.pointerId);
@@ -208,34 +217,19 @@ function handleObjectPointerDown(event, target) {
   render();
 }
 
-function handleDrawPointerDown(event) {
+function handleToolPointerDown(event) {
   const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
-  if (state.tool === 'cone') {
-    state.cones.push({ id: createLocalId('cone'), x: point.x, y: point.y, color: '#ff8c1a' });
-    state.selectedObjectId = state.cones[state.cones.length - 1].id;
+  const added = addProp(state, state.tool, point);
+  if (added) {
     commitChange({ rebuild: true });
-    showToast('Cone added');
+    showToast(added.message);
     return;
   }
-  if (state.tool === 'ball') {
-    state.balls.push({ id: createLocalId('ball'), x: point.x, y: point.y, primary: false });
-    state.selectedObjectId = state.balls[state.balls.length - 1].id;
-    commitChange({ rebuild: true });
-    showToast('Extra ball added');
-    return;
-  }
-  if (state.tool === 'minigoal') {
-    state.miniGoals.push({ id: createLocalId('minigoal'), x: point.x, y: point.y });
-    state.selectedObjectId = state.miniGoals[state.miniGoals.length - 1].id;
-    commitChange({ rebuild: true });
-    showToast('Mini goal added');
-    return;
-  }
-  if (!['draw', 'arrow'].includes(state.tool)) return;
+  if (state.tool !== 'draw' && state.tool !== 'arrow') return;
   svg.setPointerCapture(event.pointerId);
   drawSession = {
     pointerId: event.pointerId,
-    drawing: { id: createLocalId('drawing'), type: state.tool === 'arrow' ? 'arrow' : 'freehand', points: [point] },
+    drawing: { id: `drawing-${Date.now().toString(36)}-${state.drawings.length}`, type: state.tool === 'arrow' ? 'arrow' : 'freehand', points: [point] },
   };
   state.drawings.push(drawSession.drawing);
   render({ rebuild: true });
@@ -243,19 +237,22 @@ function handleDrawPointerDown(event) {
 
 svg.addEventListener('pointerdown', (event) => {
   const target = event.target.closest('[data-object-id]');
-  if (state.tool === 'move' && target) handleObjectPointerDown(event, target);
-  else if (state.tool !== 'move') handleDrawPointerDown(event);
+  if (state.tool === 'move') {
+    if (target) handleObjectPointerDown(event, target);
+    return;
+  }
+  handleToolPointerDown(event);
 });
 
 svg.addEventListener('pointermove', (event) => {
   if (drag?.pointerId === event.pointerId) {
-    const object = findObject(drag.id);
+    const object = findObject(state, drag.id);
     if (!object) return;
     const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
     if (point.x !== object.x || point.y !== object.y) releaseManuallyMovedObject(state, drag.id);
     object.x = point.x;
     object.y = point.y;
-    drag.moved ||= Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 5;
+    drag.moved ||= Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > DRAG_THRESHOLD_PX;
     renderScene(svg, state);
     return;
   }
@@ -271,17 +268,18 @@ svg.addEventListener('pointermove', (event) => {
 
 function finishPointer(event) {
   if (drag?.pointerId === event.pointerId) {
-    const node = svg.querySelector(`#object-${drag.id}`);
-    node?.classList.remove('is-dragging');
+    svg.querySelector(`#object-${drag.id}`)?.classList.remove('is-dragging');
     const finishedDrag = drag;
-    const isPlayer = finishedDrag.id.startsWith('home-') || finishedDrag.id.startsWith('away-');
-    if (finishedDrag.moved && isPlayer) {
-      const player = findObject(finishedDrag.id);
-      if (player) recordPlayerPosition(player);
-    }
-    if (!finishedDrag.moved && isPlayer) openPlayerEditor(finishedDrag.id);
-    dragStatus.textContent = `${finishedDrag.id} ${finishedDrag.moved ? 'moved' : 'selected'}.`;
     drag = null;
+    if (isPlayerId(state, finishedDrag.id)) {
+      if (finishedDrag.moved) {
+        const player = findObject(state, finishedDrag.id);
+        if (player) recordPlayerPosition(player);
+      } else {
+        openPlayerEditor(finishedDrag.id);
+      }
+    }
+    dragStatus.textContent = `${finishedDrag.id} ${finishedDrag.moved ? 'moved' : 'selected'}.`;
     commitChange();
   }
   if (drawSession?.pointerId === event.pointerId) {
@@ -296,50 +294,43 @@ svg.addEventListener('keydown', (event) => {
   const target = event.target.closest('[data-object-id]');
   if (!target) return;
   const id = target.dataset.objectId;
-  const step = event.shiftKey ? 0.025 : 0.01;
-  const keys = {
-    ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step],
-  };
-  if (keys[event.key]) {
+  const delta = keyboardNudge(event.key, event.shiftKey);
+  if (delta) {
     event.preventDefault();
-    nudgeObject(id, ...keys[event.key]);
-    dragStatus.textContent = `${id} moved with keyboard.`;
+    if (moveObjectBy(state, id, ...delta)) {
+      commitChange();
+      dragStatus.textContent = `${id} moved with keyboard.`;
+    }
   } else if (event.key === 'Enter' && target.dataset.objectType === 'player') {
     event.preventDefault();
     openPlayerEditor(id);
   }
 });
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Top rail and toolbar.
+// ---------------------------------------------------------------------------------------------------------------------
+
 function applySelectedFormation(team) {
   const select = team === 'home' ? homeFormation : awayFormation;
-  const key = team === 'home' ? 'homeFormation' : 'awayFormation';
-  state[key] = select.value;
-  releaseFormationCarrier(state, team);
-  state.players = applyFormation(state.players, team, select.value);
-  state.currentPresetId = null;
+  if (!applyTeamFormation(state, team, select.value)) {
+    syncControls();
+    return false;
+  }
   setResetSnapshot(state);
   commitChange({ rebuild: true });
+  return true;
 }
 homeFormation.addEventListener('change', () => applySelectedFormation('home'));
 awayFormation.addEventListener('change', () => applySelectedFormation('away'));
 document.querySelector('#home-formation-apply').addEventListener('click', () => {
-  applySelectedFormation('home');
-  showToast('Our shape reapplied');
+  if (applySelectedFormation('home')) showToast('Our shape reapplied');
 });
 document.querySelector('#away-formation-apply').addEventListener('click', () => {
-  applySelectedFormation('away');
-  showToast('Their shape reapplied');
+  if (applySelectedFormation('away')) showToast('Their shape reapplied');
 });
+
 awayVisible.addEventListener('click', () => { state.awayVisible = !state.awayVisible; commitChange(); });
-zonesToggle.addEventListener('click', () => {
-  const expanded = zonesToggle.getAttribute('aria-expanded') === 'true';
-  zonesToggle.setAttribute('aria-expanded', String(!expanded));
-  zonePanel.hidden = expanded;
-});
-zonesClear.addEventListener('click', () => { state.selectedZones = []; commitChange(); });
-zoneOpacity.addEventListener('input', () => { state.zoneOpacity = Number(zoneOpacity.value); commitChange(); });
-zoneRestrictionMode.addEventListener('change', () => { state.zoneRestrictionMode = zoneRestrictionMode.value; commitChange(); });
-zoneRestrictionScope.addEventListener('change', () => { state.zoneRestrictionScope = zoneRestrictionScope.value; commitChange(); });
 themeSelect.addEventListener('change', () => { state.theme = themeSelect.value; commitChange(); });
 speedSelect.addEventListener('change', () => { state.speed = Number(speedSelect.value); commitChange(); });
 spacingSelect.addEventListener('change', () => { state.spacingMode = spacingSelect.value; commitChange(); });
@@ -355,19 +346,9 @@ drawingsClear.addEventListener('click', () => {
 });
 
 removeSelected.addEventListener('click', () => {
-  const selected = state.selectedObjectId;
-  if (!selected) { showToast('Select a cone, mini goal, or extra ball first'); return; }
-  const propCount = state.cones.length + state.miniGoals.length + state.balls.length;
-  state.cones = state.cones.filter((item) => item.id !== selected);
-  state.miniGoals = state.miniGoals.filter((item) => item.id !== selected);
-  state.balls = state.balls.filter((item) => item.primary || item.id !== selected);
-  if (state.cones.length + state.miniGoals.length + state.balls.length === propCount) {
-    showToast('Players and the main ball cannot be removed');
-    return;
-  }
-  state.selectedObjectId = null;
-  commitChange({ rebuild: true });
-  showToast('Prop removed');
+  const result = removeSelectedProp(state);
+  if (result === 'removed') commitChange({ rebuild: true });
+  showToast(REMOVE_MESSAGES[result]);
 });
 
 playToggle.addEventListener('click', () => {
@@ -375,33 +356,35 @@ playToggle.addEventListener('click', () => {
   state.tool = 'move';
   commitChange();
 });
+
 resetBoard.addEventListener('click', async () => {
   await resetBaselineReady;
-  const keepTheme = state.theme;
-  const keepSavedId = state.currentPresetId;
-  state = normalizeState(structuredCloneSafe(resetSnapshot));
-  state.theme = keepTheme;
-  state.currentPresetId = keepSavedId;
-  state.simulation.running = false;
-  commitChange({ rebuild: true });
+  replaceBoard(resetBoardState(resetSnapshot, state), { baseline: false });
   showToast('Board reset to starting position');
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Player editor.
+// ---------------------------------------------------------------------------------------------------------------------
+
+// A custom validity message blocks every later submit until cleared, so clear it as soon as the coach edits the number.
+playerNumber.addEventListener('input', () => playerNumber.setCustomValidity(''));
 
 playerForm.addEventListener('submit', (event) => {
   if (event.submitter?.value === 'cancel') return;
   event.preventDefault();
-  const player = state.players.find((item) => item.id === playerId.value);
-  if (!player) return;
-  const number = Number(playerNumber.value);
-  if (!Number.isInteger(number) || number < 1 || number > 99) {
+  const result = updatePlayerDetails(state, playerId.value, {
+    number: Number(playerNumber.value),
+    label: playerLabel.value,
+    colorOverride: playerColor.value,
+  });
+  if (result === 'missing') return;
+  if (result === 'invalid-number') {
     playerNumber.setCustomValidity('Use a jersey number from 1 to 99.');
     playerNumber.reportValidity();
     return;
   }
   playerNumber.setCustomValidity('');
-  player.number = number;
-  player.label = playerLabel.value.trim() || player.role;
-  player.colorOverride = playerColor.value || null;
   playerDialog.close();
   commitChange({ rebuild: true });
   showToast('Player updated');
@@ -409,32 +392,19 @@ playerForm.addEventListener('submit', (event) => {
 
 playerDialog.querySelectorAll('[data-nudge]').forEach((button) => {
   button.addEventListener('click', () => {
-    const player = state.players.find((item) => item.id === playerId.value);
-    if (!player) return;
-    releaseManuallyMovedObject(state, player.id);
-    const direction = button.dataset.nudge;
-    if (direction === 'center') {
-      const formation = player.team === 'home' ? state.homeFormation : state.awayFormation;
-      const position = formationPosition(state.players, player, formation);
-      if (position) Object.assign(player, position);
-    }
-    if (direction === 'left') player.x = clamp(player.x - 0.02);
-    if (direction === 'right') player.x = clamp(player.x + 0.02);
-    if (direction === 'up') player.y = clamp(player.y - 0.02);
-    if (direction === 'down') player.y = clamp(player.y + 0.02);
-    recordPlayerPosition(player);
-    commitChange();
+    if (nudgePlayer(state, playerId.value, button.dataset.nudge)) commitChange();
   });
 });
 
-const paletteLabels = {
-  blue: 'Blue', red: 'Red', yellow: 'Yellow', neonGreen: 'Neon green', orange: 'Orange', white: 'White', black: 'Black', purple: 'Purple',
-};
+// ---------------------------------------------------------------------------------------------------------------------
+// Team colors.
+// ---------------------------------------------------------------------------------------------------------------------
+
 colorsForm.querySelectorAll('select').forEach((select) => {
   Object.entries(PALETTE).forEach(([name, value]) => {
     const option = document.createElement('option');
     option.value = value;
-    option.textContent = paletteLabels[name];
+    option.textContent = PALETTE_LABELS[name];
     select.append(option);
   });
 });
@@ -448,14 +418,21 @@ colorsOpen.addEventListener('click', () => {
 colorsForm.addEventListener('submit', (event) => {
   if (event.submitter?.value === 'cancel') return;
   event.preventDefault();
-  state.colors.home = colorsForm.elements.home.value;
-  state.colors.homeGoalkeeper = colorsForm.elements.homeGoalkeeper.value;
-  state.colors.away = colorsForm.elements.away.value;
-  state.colors.awayGoalkeeper = colorsForm.elements.awayGoalkeeper.value;
+  updateTeamColors(state, {
+    home: colorsForm.elements.home.value,
+    homeGoalkeeper: colorsForm.elements.homeGoalkeeper.value,
+    away: colorsForm.elements.away.value,
+    awayGoalkeeper: colorsForm.elements.awayGoalkeeper.value,
+  });
   colorsDialog.close();
   commitChange();
   showToast('Team colors updated');
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Save and saved-positions library. library-ui.js augments user rows: it relies on data-preset-id on each saved row
+// and inserts its Edit button before the row's last child, which must remain the Delete button.
+// ---------------------------------------------------------------------------------------------------------------------
 
 saveAs.addEventListener('click', () => {
   presetTitle.value = '';
@@ -480,31 +457,65 @@ saveForm.addEventListener('submit', async (event) => {
   }
 });
 
+const savedDateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+function savedRow(titleText, metaText, ...buttons) {
+  const item = document.createElement('div');
+  item.className = 'saved-item';
+  const text = document.createElement('div');
+  const title = document.createElement('strong');
+  title.textContent = titleText;
+  const meta = document.createElement('span');
+  meta.textContent = metaText;
+  text.append(title, meta);
+  item.append(text, ...buttons);
+  return item;
+}
+
+function rowButton(label, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+function loadIntoBoard(next, title) {
+  savedDialog.close();
+  replaceBoard(next);
+  showToast(`Loaded ${title}`);
+}
+
+function deleteButton(preset) {
+  const remove = rowButton('Delete', async () => {
+    // Two-step in-app confirmation (confirm() is unreliable in standalone Home Screen apps).
+    if (remove.dataset.armed !== 'true') {
+      remove.dataset.armed = 'true';
+      remove.textContent = 'Tap again to delete';
+      showToast(`Tap Delete again to remove ${preset.title}`);
+      setTimeout(() => { remove.dataset.armed = ''; remove.textContent = 'Delete'; }, DELETE_CONFIRM_MS);
+      return;
+    }
+    try {
+      await deletePreset(preset.id);
+      await refreshSavedList();
+      showToast('Saved position deleted');
+    } catch (error) {
+      remove.dataset.armed = '';
+      remove.textContent = 'Delete';
+      showToast(error instanceof Error ? error.message : 'Unable to delete saved position');
+    }
+  });
+  return remove;
+}
+
 async function refreshSavedList() {
   const presets = filterPresetsByCategory(await listPresets(), savedFilter);
   savedList.replaceChildren();
 
   filterPresetsByCategory(BUILT_IN_PRESETS, savedFilter).forEach((preset) => {
-    const item = document.createElement('div');
-    item.className = 'saved-item';
-    const text = document.createElement('div');
-    const title = document.createElement('strong');
-    title.textContent = preset.title;
-    const meta = document.createElement('span');
-    meta.textContent = `Built in · ${preset.category} · ${preset.description}`;
-    text.append(title, meta);
-    const load = document.createElement('button');
-    load.type = 'button'; load.textContent = 'Load';
-    load.addEventListener('click', () => {
-      state = normalizeState(preset.createState());
-      state.currentPresetId = preset.id;
-      setResetSnapshot(state);
-      savedDialog.close();
-      commitChange({ rebuild: true });
-      showToast(`Loaded ${preset.title}`);
-    });
-    item.append(text, load);
-    savedList.append(item);
+    const load = rowButton('Load', () => loadIntoBoard(loadPresetState(preset.createState(), preset.id), preset.title));
+    savedList.append(savedRow(preset.title, `Built in · ${preset.category} · ${preset.description}`, load));
   });
 
   if (!presets.length) {
@@ -516,48 +527,11 @@ async function refreshSavedList() {
     savedList.append(empty);
     return;
   }
+
   presets.forEach((preset) => {
-    const item = document.createElement('div');
-    item.className = 'saved-item';
-    const text = document.createElement('div');
-    const title = document.createElement('strong');
-    title.textContent = preset.title;
-    const meta = document.createElement('span');
-    meta.textContent = `${preset.category} · ${new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(preset.updatedAt))}`;
-    text.append(title, meta);
-    const load = document.createElement('button');
-    load.type = 'button'; load.textContent = 'Load';
-    load.addEventListener('click', () => {
-      state = normalizeState(structuredCloneSafe(preset.state));
-      state.currentPresetId = preset.id;
-      setResetSnapshot(state);
-      savedDialog.close();
-      commitChange({ rebuild: true });
-      showToast(`Loaded ${preset.title}`);
-    });
-    const remove = document.createElement('button');
-    remove.type = 'button'; remove.textContent = 'Delete';
-    remove.addEventListener('click', async () => {
-      // Two-step in-app confirmation (confirm() is unreliable in standalone Home Screen apps).
-      if (remove.dataset.armed !== 'true') {
-        remove.dataset.armed = 'true';
-        remove.textContent = 'Tap again to delete';
-        showToast(`Tap Delete again to remove “${preset.title}”`);
-        setTimeout(() => { remove.dataset.armed = ''; remove.textContent = 'Delete'; }, 4000);
-        return;
-      }
-      try {
-        await deletePreset(preset.id);
-        await refreshSavedList();
-        showToast('Saved position deleted');
-      } catch (error) {
-        remove.dataset.armed = '';
-        remove.textContent = 'Delete';
-        showToast(error instanceof Error ? error.message : 'Unable to delete saved position');
-      }
-    });
+    const load = rowButton('Load', () => loadIntoBoard(loadPresetState(preset.state, preset.id), preset.title));
+    const item = savedRow(preset.title, `${preset.category} · ${savedDateFormat.format(new Date(preset.updatedAt))}`, load, deleteButton(preset));
     item.dataset.presetId = preset.id;
-    item.append(text, load, remove);
     savedList.append(item);
   });
 }
@@ -565,28 +539,33 @@ savedFilterSelect.addEventListener('change', () => { savedFilter = savedFilterSe
 savedOpen.addEventListener('click', async () => { await refreshSavedList(); savedDialog.showModal(); });
 savedClose.addEventListener('click', () => savedDialog.close());
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Backup export/import.
+// ---------------------------------------------------------------------------------------------------------------------
+
 exportButton.addEventListener('click', async () => {
-  const text = await exportBackup(state);
-  const blob = new Blob([text], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `u9-tactical-board-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-  showToast('Backup exported');
+  try {
+    const text = await exportBackup(state);
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `u9-tactical-board-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    showToast('Backup exported');
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'Backup export failed');
+  }
 });
 importButton.addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', async () => {
   const file = importFile.files?.[0];
   if (!file) return;
   try {
-    state = await importBackup(await file.text());
-    setResetSnapshot(state);
+    replaceBoard(await importBackup(await file.text()));
     resetBaselineReady = restoreResetBaseline();
-    commitChange({ rebuild: true });
     showToast('Backup imported');
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'Backup import failed');
@@ -595,11 +574,15 @@ importFile.addEventListener('change', async () => {
   }
 });
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Orientation, animation loop, startup.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const portraitQuery = matchMedia('(orientation: portrait)');
 function updateOrientation() {
-  orientationPortrait = matchMedia('(orientation: portrait)').matches;
-  setSceneOrientation(svg, orientationPortrait);
+  setSceneOrientation(svg, portraitQuery.matches);
 }
-matchMedia('(orientation: portrait)').addEventListener?.('change', updateOrientation);
+portraitQuery.addEventListener?.('change', updateOrientation);
 window.addEventListener('resize', updateOrientation, { passive: true });
 
 function animationLoop(now) {

@@ -1,7 +1,7 @@
 import { setPlayerBenched } from './coaching.js';
 import { createLocalId, FORMATION_NAMES, SIMULATION, TEAM_IDS, ZONES } from './constants.js';
 import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
-import { clamp, separatePlayers } from './geometry.js';
+import { clamp, separatePlayers, spacingDistance } from './geometry.js';
 import { releaseFormationCarrier, releaseManuallyMovedObject } from './simulation.js';
 import { normalizeState, snapshotState } from './state.js';
 
@@ -64,6 +64,19 @@ export function findObject(state, id) {
     ?? state.cones.find((item) => item.id === id)
     ?? state.miniGoals.find((item) => item.id === id)
     ?? null;
+}
+
+export const PICK_RADIUS = 0.045;
+
+/** The movable object nearest `point` within `radius` (as drawn), or null. Benched players are off the pitch. */
+export function pickObject(state, point, radius = PICK_RADIUS) {
+  let best = null;
+  let bestDistance = radius;
+  for (const item of [...state.players.filter((player) => !player.benched), ...state.balls, ...state.cones, ...state.miniGoals]) {
+    const distance = spacingDistance(item, point);
+    if (distance <= bestDistance) [best, bestDistance] = [item.id, distance];
+  }
+  return best;
 }
 
 export function isPlayerId(state, id) {

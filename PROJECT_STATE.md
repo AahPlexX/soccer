@@ -1,7 +1,7 @@
 # Project state — handoff entry point
 
 Last updated: 2026-10-28
-Branch: `main` · application version: **1.0.4** · persistence schema: `1`
+Branch: `main` · application version: **1.0.5** · persistence schema: `1`
 Status: field-coaching integration released; 219 tests, runtime syntax, rendered-browser checks and GitHub Pages deployment pass.
 
 ## Resume here
@@ -22,7 +22,7 @@ Release implementation `c1305db` passed [Validate main](https://github.com/AahPl
 - Four built-ins now include coaching briefs. User presets save all coaching fields, bench flags, starting snapshot and steps; update a loaded user preset or save a new copy. Built-ins are immutable. Backups include the complete content.
 - Print or browser Save as PDF for current diagram/brief, or a captured multi-page plan. Print is local and uses the full 2D diagram even when viewing 3D.
 - 2D zoom/pan; lazy vendored Three.js 3D scene with orbit, zoom, pan and four camera presets. 3D shows diagrams, run/pass/route arrows and optional pass-option lines as well as participants and props. Ball visibility is protected through occluders and a carried ball is displayed beside its carrier without changing physics. Editing is still in 2D.
-- Offline app shell, native manifest, versioned Update/Cancel prompt. Each Pages deployment has an isolated cache/build identity. The version begins at 1.0.0 and **each significant update increments patch by one**; `package.json` and `APP_VERSION` in `sw.js` must match. Current release is 1.0.4. No collaboration features.
+- Offline app shell, native manifest, versioned Update/Cancel prompt. Each Pages deployment has an isolated cache/build identity. The version begins at 1.0.0 and **each significant update increments patch by one**; `package.json` and `APP_VERSION` in `sw.js` must match. Current release is 1.0.5. No collaboration features.
 
 ## Modules and storage
 
@@ -60,13 +60,13 @@ Earlier FND-001..039 evidence and original COACH/CAM decisions are archived in [
 - COACH-012 Authored practice/teaching sequence: done in 1.0.4, up to 12 snapshots with own briefs.
 - COACH-013 Persistent starting setup and update named drill: done in 1.0.4.
 - COACH-014 Route arrows and individual erase: done in 1.0.4.
-- CAM-001/002/003/007 zoom/perspective/presets/fallback: implemented. CAM-005 annotations/pass options in 3D: implemented in 1.0.4. CAM-004 3D editing and CAM-006 follow cameras remain unimplemented.
+- CAM-001/002/003/007 zoom/perspective/presets/fallback: implemented. CAM-005 annotations/pass options in 3D: implemented in 1.0.4. CAM-004 3D editing (drag players, balls, cones and mini goals; tap a player to open the editor) shipped in 1.0.5, unit-tested for picking only and awaiting real-device touch verification. CAM-006 follow cameras remains unimplemented.
 
 ## Known limits and next work
 
 1. Physical iPad 2018 baseline: no verified 60 fps, outdoor readability, Safari/Home Screen offline/update lifecycle or touch ergonomics. Test on device before changing these statuses.
 2. CPU is a simplified teaching model, not full referee logic: no fouls, complete offside adjudication, detailed restart distances or mini-goal scoring. Written notes, cones, extra balls and arrows do not command the engine. Use snapshots for exact sequences.
-3. 3D is a viewing surface; editing remains in 2D. Dedicated half-field presets, view reversal and follow cameras are future work.
+3. 3D supports dragging existing objects (1.0.5); placing props, drawing and erasing remain 2D. Dedicated half-field presets, view reversal and follow cameras are future work.
 4. Player editor is a centered dialog, not a player-adjacent popover. Team colors remain native selects rather than swatches. Some inherited token/control hit targets still need physical-device review.
 5. Captured sequences are limited to 12; time remaining is not restored after reload, and printing relies on the browser's print/PDF support. Local-only browser storage is not cross-device sync. Back up files before clearing site data.
 6. No accounts, invites, chat, remote database, concurrent editing or collaboration will be added within this request.

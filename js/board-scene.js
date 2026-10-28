@@ -13,6 +13,8 @@ const GRASS_TEXTURE = Object.freeze({ width: 1500, height: 1020 }); // same 60:4
 
 /** Board coordinates (0 to 1) to world x and z. */
 export const toWorld = (x, y) => ({ x: (x - 0.5) * L, z: (y - 0.5) * W });
+/** Inverse of toWorld: a ground point back to board coordinates, clamped onto the pitch. */
+export const fromWorld = (x, z) => ({ x: Math.min(1, Math.max(0, x / L + 0.5)), y: Math.min(1, Math.max(0, z / W + 0.5)) });
 
 // Pitch markings on a canvas whose pixel (px, py) is board point (px / width, py / height).
 export function drawPitchTexture(ctx, width, height) {

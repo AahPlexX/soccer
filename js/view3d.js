@@ -2,14 +2,16 @@
 // Three.js (vendor/three) costs nothing until then. createView3D() throws when WebGL is unavailable; the caller falls
 // back to the 2D board. The camera is an orbit (js/camera-orbit.js): drag to rotate and tilt, wheel or pinch to zoom,
 // two fingers, right-drag, or Shift-drag to pan. The scene reads the live board state every frame (js/board-scene.js).
-import { buildBoardScene } from './board-scene.js';
+import { buildBoardScene, fromWorld } from './board-scene.js';
 import { CAMERA_FOV_DEGREES, DEFAULT_PRESET, groundPerPixel, orbitPosition, panOrbit, presetOrbit, rotateOrbit, zoomOrbit } from './camera-orbit.js';
 
 const ROTATE_RADIANS_PER_PIXEL = 0.006;
 const WHEEL_ZOOM_PER_PIXEL = 0.0015;
 const PINCH_WHEEL_ZOOM_PER_PIXEL = 0.01; // a trackpad pinch arrives as a wheel event with ctrlKey
 
-export async function createView3D({ container, getState, onContextLost = () => {} }) {
+// Editing (CAM-004): `pick(point)` names the object under a board point or returns null; `onDrag(phase, id, point)` then
+// receives 'start', 'move' and 'end' with the board point under the pointer. Both are optional (view-only without them).
+export async function createView3D({ container, getState, onContextLost = () => {}, pick = () => null, onDrag = () => {} }) {
   const THREE = await import('../vendor/three/three.module.js');
   const renderer = new THREE.WebGLRenderer({ antialias: true }); // throws without WebGL
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -58,6 +60,23 @@ export async function createView3D({ container, getState, onContextLost = () => 
     renderer.render(board.scene, camera);
   }
 
+  const raycaster = new THREE.Raycaster();
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const hit = new THREE.Vector3();
+  // The board point under a client position, or null when the ray misses the ground (camera looking at the horizon).
+  const groundPoint = (clientX, clientY) => {
+    const rect = canvas.getBoundingClientRect();
+    raycaster.setFromCamera({ x: ((clientX - rect.left) / rect.width) * 2 - 1, y: -(((clientY - rect.top) / rect.height) * 2 - 1) }, camera);
+    return raycaster.ray.intersectPlane(ground, hit) ? fromWorld(hit.x, hit.z) : null;
+  };
+  let dragging = null; // { pointerId, id } while an object is being moved
+  const endDrag = () => {
+    if (!dragging) return;
+    const { id, last } = dragging;
+    dragging = null;
+    onDrag('end', id, last);
+  };
+
   const pointers = new Map(); // active pointers: id -> { x, y, button }
   let pinch = null; // two-pointer gesture: last finger distance and midpoint
 
@@ -72,12 +91,29 @@ export async function createView3D({ container, getState, onContextLost = () => 
 
   canvas.addEventListener('pointerdown', (event) => {
     canvas.setPointerCapture(event.pointerId);
+    endDrag(); // a second finger turns an object drag into a camera gesture
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, button: event.button });
     pinch = pointers.size === 2 ? pinchState() : null;
+    if (pointers.size !== 1 || event.button !== 0 || event.shiftKey) return;
+    const point = groundPoint(event.clientX, event.clientY);
+    const id = point && pick(point);
+    if (id) {
+      dragging = { pointerId: event.pointerId, id, last: point };
+      onDrag('start', id, point);
+    }
   });
   canvas.addEventListener('pointermove', (event) => {
     const previous = pointers.get(event.pointerId);
     if (!previous) return;
+    if (dragging?.pointerId === event.pointerId) {
+      pointers.set(event.pointerId, { ...previous, x: event.clientX, y: event.clientY });
+      const point = groundPoint(event.clientX, event.clientY);
+      if (point) {
+        dragging.last = point;
+        onDrag('move', dragging.id, point);
+      }
+      return;
+    }
     const dx = event.clientX - previous.x;
     const dy = event.clientY - previous.y;
     pointers.set(event.pointerId, { ...previous, x: event.clientX, y: event.clientY });
@@ -92,6 +128,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
     }
   });
   const endPointer = (event) => {
+    if (dragging?.pointerId === event.pointerId) endDrag();
     pointers.delete(event.pointerId);
     pinch = pointers.size === 2 ? pinchState() : null;
   };

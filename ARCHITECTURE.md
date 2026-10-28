@@ -278,3 +278,7 @@ The 3D ball is drawn after transparent overlays with depth testing/writing disab
 Print builds dedicated landscape 2D SVGs from normalized board snapshots and briefs. Each page receives unique SVG IDs/marker references; the live renderer reference is restored after preparing print pages. Print CSS hides controls/dialogs and can include one diagram or all captured steps. PDF production is delegated to the browser, with no server or network upload.
 
 The Coach workspace and control rows reflow; on landscape tablets tools scroll in their own row rather than consuming most of the pitch. New controls are native labeled inputs/buttons. No accounts, team services, multi-user state or collaboration capability is present. See COACH_WORKFLOWS.md and PROJECT_STATE.md for usage, verification and remaining limits.
+
+### 3D editing (CAM-004, 1.0.5)
+
+`view3d.js` takes optional `pick(point)` and `onDrag(phase, id, point)`; it raycasts the pointer onto the y=0 plane (`fromWorld` in board-scene.js inverts `toWorld`) and, when `pick` names an object under a primary-button press, routes that pointer to `onDrag` (start/move/end) instead of camera rotation. `handleDrag3D` in app.js mirrors the 2D drag (`releaseManuallyMovedObject`, `recordPlayerPosition`, `commitChange`; a tap on a player opens the editor). Only the move tool picks; Shift, right-drag and multi-touch still control the camera. Picking math is unit-tested (tests/pick-3d.test.mjs); the live raycast and touch behaviour need real-device verification.

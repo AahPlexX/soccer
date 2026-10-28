@@ -2,7 +2,7 @@ import { setupCoaching } from './coaching-ui.js';
 import { captureBoard, eraseDrawingNear, retainRoster } from './coaching.js';
 import {
   addProp, applyTeamFormation, findObject, isPlayerId, keyboardNudge, loadPresetState, moveObjectBy, nudgePlayer,
-  removeSelectedProp, resetBoardState, settlePlayers, toggleZone, updatePlayerDetails, updateTeamColors,
+  pickObject, removeSelectedProp, resetBoardState, settlePlayers, toggleZone, updatePlayerDetails, updateTeamColors,
 } from './board-actions.js';
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { PALETTE, ZONES } from './constants.js';
@@ -81,6 +81,7 @@ const AUTOSAVE_DELAY_MS = 120;
 const TOAST_DURATION_MS = 2600;
 const DELETE_CONFIRM_MS = 4000;
 const DRAG_THRESHOLD_PX = 5;
+const DRAG_THRESHOLD_3D = 0.01; // board units: a tap shorter than this opens the player editor
 const PALETTE_LABELS = Object.freeze({
   blue: 'Blue', red: 'Red', yellow: 'Yellow', neonGreen: 'Neon green', orange: 'Orange', white: 'White', black: 'Black', purple: 'Purple',
 });
@@ -365,6 +366,8 @@ async function setView3D(on) {
       view3d = await createView3D({
         container: view3dContainer,
         getState: () => state,
+        pick: (point) => (state.tool === 'move' ? pickObject(state, point) : null),
+        onDrag: handleDrag3D,
         onContextLost: () => {
           view3d?.dispose();
           view3d = null;
@@ -452,6 +455,29 @@ function handleObjectPointerDown(event, target) {
   target.setPointerCapture(event.pointerId);
   target.classList.add('is-dragging');
   render();
+}
+
+// Dragging in the 3D view mirrors the 2D drag above; the 3D scene redraws from state every frame.
+function handleDrag3D(phase, id, point) {
+  const object = findObject(state, id);
+  if (!object) return;
+  if (phase === 'start') {
+    state.selectedObjectId = id;
+    drag = { id, moved: false, startX: point.x, startY: point.y };
+  } else if (phase === 'move' && drag?.id === id) {
+    if (point.x !== object.x || point.y !== object.y) releaseManuallyMovedObject(state, id);
+    object.x = point.x;
+    object.y = point.y;
+    drag.moved ||= Math.hypot(point.x - drag.startX, point.y - drag.startY) > DRAG_THRESHOLD_3D;
+  } else if (phase === 'end' && drag?.id === id) {
+    const finished = drag;
+    drag = null;
+    if (isPlayerId(state, id)) {
+      if (finished.moved) recordPlayerPosition(object); else openPlayerEditor(id);
+    }
+    dragStatus.textContent = `${id} ${finished.moved ? 'moved' : 'selected'}.`;
+    commitChange();
+  }
 }
 
 function handleToolPointerDown(event) {

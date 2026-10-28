@@ -85,8 +85,12 @@
       <div class="tool-group" role="group" aria-label="Board tools">
         <button class="tool-button is-active" data-tool="move" type="button" aria-pressed="true">Move</button>
         <button class="tool-button" data-tool="draw" type="button" aria-pressed="false">Draw</button>
-        <button class="tool-button" data-tool="arrow" type="button" aria-pressed="false">Arrow</button>
+        <button class="tool-button" data-tool="arrow" type="button" aria-pressed="false">Pass arrow</button>
+        <button class="tool-button" data-tool="run" type="button" aria-pressed="false">Run arrow</button>
         <button class="tool-button" data-tool="cone" type="button" aria-pressed="false">Add cone</button>
+        <label class="cone-color-control" for="cone-color">Cone color
+          <select id="cone-color" name="coneColor"></select>
+        </label>
         <button class="tool-button" data-tool="minigoal" type="button" aria-pressed="false">Add mini goal</button>
         <button class="tool-button" data-tool="ball" type="button" aria-pressed="false">Add ball</button>
         <button id="remove-selected" class="tool-button" type="button">Remove selected prop</button>

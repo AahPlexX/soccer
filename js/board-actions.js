@@ -12,7 +12,6 @@ export const KEYBOARD_NUDGE_STEP = 0.01;
 export const KEYBOARD_NUDGE_STEP_LARGE = 0.025;
 export const DIALOG_NUDGE_STEP = 0.02;
 
-const CONE_COLOR = '#ff8c1a';
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const TEAM_COLOR_KEYS = Object.freeze(['home', 'homeGoalkeeper', 'away', 'awayGoalkeeper']);
 
@@ -36,7 +35,7 @@ export const PROP_TOOLS = Object.freeze({
     list: 'cones',
     prefix: 'cone',
     message: 'Cone added',
-    create: (id, point) => ({ id, x: point.x, y: point.y, color: CONE_COLOR }),
+    create: (id, point, state) => ({ id, x: point.x, y: point.y, color: state.coneColor }),
   }),
   ball: Object.freeze({
     list: 'balls',
@@ -95,7 +94,7 @@ export function toggleZone(state, zoneId) {
 export function addProp(state, tool, point) {
   if (!hasOwn(PROP_TOOLS, tool)) return null;
   const definition = PROP_TOOLS[tool];
-  const prop = definition.create(createLocalId(definition.prefix), { x: clamp(point.x), y: clamp(point.y) });
+  const prop = definition.create(createLocalId(definition.prefix), { x: clamp(point.x), y: clamp(point.y) }, state);
   state[definition.list].push(prop);
   state.selectedObjectId = prop.id;
   return { id: prop.id, message: definition.message };

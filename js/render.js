@@ -180,11 +180,11 @@ function drawingPath(points) {
 }
 
 function buildDrawing(drawing) {
-  if (drawing.type === 'arrow' && drawing.points.length >= 2) {
+  if (drawing.type !== 'freehand' && drawing.points.length >= 2) {
     const [start, end] = drawing.points;
     return el('line', {
       x1: sx(start.x), y1: sy(start.y), x2: sx(end.x), y2: sy(end.y),
-      class: 'drawing-arrow', 'marker-end': 'url(#arrowhead)',
+      class: drawing.type === 'run' ? 'drawing-arrow drawing-run' : 'drawing-arrow', 'marker-end': 'url(#arrowhead)',
     });
   }
   return el('path', { d: drawingPath(drawing.points), class: 'drawing-freehand' });

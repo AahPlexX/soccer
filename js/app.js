@@ -20,6 +20,7 @@ const svg = document.querySelector('#pitch');
 const homeFormation = document.querySelector('#home-formation');
 const awayFormation = document.querySelector('#away-formation');
 const awayVisible = document.querySelector('#away-visible');
+const coneColorSelect = document.querySelector('#cone-color');
 const zonesToggle = document.querySelector('#zones-toggle');
 const zonePanel = document.querySelector('#zone-panel');
 const zoneButtons = document.querySelector('#zone-buttons');
@@ -83,6 +84,8 @@ let autosaveTimer = null;
 let toastTimer = null;
 let drag = null;
 let drawSession = null;
+// Drawing tools and the drawing type each creates. Arrow types are two-point lines; freehand collects points.
+const DRAWING_TYPE_BY_TOOL = new Map([['draw', 'freehand'], ['arrow', 'arrow'], ['run', 'run']]);
 let lastFrame = performance.now();
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -125,6 +128,7 @@ function syncControls() {
   awayVisible.setAttribute('aria-pressed', String(state.awayVisible));
   awayVisible.textContent = state.awayVisible ? 'Hide opponents' : 'Show opponents';
   themeSelect.value = state.theme;
+  coneColorSelect.value = state.coneColor;
   zoneOpacity.value = String(state.zoneOpacity);
   zoneRestrictionMode.value = state.zoneRestrictionMode;
   zoneRestrictionScope.value = state.zoneRestrictionScope;
@@ -225,11 +229,12 @@ function handleToolPointerDown(event) {
     showToast(added.message);
     return;
   }
-  if (state.tool !== 'draw' && state.tool !== 'arrow') return;
+  const drawingType = DRAWING_TYPE_BY_TOOL.get(state.tool);
+  if (!drawingType) return;
   svg.setPointerCapture(event.pointerId);
   drawSession = {
     pointerId: event.pointerId,
-    drawing: { id: `drawing-${Date.now().toString(36)}-${state.drawings.length}`, type: state.tool === 'arrow' ? 'arrow' : 'freehand', points: [point] },
+    drawing: { id: `drawing-${Date.now().toString(36)}-${state.drawings.length}`, type: drawingType, points: [point] },
   };
   state.drawings.push(drawSession.drawing);
   render({ rebuild: true });
@@ -258,7 +263,7 @@ svg.addEventListener('pointermove', (event) => {
   }
   if (drawSession?.pointerId === event.pointerId) {
     const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
-    if (drawSession.drawing.type === 'arrow') drawSession.drawing.points[1] = point;
+    if (drawSession.drawing.type !== 'freehand') drawSession.drawing.points[1] = point;
     else drawSession.drawing.points.push(point);
     rebuildObjects(svg, state);
     world = svg.querySelector('#pitch-world');
@@ -400,13 +405,20 @@ playerDialog.querySelectorAll('[data-nudge]').forEach((button) => {
 // Team colors.
 // ---------------------------------------------------------------------------------------------------------------------
 
-colorsForm.querySelectorAll('select').forEach((select) => {
+[...colorsForm.querySelectorAll('select'), coneColorSelect].forEach((select) => {
   Object.entries(PALETTE).forEach(([name, value]) => {
     const option = document.createElement('option');
     option.value = value;
     option.textContent = PALETTE_LABELS[name];
     select.append(option);
   });
+});
+// The cone color applies to new cones and recolors the selected cone.
+coneColorSelect.addEventListener('change', () => {
+  state.coneColor = coneColorSelect.value;
+  const selectedCone = state.cones.find((cone) => cone.id === state.selectedObjectId);
+  if (selectedCone) selectedCone.color = state.coneColor;
+  commitChange({ rebuild: true });
 });
 colorsOpen.addEventListener('click', () => {
   colorsForm.elements.home.value = state.colors.home;

@@ -1,16 +1,17 @@
-import { DEFAULT_COLORS, FORMATION_NAMES, SCHEMA_VERSION, TEAM_IDS, ZONES } from './constants.js';
+import { DEFAULT_COLORS, FORMATION_NAMES, PALETTE, SCHEMA_VERSION, TEAM_IDS, ZONES } from './constants.js';
 import { defaultPlayers } from './formations.js';
 
 // Every persisted enumeration in one place. normalizeState() falls back to the createInitialState() value whenever a
 // stored value is not listed here, so a corrupted or hand-edited autosave, preset, or backup cannot break the board.
 export const THEMES = Object.freeze(['turf', 'dark', 'field']);
-export const TOOLS = Object.freeze(['move', 'draw', 'arrow', 'cone', 'minigoal', 'ball']);
+export const TOOLS = Object.freeze(['move', 'draw', 'arrow', 'run', 'cone', 'minigoal', 'ball']);
 export const SPEEDS = Object.freeze([0.5, 1, 2]);
 export const SPACING_MODES = Object.freeze(['good', 'swarm']);
 export const ZONE_RESTRICTION_MODES = Object.freeze(['off', 'keep-in', 'keep-out']);
 export const ZONE_RESTRICTION_SCOPES = Object.freeze(['home', 'away', 'both']);
 export const RESTART_TYPES = Object.freeze(['throw-in', 'goal-kick', 'corner', 'kickoff']);
-export const DRAWING_TYPES = Object.freeze(['freehand', 'arrow']);
+// 'arrow' is the solid pass/shot arrow and 'run' the dashed player run/dribble arrow (PRD 7.1); both are two-point lines.
+export const DRAWING_TYPES = Object.freeze(['freehand', 'arrow', 'run']);
 export const ZONE_OPACITY_RANGE = Object.freeze({ min: 0.1, max: 0.45 });
 
 const PLAYERS_PER_TEAM = 7;
@@ -42,6 +43,8 @@ export function createInitialState() {
     zoneRestrictionScope: 'home',
     zoneOpacity: 0.2,
     colors: { ...DEFAULT_COLORS },
+    // Color of newly placed cones, and of the selected cone when the coach picks one (PRD 7.2).
+    coneColor: PALETTE.orange,
     players: defaultPlayers(),
     balls: [{ id: 'ball-main', x: 0.5, y: 0.5, primary: true }],
     cones: [],
@@ -217,6 +220,7 @@ export function normalizeState(candidate) {
     cones: normalizePositionedList(candidate.cones),
     miniGoals: normalizePositionedList(candidate.miniGoals),
     drawings: normalizeDrawings(candidate.drawings),
+    coneColor: isHexColor(candidate.coneColor) ? candidate.coneColor : base.coneColor,
     selectedObjectId: stringOrNull(candidate.selectedObjectId),
     currentPresetId: stringOrNull(candidate.currentPresetId),
     simulation: normalizeSimulation(candidate.simulation, base.simulation, players),

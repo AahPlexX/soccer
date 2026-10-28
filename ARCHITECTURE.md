@@ -96,6 +96,12 @@ Applying a formation updates role, current position, and anchor position for tha
 
 The optional Pass options button is a view-only pressed-state toggle created by `js/pass-options-ui.js`. It dispatches `pass-options-change` to request an immediate redraw even while paused. `js/render.js` reuses six noninteractive, `aria-hidden` SVG lines and shows the open receivers returned by `availablePassOptions()`; no lines appear without a stationary visible carrier. `openPassReceivers()` is shared with the CPU pass selector, including its opponent-lane clearance calculation. A live status explains a loose or in-flight ball, hidden carrier, blocked lanes, or the number of available lanes. The overlay itself is not persisted. The CPU falls back to a blocked receiver if no lane is open, so an empty overlay does not mean that the CPU cannot pass.
 
+## Drawing tools
+
+Tools live in `TOOLS` (`js/state.js`); each drawing is `{ id, type, points }` with `type` in `DRAWING_TYPES`: `freehand` (a point trail), `arrow` (solid pass/shot arrow) and `run` (dashed player run/dribble arrow, PRD 7.1). `DRAWING_TYPE_BY_TOOL` in `js/app.js` maps the `draw`, `arrow`, and `run` tools to their type; every type except `freehand` is a two-point line whose second point follows the pointer. `js/render.js` draws two-point types as a line with the shared arrowhead marker and adds the `drawing-run` class for `run`; `styles.css` gives it `stroke-dasharray`. An unknown stored type normalizes to `freehand`. Curved arrows are not implemented.
+
+Cone color: `state.coneColor` (hex, default `PALETTE.orange`, validated in `normalizeState`) is the color of newly placed cones, passed to prop factories through `addProp(state, tool, point)`; the "Cone color" select in the toolbar changes it and also recolors the selected cone (`js/app.js`).
+
 ## Drill props
 
 Board state holds three prop collections, all in normalized coordinates: `balls` (`{id, x, y, primary}`; exactly one primary match ball that cannot be removed), `cones` (`{id, x, y, color}`), and `miniGoals` (`{id, x, y}`). Props are draggable and keyboard-nudgeable through the shared `findObject()` lookup in `js/app.js`, and are rendered in `#prop-layer` / `#ball-layer` by `js/render.js`. `normalizeState()` defaults a missing or non-array `miniGoals` to `[]`, so saves from before mini goals load unchanged and `SCHEMA_VERSION` stays `1`. The simulation ignores props.

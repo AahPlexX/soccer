@@ -204,6 +204,8 @@ input[type="text"], input[type="number"] {
 .cone-shape, .cone-base { stroke: rgba(20,20,20,.45); stroke-width: 1.5; }
 .drawing-freehand, .drawing-arrow { fill: none; stroke: #fff24d; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 .drawing-arrow { stroke-width: 7; }
+.drawing-run { stroke-dasharray: 18 12; }
+.cone-color-control { display: flex; align-items: center; gap: .4rem; font-weight: 600; }
 .arrow-head { fill: #fff24d; }
 
 .tool-group, .simulation-group, .save-group {

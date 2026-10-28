@@ -2,13 +2,13 @@
 
 Last updated: 2026-10-28
 Branch: `main` · application version: **1.0.4** · persistence schema: `1`
-Status: field-coaching integration implemented; 219 local tests, syntax and rendered-browser checks pass. Production deployment verification is pending.
+Status: field-coaching integration released; 219 tests, runtime syntax, rendered-browser checks and GitHub Pages deployment pass.
 
 ## Resume here
 
 The app is a single-coach U9 7v7 tactical board on GitHub Pages: https://aahplexx.github.io/soccer/. After the concurrent per-player bench release 1.0.3 at `a1a05c9`, version 1.0.4 integrates preparation, small-sided participants, teaching snapshots, drill briefs, a field clock, controlled CPU stepping, annotations and print/PDF. Read [COACH_WORKFLOWS.md](./COACH_WORKFLOWS.md) for the actual user flows and limitations.
 
-The local release passed `npm test` (219/219), runtime syntax and app-shell/deployment-integrity checks, plus rendered tablet/compact interactions. Verify the corresponding GitHub validation and Pages deployment before calling it live. After release, next priorities are physical-iPad field testing and the remaining 3D editing/camera gaps; do not infer touch/offline/performance from desktop Chromium or CI.
+Release implementation `c1305db` passed [Validate main](https://github.com/AahPlexX/soccer/actions/runs/40776203794) and [Pages deployment](https://github.com/AahPlexX/soccer/actions/runs/40776203853). A fresh Chromium session on the hosted app verified the coaching flow without page errors. Check later workflow runs for any subsequent documentation or implementation commits. After release, next priorities are physical-iPad field testing and the remaining 3D editing/camera gaps; do not infer touch/offline/performance from desktop Chromium or CI.
 
 ## Current implemented behavior
 
@@ -40,7 +40,7 @@ The local release passed `npm test` (219/219), runtime syntax and app-shell/depl
 
 Work began on version 1.0.2 at `f6fcd98`, 201 automated tests; integrated the concurrent 1.0.3 bench release at `a1a05c9` before publishing. Focused new tests cover bench/keeper exclusion, all-benched behavior, snapshot detachment and normalization, sequence bounds/order, briefs/bench undo and backup round trips, real elapsed clock, equipment protection, roster retention, route erasure, loose-ball recovery and 3D annotations/pass lines.
 
-Rendered Chromium so far: 1024×768 and 390×844 brief/save/reload, 3v3 participant counts, two captured steps, previous/next, one-second stepping, clock start/pause, update loaded preset and print preparation; multi-page PDF produced locally. Route draw→erase→Undo and 3D visibility pass without page errors. Responsive page-overflow checks include 768×1024. Final local suite: **219 tests, 219 pass, 0 fail**; syntax and diff checks pass. Additional Chromium checks covered opt-in roster reuse across a built-in load, new-drill roster preservation, duplicate/confirmed clear/Undo for props, persistent start/reset, route draw/erase/Undo and 3D annotation display. No page errors were observed. Production evidence is pending deployment.
+Rendered Chromium so far: 1024×768 and 390×844 brief/save/reload, 3v3 participant counts, two captured steps, previous/next, one-second stepping, clock start/pause, update loaded preset and print preparation; multi-page PDF produced locally. Route draw→erase→Undo and 3D visibility pass without page errors. Responsive page-overflow checks include 768×1024. Final local suite: **219 tests, 219 pass, 0 fail**; syntax and diff checks pass. Additional Chromium checks covered opt-in roster reuse across a built-in load, new-drill roster preservation, duplicate/confirmed clear/Undo for props, persistent start/reset, route draw/erase/Undo and 3D annotation display. No page errors were observed. Hosted Chromium repeated the 3v3 bench, two-step capture, print preparation, clock, update-existing/save/reload and 3D checks successfully after deployment. The generated practice PDF had two landscape pages. The live worker reported version 1.0.4 with the deployment build stamp.
 
 ## Stable requirement ledger
 

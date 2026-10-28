@@ -84,15 +84,21 @@ export function isPlayerId(state, id) {
 }
 
 /**
- * Players are physical: after any coaching change no two may overlap. The selected object (the player the coach just
- * placed) stays put and the others step aside, adopting their new spot as their simulation anchor.
+ * Players are physical: after any coaching change no two may overlap. Selected players (a single object or an explicitly fixed unit) stay put and the others step aside, adopting their new spot as their simulation anchor.
  */
-export function settlePlayers(state) {
+export function settlePlayers(state, fixedIds = [state.selectedObjectId]) {
   const before = state.players.map(({ x, y }) => [x, y]);
   // Benched players are off the pitch, so they neither push nor get pushed.
-  separatePlayers(state.players.filter((player) => !player.benched), SIMULATION.playerSpacing, [state.selectedObjectId]);
+  separatePlayers(state.players.filter((player) => !player.benched), SIMULATION.playerSpacing, fixedIds);
   state.players.forEach((player, index) => {
-    if (player.x !== before[index][0] || player.y !== before[index][1]) recordPlayerPosition(player);
+    if (player.x !== before[index][0] || player.y !== before[index][1]) {
+      recordPlayerPosition(player);
+      // A carrier displaced by another player's coaching move retains possession.
+      if (state.simulation.carrierId === player.id && state.balls[0]) {
+        state.balls[0].x = player.x;
+        state.balls[0].y = player.y;
+      }
+    }
   });
 }
 

@@ -5,7 +5,7 @@ import { defaultPlayers } from './formations.js';
 // Every persisted enumeration in one place. normalizeState() falls back to the createInitialState() value whenever a
 // stored value is not listed here, so a corrupted or hand-edited autosave, preset, or backup cannot break the board.
 export const THEMES = Object.freeze(['turf', 'dark', 'field']);
-export const TOOLS = Object.freeze(['move', 'draw', 'arrow', 'run', 'curve', 'erase', 'cone', 'minigoal', 'ball']);
+export const TOOLS = Object.freeze(['move', 'select', 'draw', 'arrow', 'run', 'curve', 'erase', 'cone', 'minigoal', 'ball']);
 export const SPEEDS = Object.freeze([0.5, 1, 2]);
 export const SPACING_MODES = Object.freeze(['good', 'swarm']);
 export const ZONE_RESTRICTION_MODES = Object.freeze(['off', 'keep-in', 'keep-out']);

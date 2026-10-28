@@ -21,7 +21,8 @@ export function setupCoaching({ getState, commit, replace, toast, setStart, retu
     if (text === lastTick) return;
     lastTick = text;
     byId('drill-clock').textContent = text;
-    byId('clock-status').textContent = seconds === 0 ? 'Time finished. Pause for water or rotate players.' : clock.running ? 'Drill clock running' : 'Drill clock paused';
+    const clockStatus = seconds === 0 ? 'Time finished. Pause for water or rotate players.' : clock.running ? 'Drill clock running' : 'Drill clock paused';
+    if (byId('clock-status').textContent !== clockStatus) byId('clock-status').textContent = clockStatus;
     byId('clock-toggle').textContent = seconds === 0 ? 'Clock finished' : clock.running ? 'Pause clock' : 'Start clock';
     byId('clock-toggle').disabled = seconds === 0;
   }
@@ -170,5 +171,9 @@ export function setupCoaching({ getState, commit, replace, toast, setStart, retu
 
   }
   sync();
-  return { sync, onLoad() { selectedStepId = null; currentStep = -1; resetClock(); } };
+  return { sync, captureCurrent() {
+    if (!addTeachingStep(getState(), '')) { report('A sequence can contain up to 12 steps.'); return; }
+    currentStep = getState().coaching.steps.length - 1; selectedStepId = getState().coaching.steps[currentStep].id;
+    getState().simulation.running = false; commit(); drawSequence(); report(`Captured teaching step ${currentStep + 1}.`);
+  }, onLoad() { selectedStepId = null; currentStep = -1; resetClock(); } };
 }

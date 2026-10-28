@@ -9,9 +9,7 @@ const ROTATE_RADIANS_PER_PIXEL = 0.006;
 const WHEEL_ZOOM_PER_PIXEL = 0.0015;
 const PINCH_WHEEL_ZOOM_PER_PIXEL = 0.01; // a trackpad pinch arrives as a wheel event with ctrlKey
 
-// Editing (CAM-004): `pick(point)` names the object under a board point or returns null; `onDrag(phase, id, point)` then
-// receives 'start', 'move' and 'end' with the board point under the pointer. Both are optional (view-only without them).
-export async function createView3D({ container, getState, onContextLost = () => {}, pick = () => null, onDrag = () => {} }) {
+export async function createView3D({ container, getState, onContextLost = () => {}, isEditing = () => false, onObjectSelect = () => {}, onObjectMove = () => {}, onObjectCommit = () => {} }) {
   const THREE = await import('../vendor/three/three.module.js');
   const renderer = new THREE.WebGLRenderer({ antialias: true }); // throws without WebGL
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -60,25 +58,21 @@ export async function createView3D({ container, getState, onContextLost = () => 
     renderer.render(board.scene, camera);
   }
 
-  const raycaster = new THREE.Raycaster();
-  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const hit = new THREE.Vector3();
-  // The board point under a client position, or null when the ray misses the ground (camera looking at the horizon).
-  const groundPoint = (clientX, clientY) => {
-    const rect = canvas.getBoundingClientRect();
-    raycaster.setFromCamera({ x: ((clientX - rect.left) / rect.width) * 2 - 1, y: -(((clientY - rect.top) / rect.height) * 2 - 1) }, camera);
-    return raycaster.ray.intersectPlane(ground, hit) ? fromWorld(hit.x, hit.z) : null;
-  };
-  let dragging = null; // { pointerId, id } while an object is being moved
-  const endDrag = () => {
-    if (!dragging) return;
-    const { id, last } = dragging;
-    dragging = null;
-    onDrag('end', id, last);
-  };
-
   const pointers = new Map(); // active pointers: id -> { x, y, button }
   let pinch = null; // two-pointer gesture: last finger distance and midpoint
+  let objectDrag = null;
+  const raycaster = new THREE.Raycaster();
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  function pointerRay(event) {
+    const rect = canvas.getBoundingClientRect();
+    camera.updateMatrixWorld();
+    raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2), camera);
+  }
+  function groundPoint() { return raycaster.ray.intersectPlane(ground, new THREE.Vector3()); }
+  function finishObjectDrag() {
+    if (!objectDrag) return;
+    const moved = objectDrag.moved; objectDrag = null; onObjectCommit(moved);
+  }
 
   const pinchState = () => {
     const [a, b] = [...pointers.values()];
@@ -91,26 +85,32 @@ export async function createView3D({ container, getState, onContextLost = () => 
 
   canvas.addEventListener('pointerdown', (event) => {
     canvas.setPointerCapture(event.pointerId);
-    endDrag(); // a second finger turns an object drag into a camera gesture
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, button: event.button });
     pinch = pointers.size === 2 ? pinchState() : null;
-    if (pointers.size !== 1 || event.button !== 0 || event.shiftKey) return;
-    const point = groundPoint(event.clientX, event.clientY);
-    const id = point && pick(point);
-    if (id) {
-      dragging = { pointerId: event.pointerId, id, last: point };
-      onDrag('start', id, point);
+    if (pointers.size > 1) { finishObjectDrag(); return; }
+    if (isEditing() && event.button === 0 && !event.shiftKey) {
+      pointerRay(event);
+      const hit = raycaster.intersectObjects(board.pickableObjects(), true)[0];
+      let root = hit?.object;
+      while (root && !root.userData.objectId) root = root.parent;
+      const start = groundPoint();
+      if (root && start) {
+        objectDrag = { id: root.userData.objectId, pointerId: event.pointerId, start, x: root.position.x, z: root.position.z, moved: false };
+        onObjectSelect(objectDrag.id);
+      }
     }
   });
   canvas.addEventListener('pointermove', (event) => {
     const previous = pointers.get(event.pointerId);
     if (!previous) return;
-    if (dragging?.pointerId === event.pointerId) {
+    if (objectDrag?.pointerId === event.pointerId && pointers.size === 1) {
       pointers.set(event.pointerId, { ...previous, x: event.clientX, y: event.clientY });
-      const point = groundPoint(event.clientX, event.clientY);
+      pointerRay(event); const point = groundPoint();
       if (point) {
-        dragging.last = point;
-        onDrag('move', dragging.id, point);
+        const x = objectDrag.x + point.x - objectDrag.start.x;
+        const z = objectDrag.z + point.z - objectDrag.start.z;
+        objectDrag.moved ||= Math.hypot(point.x - objectDrag.start.x, point.z - objectDrag.start.z) > 0.03;
+        if (objectDrag.moved) onObjectMove(objectDrag.id, fromWorld(x, z));
       }
       return;
     }
@@ -128,7 +128,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
     }
   });
   const endPointer = (event) => {
-    if (dragging?.pointerId === event.pointerId) endDrag();
+    if (objectDrag?.pointerId === event.pointerId) finishObjectDrag();
     pointers.delete(event.pointerId);
     pinch = pointers.size === 2 ? pinchState() : null;
   };
@@ -136,6 +136,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
   canvas.addEventListener('pointercancel', endPointer);
   canvas.addEventListener('wheel', (event) => {
     event.preventDefault();
+    finishObjectDrag();
     orbit = zoomOrbit(orbit, Math.exp(-event.deltaY * (event.ctrlKey ? PINCH_WHEEL_ZOOM_PER_PIXEL : WHEEL_ZOOM_PER_PIXEL)));
   }, { passive: false });
   canvas.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -147,6 +148,11 @@ export async function createView3D({ container, getState, onContextLost = () => 
   });
 
   return {
+    setEditing(active) {
+      if (!active) finishObjectDrag();
+      canvas.style.cursor = active ? 'crosshair' : 'grab';
+      canvas.setAttribute('aria-label', active ? '3D editing view. Drag players, balls or equipment on the ground. Use the 2D board or selection arrow controls for keyboard positioning.' : '3D camera view. Drag to rotate, scroll or pinch to zoom, two fingers to pan.');
+    },
     /** Starts drawing frames (also after the container was hidden). */
     start() { if (!frame) frame = requestAnimationFrame(render); },
     /** Stops drawing; the scene and renderer stay ready for the next start. */
@@ -159,6 +165,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
     zoom(factor) { orbit = zoomOrbit(orbit, factor); },
     get orbit() { return orbit; },
     dispose() {
+      finishObjectDrag();
       cancelAnimationFrame(frame);
       frame = 0;
       board.dispose();

@@ -322,3 +322,12 @@ The owner requested a practical single-coach tool for drill teaching, simulation
 6. **Take away:** print the full 2D diagram with its applied brief or a multi-page captured plan using the browser's print/Save PDF interface. Backups must include briefs, participants, starting setups and captured steps. No upload is involved.
 
 The CPU is a simplified U9 teaching model. Written drill rules, arrows, cones, extra balls and mini goals are visual aids; custom scoring and arbitrary route execution are not claimed. Exact demonstrations use paused snapshots. Physical-iPad touch, outdoor use, Safari printing, offline/Home Screen updates and the baseline 60 fps target require device evidence separate from unit tests and Chromium checks.
+
+
+## 13. Board interaction and visual workspace (1.0.6)
+
+- Give the pitch priority. Group setup, annotation, equipment and simulation preferences instead of displaying all controls with equal weight. Use a collapsible tool drawer at tablet/phone widths and preserve keyboard focus, long labels, themes and touch targets. No external visual asset or dependency is needed.
+- Tapping a player selects contextual actions; Edit player or Enter opens details. This supersedes the earlier assumption that every tap must open a player popover. Provide quick possession assignment, bench, nudge, prop actions and snapshot capture without blocking the board.
+- Support selecting and rigidly moving a unit of players/props using pointer and keyboard, with shared field-boundary limits and non-overlapping player placement. Selection is view-only; resulting edits remain undoable and persist normally.
+- Permit opt-in 3D ground-plane movement of players, balls and props, with camera manipulation still available. Camera-only mode is the default. Drawing and unit-selection tools continue in 2D and switch views explicitly.
+- Provide a presentation view that prevents accidental manual editing while retaining simulation, teaching steps, clock and camera/zoom navigation. Preserve all stored coaching content and existing local-only/no-collaboration constraints.

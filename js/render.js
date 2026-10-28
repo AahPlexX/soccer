@@ -107,7 +107,7 @@ function buildPlayer(player, state) {
     class: `player-token team-${player.team}`,
     tabindex: '0',
     role: 'button',
-    'aria-label': `${player.team === 'home' ? 'Our' : 'Opposing'} ${player.label || player.role}, number ${player.number}. Drag to move or use arrow keys.`,
+    'aria-label': `${player.team === 'home' ? 'Our' : 'Opposing'} ${player.label || player.role}, number ${player.number}. Tap for actions, drag or use arrow keys to move, Enter to edit.`,
     'data-object-id': player.id,
     'data-object-type': 'player',
   });
@@ -126,7 +126,7 @@ function buildBall(ball) {
     class: 'ball-token',
     tabindex: '0',
     role: 'button',
-    'aria-label': 'Soccer ball. Drag to move or use arrow keys.',
+    'aria-label': 'Soccer ball. Tap for actions, drag or use arrow keys to move, Enter to edit.',
     'data-object-id': ball.id,
     'data-object-type': 'ball',
   });
@@ -144,7 +144,7 @@ function buildCone(cone) {
     class: 'cone-token',
     tabindex: '0',
     role: 'button',
-    'aria-label': 'Training cone. Drag to move or use arrow keys.',
+    'aria-label': 'Training cone. Tap for actions, drag or use arrow keys to move, Enter to edit.',
     'data-object-id': cone.id,
     'data-object-type': 'cone',
   });
@@ -162,7 +162,7 @@ function buildMiniGoal(goal) {
     class: 'minigoal-token',
     tabindex: '0',
     role: 'button',
-    'aria-label': 'Mini goal. Drag to move or use arrow keys.',
+    'aria-label': 'Mini goal. Tap for actions, drag or use arrow keys to move, Enter to edit.',
     'data-object-id': goal.id,
     'data-object-type': 'minigoal',
   });

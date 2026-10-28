@@ -1,14 +1,16 @@
 # Project state — handoff entry point
 
 Last updated: 2026-10-28
-Branch: `main` · application version: **1.0.5** · persistence schema: `1`
-Status: field-coaching integration released; 219 tests, runtime syntax, rendered-browser checks and GitHub Pages deployment pass.
+Branch: `main` · application version: **1.0.6** · persistence schema: `1`
+Status: 1.0.6 workspace and board interactions implemented; local automated/rendered verification passed, production release checks pending.
 
 ## Resume here
 
-The app is a single-coach U9 7v7 tactical board on GitHub Pages: https://aahplexx.github.io/soccer/. After the concurrent per-player bench release 1.0.3 at `a1a05c9`, version 1.0.4 integrates preparation, small-sided participants, teaching snapshots, drill briefs, a field clock, controlled CPU stepping, annotations and print/PDF. Read [COACH_WORKFLOWS.md](./COACH_WORKFLOWS.md) for the actual user flows and limitations.
+The app is a single-coach U9 7v7 tactical board on GitHub Pages: https://aahplexx.github.io/soccer/. After the concurrent per-player bench release 1.0.3 at `a1a05c9`, version 1.0.4 integrates preparation, small-sided participants, teaching snapshots, drill briefs, a field clock, controlled CPU stepping, annotations and print/PDF. Version 1.0.6 adds the redesigned tool rail/drawer, contextual selection actions, rigid unit movement, quick possession/snapshot setup, presentation lock and opt-in 3D object dragging. Read [COACH_WORKFLOWS.md](./COACH_WORKFLOWS.md) for the actual user flows and limitations.
 
-Release implementation `c1305db` passed [Validate main](https://github.com/AahPlexX/soccer/actions/runs/40776203794) and [Pages deployment](https://github.com/AahPlexX/soccer/actions/runs/40776203853). A fresh Chromium session on the hosted app verified the coaching flow without page errors. Check later workflow runs for any subsequent documentation or implementation commits. After release, next priorities are physical-iPad field testing and the remaining 3D editing/camera gaps; do not infer touch/offline/performance from desktop Chromium or CI.
+Concurrent release `e1fa605` added ground-plane 3D dragging in 1.0.5 while this workspace was in progress. This 1.0.6 integration preserves the picking/conversion helpers and tests, and refines editing with mesh picking, opt-in mode, contextual actions and collision settlement.
+
+Previous release implementation `c1305db` passed [Validate main](https://github.com/AahPlexX/soccer/actions/runs/40776203794) and [Pages deployment](https://github.com/AahPlexX/soccer/actions/runs/40776203853). A fresh Chromium session on the hosted app verified the coaching flow without page errors. Check later workflow runs for any subsequent documentation or implementation commits. Next priorities are physical-iPad field testing, dedicated half-field framing and follow-camera gaps; do not infer touch/offline/performance from desktop Chromium or CI.
 
 ## Current implemented behavior
 
@@ -21,8 +23,17 @@ Release implementation `c1305db` passed [Validate main](https://github.com/AahPl
 - Real-time drill clock, independent of simulation speed; pause/reset/completion and background elapsed time. Runtime countdown is not persisted or automatically advanced and has no audio alarm.
 - Four built-ins now include coaching briefs. User presets save all coaching fields, bench flags, starting snapshot and steps; update a loaded user preset or save a new copy. Built-ins are immutable. Backups include the complete content.
 - Print or browser Save as PDF for current diagram/brief, or a captured multi-page plan. Print is local and uses the full 2D diagram even when viewing 3D.
-- 2D zoom/pan; lazy vendored Three.js 3D scene with orbit, zoom, pan and four camera presets. 3D shows diagrams, run/pass/route arrows and optional pass-option lines as well as participants and props. Ball visibility is protected through occluders and a carried ball is displayed beside its carrier without changing physics. Editing is still in 2D.
-- Offline app shell, native manifest, versioned Update/Cancel prompt. Each Pages deployment has an isolated cache/build identity. The version begins at 1.0.0 and **each significant update increments patch by one**; `package.json` and `APP_VERSION` in `sw.js` must match. Current release is 1.0.5. No collaboration features.
+- 2D zoom/pan; lazy vendored Three.js 3D scene with orbit, zoom, pan and four camera presets. 3D shows diagrams, run/pass/route arrows and optional pass-option lines as well as participants and props. Ball visibility is protected through occluders and a carried ball is displayed beside its carrier without changing physics. Ground-plane object editing is opt-in in 3D; drawing and unit selection stay in 2D.
+- Offline app shell, native manifest, versioned Update/Cancel prompt. Each Pages deployment has an isolated cache/build identity. The version begins at 1.0.0 and **each significant update increments patch by one**; `package.json` and `APP_VERSION` in `sw.js` must match. Current release is 1.0.6. No collaboration features.
+
+## Workspace integration — 1.0.6
+
+- A quiet light/forest interface gives the pitch priority. Wide screens have a left tool rail; tablet/phone screens use a focus-managed drawer. Playback and teaching controls are compact and the selected-object strip occupies a stable reserved region, so it cannot move the pitch during a drag. Dark and Field themes remain supported.
+- Select unit supports pointer and Enter/Space selection, rigid group dragging and arrow nudges. Nearby players yield; selected members share field limits and anchors update. Single-tap actions include Edit, Give ball (paused setup), bench, duplicate/remove, nudge and Capture step. Enter still opens the player editor from Move mode.
+- Present hides edit chrome and blocks manual/keyboard edits while allowing deliberate simulation, clock, snapshot and view controls. Escape exits.
+- Edit in 3D raycasts visible players/balls/props, moves them on the ground, pauses play and commits through the same board model. Camera-only mode is default; right/Shift-drag, two fingers and background drag manipulate the camera. Selecting a drawing, placement or unit tool switches back to 2D.
+- Modules: `board-ui.css` is the final visual layer, `js/board-surface.js` owns surface controls and view-only selection feedback, `js/board-interactions.js` holds testable group translation/possession setup. All are in the app shell and deploy artifact.
+- Local tests: **228/228 pass**. Chromium verified unit drag, possession, quick capture, presentation lock and actual 3D dragging, plus keyboard/drawer/Escape/reduced-motion/long-title and no page overflow at 320, 390, 683, 768, 1024 and 1366 CSS px. Themes were visually inspected. Actual browser zoom, screen-reader operation and physical iPad touch/performance are not certified by these checks. Production evidence pending deployment.
 
 ## Modules and storage
 
@@ -36,7 +47,7 @@ Release implementation `c1305db` passed [Validate main](https://github.com/AahPl
 - `js/storage.js`: normalized detached snapshots, IndexedDB with localStorage fallback/tombstones, validated backup merging and surfaced failures. Schema remains 1. New brief/steps survive through existing state serialization without a separate database.
 - `sw.js` and `.github/workflows/pages.yml`: full native module graph and vendor assets cached and published; build stamp uses SHA/run/attempt. Update acceptance saves before reload; unavailable storage requires explicit continuation without saving. Pre-1.0 clients needed a one-time close-all-tabs transition.
 
-## Verification for this work unit
+## Verification for the 1.0.4 foundation
 
 Work began on version 1.0.2 at `f6fcd98`, 201 automated tests; integrated the concurrent 1.0.3 bench release at `a1a05c9` before publishing. Focused new tests cover bench/keeper exclusion, all-benched behavior, snapshot detachment and normalization, sequence bounds/order, briefs/bench undo and backup round trips, real elapsed clock, equipment protection, roster retention, route erasure, loose-ball recovery and 3D annotations/pass lines.
 
@@ -60,14 +71,17 @@ Earlier FND-001..039 evidence and original COACH/CAM decisions are archived in [
 - COACH-012 Authored practice/teaching sequence: done in 1.0.4, up to 12 snapshots with own briefs.
 - COACH-013 Persistent starting setup and update named drill: done in 1.0.4.
 - COACH-014 Route arrows and individual erase: done in 1.0.4.
-- CAM-001/002/003/007 zoom/perspective/presets/fallback: implemented. CAM-005 annotations/pass options in 3D: implemented in 1.0.4. CAM-004 3D editing (drag players, balls, cones and mini goals; tap a player to open the editor) shipped in 1.0.5, unit-tested for picking only and awaiting real-device touch verification. CAM-006 follow cameras remains unimplemented.
+- CAM-001/002/003/007 zoom/perspective/presets/fallback: implemented. CAM-005 annotations/pass options in 3D: implemented in 1.0.4. CAM-004 opt-in ground-plane object editing is implemented in 1.0.6; CAM-006 follow cameras remain unimplemented.
+- BOARD-001 Rigid multi-object unit selection/movement: implemented in 1.0.6.
+- BOARD-002 Quick possession setup and contextual actions: implemented in 1.0.6.
+- COACH-015 Presentation lock and uncluttered workspace: implemented in 1.0.6.
 
 ## Known limits and next work
 
 1. Physical iPad 2018 baseline: no verified 60 fps, outdoor readability, Safari/Home Screen offline/update lifecycle or touch ergonomics. Test on device before changing these statuses.
 2. CPU is a simplified teaching model, not full referee logic: no fouls, complete offside adjudication, detailed restart distances or mini-goal scoring. Written notes, cones, extra balls and arrows do not command the engine. Use snapshots for exact sequences.
-3. 3D supports dragging existing objects (1.0.5); placing props, drawing and erasing remain 2D. Dedicated half-field presets, view reversal and follow cameras are future work.
-4. Player editor is a centered dialog, not a player-adjacent popover. Team colors remain native selects rather than swatches. Some inherited token/control hit targets still need physical-device review.
+3. 3D can move objects, but drawing, placement and group selection use 2D. Dedicated half-field presets, view reversal and follow cameras are future work.
+4. Tapping selects a contextual action strip; details use a centered dialog. Team colors remain native selects rather than swatches. Some inherited token/control hit targets still need physical-device review.
 5. Captured sequences are limited to 12; time remaining is not restored after reload, and printing relies on the browser's print/PDF support. Local-only browser storage is not cross-device sync. Back up files before clearing site data.
 6. No accounts, invites, chat, remote database, concurrent editing or collaboration will be added within this request.
 

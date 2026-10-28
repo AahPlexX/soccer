@@ -202,3 +202,11 @@ test('3D teaching drawings and optional pass lines follow the board and are remo
   board.sync(state, { showPassOptions: false }); assert.equal(board.passOptions(), 0);
   state.drawings = []; board.sync(state); assert.equal(board.objectFor('pass'), null);
 });
+
+test('3D edit picking exposes only visible board objects with stable identities', () => {
+ const {state,board}=setup();state.players[1].benched=true;state.awayVisible=false;
+ state.cones.push({id:'edit-cone',x:.2,y:.2,color:'#ff8c1a'});board.sync(state);
+ const ids=board.pickableObjects().map(root=>root.userData.objectId);
+ assert.ok(ids.includes('home-7'));assert.ok(ids.includes('ball-main'));assert.ok(ids.includes('edit-cone'));
+ assert.ok(!ids.includes('home-2'));assert.ok(!ids.some(id=>id.startsWith('away-')));
+});

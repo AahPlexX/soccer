@@ -13,7 +13,8 @@ const GRASS_TEXTURE = Object.freeze({ width: 1500, height: 1020 }); // same 60:4
 
 /** Board coordinates (0 to 1) to world x and z. */
 export const toWorld = (x, y) => ({ x: (x - 0.5) * L, z: (y - 0.5) * W });
-/** Inverse of toWorld: a ground point back to board coordinates, clamped onto the pitch. */
+
+/** Inverse world-to-board conversion, clamped to the pitch. */
 export const fromWorld = (x, z) => ({ x: Math.min(1, Math.max(0, x / L + 0.5)), y: Math.min(1, Math.max(0, z / W + 0.5)) });
 
 // Pitch markings on a canvas whose pixel (px, py) is board point (px / width, py / height).
@@ -228,6 +229,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
       if (!map.has(item.id)) {
         const entry = create();
         map.set(item.id, entry);
+        entry.group.userData.objectId = item.id;
         scene.add(entry.group);
       }
       update(map.get(item.id), item);
@@ -305,6 +307,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     scene,
     sync,
     dispose,
+    pickableObjects: () => [...players.values(), ...balls.values(), ...cones.values(), ...miniGoals.values()].map((entry) => entry.group).filter((group) => group.visible),
     passOptions: () => passSlots.filter((line) => line.visible).length,
     counts: () => ({ players: players.size, balls: balls.size, cones: cones.size, miniGoals: miniGoals.size, zones: zones.size }),
     objectFor: (id) => (players.get(id) ?? balls.get(id) ?? cones.get(id) ?? miniGoals.get(id) ?? drawings.get(id))?.group ?? null,

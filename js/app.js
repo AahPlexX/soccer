@@ -1,8 +1,10 @@
+import { moveSelection } from './board-interactions.js';
+import { setupBoardSurface } from './board-surface.js';
 import { setupCoaching } from './coaching-ui.js';
 import { captureBoard, eraseDrawingNear, retainRoster } from './coaching.js';
 import {
   addProp, applyTeamFormation, findObject, isPlayerId, keyboardNudge, loadPresetState, moveObjectBy, nudgePlayer,
-  pickObject, removeSelectedProp, resetBoardState, settlePlayers, toggleZone, updatePlayerDetails, updateTeamColors,
+  removeSelectedProp, resetBoardState, settlePlayers, toggleZone, updatePlayerDetails, updateTeamColors,
 } from './board-actions.js';
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { PALETTE, ZONES } from './constants.js';
@@ -81,7 +83,6 @@ const AUTOSAVE_DELAY_MS = 120;
 const TOAST_DURATION_MS = 2600;
 const DELETE_CONFIRM_MS = 4000;
 const DRAG_THRESHOLD_PX = 5;
-const DRAG_THRESHOLD_3D = 0.01; // board units: a tap shorter than this opens the player editor
 const PALETTE_LABELS = Object.freeze({
   blue: 'Blue', red: 'Red', yellow: 'Yellow', neonGreen: 'Neon green', orange: 'Orange', white: 'White', black: 'Black', purple: 'Purple',
 });
@@ -109,6 +110,10 @@ let drawSession = null;
 const DRAWING_TYPE_BY_TOOL = new Map([['draw', 'freehand'], ['arrow', 'arrow'], ['run', 'run'], ['curve', 'curve']]);
 let lastFrame = performance.now();
 let coachingUI;
+let surfaceUI;
+const selectedUnit = new Set();
+let editing3D = false;
+let objectDrag3D = null;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Reset baseline, autosave, toast, rendering.
@@ -160,11 +165,12 @@ function syncControls() {
   spacingSelect.value = state.spacingMode;
   playToggle.textContent = state.simulation.running ? 'Pause simulation' : 'Play simulation';
   document.querySelectorAll('.tool-button[data-tool]').forEach((button) => {
-    const active = button.dataset.tool === state.tool;
+    const active = mode3d ? editing3D && button.dataset.tool === 'move' : button.dataset.tool === state.tool;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-pressed', String(active));
   });
   coachingUI?.sync();
+  surfaceUI?.sync();
   zoneButtons.querySelectorAll('button').forEach((button) => {
     button.setAttribute('aria-pressed', String(state.selectedZones.includes(button.dataset.zone)));
   });
@@ -198,7 +204,7 @@ function renderBench() {
 }
 
 function commitChange(options) {
-  settlePlayers(state);
+  settlePlayers(state, selectedUnit.size ? [...selectedUnit] : [state.selectedObjectId]);
   // While the simulation runs it moves players on its own; that is not an edit, so the baseline follows silently.
   if (state.simulation.running) boardHistory.rebase(state); else boardHistory.record(state);
   render(options);
@@ -207,7 +213,7 @@ function commitChange(options) {
 
 /** Replaces the whole board (load, reset, import) and makes it the new reset baseline. */
 function replaceBoard(next, { baseline = true } = {}) {
-  state = next;
+  state = next; selectedUnit.clear();
   if (baseline) setResetSnapshot(state);
   commitChange({ rebuild: true });
 }
@@ -219,7 +225,7 @@ function replaceBoard(next, { baseline = true } = {}) {
 function stepHistory(direction) {
   if (!boardHistory[direction](state)) { showToast(direction === 'undo' ? 'Nothing to undo' : 'Nothing to redo'); return; }
   // The restored board has its own ball and players, so any pass, restart, or run in progress no longer applies.
-  state.selectedObjectId = null;
+  state.selectedObjectId = null; selectedUnit.clear();
   Object.assign(state.simulation, {
     running: false, carrierId: null, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0,
   });
@@ -232,6 +238,7 @@ undoButton.addEventListener('click', () => stepHistory('undo'));
 redoButton.addEventListener('click', () => stepHistory('redo'));
 // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z or Ctrl+Y redoes; text fields and open dialogs keep their own behavior.
 document.addEventListener('keydown', (event) => {
+  if (document.body.classList.contains('presentation')) return;
   if (!(event.ctrlKey || event.metaKey) || event.altKey || event.target.closest?.('input, textarea, select, dialog[open]')) return;
   const key = event.key.toLowerCase();
   if (key !== 'z' && key !== 'y') return;
@@ -346,7 +353,7 @@ svg.addEventListener('pointercancel', endGesturePointer, true);
 
 // ---------------------------------------------------------------------------------------------------------------------
 // 3D camera view (CAM-002, CAM-003, CAM-007). js/view3d.js and Three.js load on first use; the 2D board stays the
-// editing view, and any failure to start 3D leaves the app in 2D.
+// annotation view; 3D object editing is opt-in. A failure to start 3D leaves the app in 2D.
 // ---------------------------------------------------------------------------------------------------------------------
 
 Object.entries(CAMERA_PRESETS).forEach(([id, preset]) => {
@@ -366,8 +373,18 @@ async function setView3D(on) {
       view3d = await createView3D({
         container: view3dContainer,
         getState: () => state,
-        pick: (point) => (state.tool === 'move' ? pickObject(state, point) : null),
-        onDrag: handleDrag3D,
+        isEditing: () => editing3D && !document.body.classList.contains('presentation'),
+        onObjectSelect: (id) => { state.simulation.running = false; selectedUnit.clear(); state.selectedObjectId = id; objectDrag3D = id; render(); },
+        onObjectMove: (id, point) => {
+          const object = findObject(state, id); if (!object) return;
+          releaseManuallyMovedObject(state, id); Object.assign(object, point);
+          settlePlayers(state, [id]); renderScene(svg, state); surfaceUI?.sync();
+        },
+        onObjectCommit: (moved) => {
+          const object = findObject(state, objectDrag3D);
+          if (moved && object?.team) recordPlayerPosition(object);
+          objectDrag3D = null; commitChange();
+        },
         onContextLost: () => {
           view3d?.dispose();
           view3d = null;
@@ -384,21 +401,25 @@ async function setView3D(on) {
       view3dToggle.disabled = false;
     }
   }
-  mode3d = on;
+  mode3d = on; selectedUnit.clear();
+  document.querySelector('#edit-3d').hidden = !on;
   view3dToggle.setAttribute('aria-pressed', String(on));
   svg.style.display = on ? 'none' : '';
   view3dContainer.hidden = !on;
   cameraPresetControl.hidden = !on;
   if (on) {
     [zoomInButton, zoomOutButton, zoomFitButton].forEach((button) => { button.disabled = false; });
+    view3d.setEditing(editing3D);
     view3d.start();
-    showToast('3D view: drag to rotate, scroll or pinch to zoom, two fingers to pan. Switch back to 2D to edit.');
+    showToast('Drag to rotate the camera, or enable Edit in 3D to move objects.');
   } else {
     view3d?.stop();
     applyView(view);
   }
+  syncControls();
 }
 
+document.querySelector('#edit-3d').addEventListener('click', () => { editing3D = !editing3D; view3d?.setEditing(editing3D); document.querySelector('#edit-3d').setAttribute('aria-pressed', String(editing3D)); syncControls(); });
 view3dToggle.addEventListener('click', () => setView3D(!mode3d));
 cameraPresetSelect.addEventListener('change', () => view3d?.setPreset(cameraPresetSelect.value));
 
@@ -448,6 +469,16 @@ function openPlayerEditor(id) {
 }
 
 function handleObjectPointerDown(event, target) {
+  if (state.tool === 'select') {
+    const id = target.dataset.objectId;
+    const wasSelected = selectedUnit.has(id);
+    selectedUnit.add(id); state.selectedObjectId = id;
+    const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
+    drag = { id, pointerId: event.pointerId, moved: false, unit: true, wasSelected,
+      startX: event.clientX, startY: event.clientY, point,
+      originals: [...selectedUnit].map((item) => { const p = findObject(state, item); return { id: item, x: p.x, y: p.y }; }) };
+    target.setPointerCapture(event.pointerId); render(); return;
+  }
   const id = target.dataset.objectId;
   if (!findObject(state, id)) return;
   state.selectedObjectId = id;
@@ -455,29 +486,6 @@ function handleObjectPointerDown(event, target) {
   target.setPointerCapture(event.pointerId);
   target.classList.add('is-dragging');
   render();
-}
-
-// Dragging in the 3D view mirrors the 2D drag above; the 3D scene redraws from state every frame.
-function handleDrag3D(phase, id, point) {
-  const object = findObject(state, id);
-  if (!object) return;
-  if (phase === 'start') {
-    state.selectedObjectId = id;
-    drag = { id, moved: false, startX: point.x, startY: point.y };
-  } else if (phase === 'move' && drag?.id === id) {
-    if (point.x !== object.x || point.y !== object.y) releaseManuallyMovedObject(state, id);
-    object.x = point.x;
-    object.y = point.y;
-    drag.moved ||= Math.hypot(point.x - drag.startX, point.y - drag.startY) > DRAG_THRESHOLD_3D;
-  } else if (phase === 'end' && drag?.id === id) {
-    const finished = drag;
-    drag = null;
-    if (isPlayerId(state, id)) {
-      if (finished.moved) recordPlayerPosition(object); else openPlayerEditor(id);
-    }
-    dragStatus.textContent = `${id} ${finished.moved ? 'moved' : 'selected'}.`;
-    commitChange();
-  }
 }
 
 function handleToolPointerDown(event) {
@@ -504,8 +512,9 @@ function handleToolPointerDown(event) {
 }
 
 svg.addEventListener('pointerdown', (event) => {
+  if (document.body.classList.contains('presentation')) return;
   const target = event.target.closest('[data-object-id]');
-  if (state.tool === 'move') {
+  if (state.tool === 'move' || state.tool === 'select') {
     if (target) handleObjectPointerDown(event, target);
     return;
   }
@@ -517,9 +526,16 @@ svg.addEventListener('pointermove', (event) => {
     const object = findObject(state, drag.id);
     if (!object) return;
     const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
+    if (drag.unit) {
+      drag.originals.forEach((p) => { const object = findObject(state, p.id); if (object) Object.assign(object, { x: p.x, y: p.y }); });
+      moveSelection(state, drag.originals.map((p) => p.id), point.x - drag.point.x, point.y - drag.point.y);
+      drag.moved ||= Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > DRAG_THRESHOLD_PX;
+      settlePlayers(state, [...selectedUnit]); renderScene(svg, state); surfaceUI?.sync(); return;
+    }
     if (point.x !== object.x || point.y !== object.y) releaseManuallyMovedObject(state, drag.id);
     object.x = point.x;
     object.y = point.y;
+    settlePlayers(state, [drag.id]);
     drag.moved ||= Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > DRAG_THRESHOLD_PX;
     renderScene(svg, state);
     return;
@@ -539,12 +555,13 @@ function finishPointer(event) {
     svg.querySelector(`#object-${drag.id}`)?.classList.remove('is-dragging');
     const finishedDrag = drag;
     drag = null;
-    if (isPlayerId(state, finishedDrag.id)) {
+    if (finishedDrag.unit) {
+      if (!finishedDrag.moved && finishedDrag.wasSelected) selectedUnit.delete(finishedDrag.id);
+      state.selectedObjectId = [...selectedUnit].at(-1) ?? null;
+    } else if (isPlayerId(state, finishedDrag.id)) {
       if (finishedDrag.moved) {
         const player = findObject(state, finishedDrag.id);
         if (player) recordPlayerPosition(player);
-      } else {
-        openPlayerEditor(finishedDrag.id);
       }
     }
     dragStatus.textContent = `${finishedDrag.id} ${finishedDrag.moved ? 'moved' : 'selected'}.`;
@@ -559,16 +576,21 @@ svg.addEventListener('pointerup', finishPointer);
 svg.addEventListener('pointercancel', finishPointer);
 
 svg.addEventListener('keydown', (event) => {
+  if (document.body.classList.contains('presentation')) return;
   const target = event.target.closest('[data-object-id]');
   if (!target) return;
   const id = target.dataset.objectId;
   const delta = keyboardNudge(event.key, event.shiftKey);
   if (delta) {
     event.preventDefault();
-    if (moveObjectBy(state, id, ...delta)) {
+    if (selectedUnit.size && selectedUnit.has(id) ? moveSelection(state, [...selectedUnit], ...delta) : moveObjectBy(state, id, ...delta)) {
       commitChange();
       dragStatus.textContent = `${id} moved with keyboard.`;
     }
+  } else if (state.tool === 'select' && ['Enter', ' '].includes(event.key)) {
+    event.preventDefault();
+    if (selectedUnit.has(id)) selectedUnit.delete(id); else selectedUnit.add(id);
+    state.selectedObjectId = [...selectedUnit].at(-1) ?? null; render();
   } else if (event.key === 'Enter' && target.dataset.objectType === 'player') {
     event.preventDefault();
     openPlayerEditor(id);
@@ -604,7 +626,18 @@ speedSelect.addEventListener('change', () => { state.speed = Number(speedSelect.
 spacingSelect.addEventListener('change', () => { state.spacingMode = spacingSelect.value; commitChange(); });
 
 document.querySelectorAll('.tool-button[data-tool]').forEach((button) => {
-  button.addEventListener('click', () => { state.tool = button.dataset.tool; commitChange(); });
+  button.addEventListener('click', () => {
+    state.tool = button.dataset.tool;
+    if (mode3d) {
+      if (state.tool === 'move') {
+        editing3D = true; view3d.setEditing(true); document.querySelector('#edit-3d').setAttribute('aria-pressed', 'true');
+      } else {
+        setView3D(false); showToast('2D board ready for drawing, selection and equipment.');
+      }
+    }
+    if (state.tool !== 'select') { selectedUnit.clear(); state.selectedObjectId = null; }
+    commitChange();
+  });
 });
 
 drawingsClear.addEventListener('click', () => {
@@ -622,6 +655,7 @@ removeSelected.addEventListener('click', () => {
 playToggle.addEventListener('click', () => {
   if (!state.players.some((player) => !player.benched)) { showToast('Put at least one player on the pitch in Coach workspace.'); return; }
   state.simulation.running = !state.simulation.running;
+  selectedUnit.clear(); state.selectedObjectId = null;
   state.tool = 'move';
   commitChange();
 });
@@ -869,7 +903,7 @@ window.addEventListener('resize', updateOrientation, { passive: true });
 function animationLoop(now) {
   const dt = Math.min((now - lastFrame) / 1000, 0.05);
   lastFrame = now;
-  if (state.simulation.running && !drag && !drawSession) {
+  if (state.simulation.running && !drag && !drawSession && !objectDrag3D) {
     stepSimulation(state, dt);
     renderScene(svg, state);
     if (!state.simulation.running) syncControls();
@@ -895,6 +929,15 @@ coachingUI = setupCoaching({
     finally { state.simulation.running = false; state.speed = speed; }
     commitChange(); showToast('Advanced one simulated second; paused for discussion.');
   },
+});
+surfaceUI = setupBoardSurface({
+  getState: () => state, getSelection: () => [...selectedUnit], commit: commitChange,
+  clearSelection: () => { selectedUnit.clear(); state.selectedObjectId = null; render(); },
+  edit: openPlayerEditor, nudge: (dx, dy) => {
+    const ids = selectedUnit.size ? [...selectedUnit] : [state.selectedObjectId];
+    if (moveSelection(state, ids, dx, dy)) commitChange();
+  },
+  capture: () => coachingUI.captureCurrent(), mode3D: () => mode3d, edit3D: () => editing3D, onPresentation: (active) => { cancelEditSessions(); view3d?.setEditing(editing3D && !active); commitChange(); },
 });
 buildZoneButtons();
 renderBench();

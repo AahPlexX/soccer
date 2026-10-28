@@ -20,5 +20,6 @@ if (simulationGroup && !document.querySelector('#pass-options-toggle')) {
     document.dispatchEvent(new Event('pass-options-change'));
   });
   simulationGroup.insertBefore(button, resetButton ?? null);
-  simulationGroup.insertBefore(status, resetButton ?? null);
+  const hint = document.querySelector('.board-hint');
+  if (hint) hint.insertBefore(status, hint.firstChild); else simulationGroup.insertBefore(status, resetButton ?? null);
 }

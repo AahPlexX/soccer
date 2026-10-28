@@ -72,6 +72,22 @@ Blockers: real-device validation on the 2018 iPad baseline has not been executed
 - `FND-031` — Place and hold players in their own half for a post-goal kickoff until release, including when custom anchors and optional zone constraints conflict. Status: implemented with integration coverage; cache `v10` refreshes the simulation and compact layout. Evidence: `js/simulation.js`, `tests/restart-integration.test.mjs`.
 - `FND-030` — Move the defending goalkeeper toward an opposing shot's projected goal-line crossing. Status: implemented and locally tested at both ends; ordinary zone constraints apply and keepers outside their own penalty area cannot make a remote save. The fixed shot cycle was retuned and its actual catch/parry/goal/miss outcomes were exercised in a centered reference scenario at all three speeds. Evidence: `js/simulation.js`, `js/constants.js`, `js/restarts.js`, `tests/shots.test.mjs`; cache `v9` refreshes the runtime.
 
+## Coach workflow backlog
+
+Synthesized 2026-10-28 from the product's use (one U9 7v7 coach on an iPad running drill teaching, the CPU simulation, and general coaching) against a control inventory of `index.html` and `js/` (code read, no browser). IDs are stable and never reused; statuses are planned, in progress, done, deferred, rejected.
+
+- `COACH-001` Undo and redo board edits. Need: an accidental drag, clear, or prop removal on a touch screen must be reversible; the only history today is `resetSnapshot` (Reset). Status: planned.
+- `COACH-002` Bench individual players (PRD §5.1) so 3v3 and 4v4 small-sided drills and unopposed work can be set up; today only the whole opposing team can be hidden. Status: planned.
+- `COACH-003` Print or save the diagram as a PDF to send to parents and assistant coaches; no print or export-as-image exists, and there are no print styles. Status: planned.
+- `COACH-004` Coach notes (teaching points) on saved presets; the preset editor edits only title and category and built-in `description` text is read-only. Status: deferred (after COACH-001 to COACH-003).
+- `COACH-005` Flip attack direction so the same play can be shown left-to-right or right-to-left. Status: deferred.
+- `COACH-006` Persistent team roster (names and numbers reused when any preset loads; today a preset load replaces them). Status: deferred.
+- `COACH-007` Half-field zoom view for small-sided drills (larger tokens). Status: deferred.
+- `COACH-008` Step one simulation decision at a time for teaching. Status: deferred.
+- `COACH-009` Duplicate the selected prop and clear all props in one action. Status: deferred.
+- `COACH-010` Drill countdown timer. Status: rejected: outside a tactical board; the device already has a timer.
+- `COACH-011` Scoreboard for the simulation. Status: rejected for now: many U9 programs avoid scores and standings and the simulation teaches shape, spacing, and rules; revisit on owner request.
+
 ## Open PRD gaps
 
 The PRD is not complete. An independent clause-by-clause audit on 2026-10-28 (code read, no browser) found these gaps; each is real work, not verified-as-done, and is ordered by importance.

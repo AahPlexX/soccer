@@ -68,8 +68,11 @@ export const SIMULATION = Object.freeze({
   attackSupportAdvance: 0.8,
   supportBallShiftY: 0.12,
   pressureDistance: 0.1,
-  // An outfield defender within 2.5% of pitch length wins possession; protect the new carrier briefly to avoid flicker.
-  tackleDistance: 0.025,
+  // Minimum on-screen distance between player centers: one token diameter (discs are 25 SVG units in radius on a 1000-unit pitch length).
+  playerSpacing: 0.05,
+  // An outfield defender within this on-screen distance (just outside token contact, so it must exceed playerSpacing)
+  // wins possession; protect the new carrier briefly to avoid flicker.
+  tackleDistance: 0.06,
   tackleCooldownSeconds: 5,
   receiveProtectionSeconds: 0.3,
   // A pass lane is blocked when an opponent stands within this distance of the carrier→receiver line (just under the 0.055 pickup radius).

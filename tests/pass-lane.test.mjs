@@ -21,7 +21,8 @@ function chosenReceiver(arrange = () => {}) {
   const state = createInitialState();
   const carrier = state.players.find((p) => p.id === 'home-5');
   Object.assign(state.simulation, {
-    running: true, possessionTeam: 'home', lastTouchTeam: 'home', carrierId: carrier.id, actionClock: 1.79,
+    // tackleCooldown keeps a blocker placed on the lane (possibly within tackle range) from tackling: this tests lane choice only.
+    running: true, possessionTeam: 'home', lastTouchTeam: 'home', carrierId: carrier.id, actionClock: 1.79, tackleCooldown: 10,
   });
   state.balls[0].x = carrier.x;
   state.balls[0].y = carrier.y;

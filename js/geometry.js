@@ -13,6 +13,44 @@ export function distanceToSegment(point, from, to) {
   return distance(point, { x: from.x + t * dx, y: from.y + t * dy });
 }
 
+// The SVG world is 1000 × 680 (render.js), so one unit of y is shorter on screen than one unit of x.
+export const PITCH_ASPECT = 0.68;
+
+/** Distance as drawn on screen: y differences are scaled by the pitch aspect ratio. */
+export const spacingDistance = (a, b) => Math.hypot(a.x - b.x, (a.y - b.y) * PITCH_ASPECT);
+
+/**
+ * Pushes players apart until none are closer than `minimum` (screen-space distance). Each overlap is split evenly;
+ * a player in `fixedIds` stays put and the other yields. Coincident players separate along x. Passes repeat (at most
+ * 24, enough for a swarm of 14 around one ball) until nothing moves, which settles chains and pitch-edge clamping; positions stay on the pitch.
+ */
+export function separatePlayers(players, minimum, fixedIds = []) {
+  for (let pass = 0, moved = true; moved && pass < 24; pass += 1) {
+    moved = false;
+    for (let i = 0; i < players.length; i += 1) {
+      for (let j = i + 1; j < players.length; j += 1) {
+        const a = players[i];
+        const b = players[j];
+        const dx = b.x - a.x;
+        const dy = (b.y - a.y) * PITCH_ASPECT;
+        const gap = Math.hypot(dx, dy);
+        const aFixed = fixedIds.includes(a.id);
+        const bFixed = fixedIds.includes(b.id);
+        if (gap >= minimum || (aFixed && bFixed)) continue;
+        const [ux, uy] = gap ? [dx / gap, dy / gap] : [1, 0];
+        moved = true;
+        const push = minimum - gap;
+        const aShare = aFixed ? 0 : bFixed ? 1 : 0.5;
+        const bShare = 1 - aShare;
+        a.x = clamp(a.x - ux * push * aShare);
+        a.y = clamp(a.y - (uy / PITCH_ASPECT) * push * aShare);
+        b.x = clamp(b.x + ux * push * bShare);
+        b.y = clamp(b.y + (uy / PITCH_ASPECT) * push * bShare);
+      }
+    }
+  }
+}
+
 export function moveToward(point, target, maxDistance) {
   const dx = target.x - point.x;
   const dy = target.y - point.y;

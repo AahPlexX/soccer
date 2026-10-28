@@ -1,5 +1,5 @@
 import { PITCH, SIMULATION } from './constants.js';
-import { clamp, clampSupportForOffside, distance, moveToward } from './geometry.js';
+import { clamp, clampSupportForOffside, distance, moveToward, separatePlayers, spacingDistance } from './geometry.js';
 import { openPassReceivers } from './pass-options.js';
 import { classifyBoundaryRestart, GOAL_MAX_Y, GOAL_MIN_Y, restartPoint } from './restarts.js';
 import { constrainPlayerPositionForZones } from './zone-constraints.js';
@@ -256,7 +256,7 @@ function resolveTackle(state) {
   const carrier = state.players.find((player) => player.id === sim.carrierId);
   if (!carrier || isBuildOutSituation(state, carrier)) return;
   const defender = nearestPlayer(state.players, carrier, (player) => player.team !== carrier.team && player.role !== 'GK');
-  if (!defender || distance(defender, carrier) > SIMULATION.tackleDistance) return;
+  if (!defender || spacingDistance(defender, carrier) > SIMULATION.tackleDistance) return;
   Object.assign(sim, {
     carrierId: defender.id,
     possessionTeam: defender.team,
@@ -332,5 +332,12 @@ export function stepSimulation(state, dt) {
     state.simulation.actionClock = 0;
     decideAction(state);
   }
+  // Players are physical: no two may overlap, checked last so restart placement above cannot leave overlaps on screen.
+  // A held restart taker stands on the spot, so others yield to them; the legal kickoff half still takes precedence.
+  separatePlayers(state.players, SIMULATION.playerSpacing, state.simulation.restart ? [state.simulation.carrierId] : []);
+  if (state.simulation.restart?.type === 'kickoff') state.players.forEach(keepInOwnHalf);
+  // Separation can move the carrier; the ball stays with them.
+  const carrier = state.players.find((p) => p.id === state.simulation.carrierId);
+  if (carrier) Object.assign(state.balls[0], { x: carrier.x, y: carrier.y });
   return state;
 }

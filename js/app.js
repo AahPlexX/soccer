@@ -1,9 +1,9 @@
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { setupUpdates } from './update.js';
-import { createLocalId, PALETTE, ZONES } from './constants.js';
+import { createLocalId, PALETTE, SIMULATION, ZONES } from './constants.js';
 import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
 import { filterPresetsByCategory } from './library.js';
-import { clamp, pitchPointFromClient } from './geometry.js';
+import { clamp, pitchPointFromClient, separatePlayers } from './geometry.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { releaseFormationCarrier, releaseManuallyMovedObject, stepSimulation } from './simulation.js';
 import { createInitialState, normalizeState } from './state.js';
@@ -131,7 +131,18 @@ function render({ rebuild = false } = {}) {
   syncControls();
 }
 
+// Players are physical: after any coaching change, no two may overlap. The selected player (the one the coach just
+// placed) stays put and others step aside, adopting their new spot as their anchor.
+function settlePlayers() {
+  const before = state.players.map(({ x, y }) => [x, y]);
+  separatePlayers(state.players, SIMULATION.playerSpacing, [state.selectedObjectId]);
+  state.players.forEach((player, i) => {
+    if (player.x !== before[i][0] || player.y !== before[i][1]) recordPlayerPosition(player);
+  });
+}
+
 function commitChange(options) {
+  settlePlayers();
   render(options);
   scheduleAutosave();
 }

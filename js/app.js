@@ -1,10 +1,10 @@
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { createLocalId, PALETTE, ZONES } from './constants.js';
-import { applyFormation } from './formations.js';
+import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
 import { filterPresetsByCategory } from './library.js';
 import { clamp, pitchPointFromClient } from './geometry.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
-import { stepSimulation } from './simulation.js';
+import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
 import { createInitialState, normalizeState } from './state.js';
 import { deletePreset, exportBackup, importBackup, listPresets, loadAutosave, saveAutosave, savePreset } from './storage.js';
 
@@ -38,6 +38,7 @@ const playerLabel = document.querySelector('#player-label');
 const playerColor = document.querySelector('#player-color');
 const saveDialog = document.querySelector('#save-dialog');
 const saveForm = document.querySelector('#save-form');
+const saveError = document.querySelector('#save-error');
 const presetTitle = document.querySelector('#preset-title');
 const presetCategory = document.querySelector('#preset-category');
 const savedOpen = document.querySelector('#saved-open');
@@ -55,6 +56,8 @@ const dragStatus = document.querySelector('#drag-status');
 let state = loadAutosave() ?? createInitialState();
 let world = initializeScene(svg, state);
 let resetSnapshot = structuredCloneSafe(state);
+let resetSnapshotVersion = 0;
+let resetBaselineReady;
 let autosaveTimer = null;
 let toastTimer = null;
 let drag = null;
@@ -65,6 +68,24 @@ let orientationPortrait = matchMedia('(orientation: portrait)').matches;
 function structuredCloneSafe(value) {
   return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }
+
+// Restore the saved preset's original snapshot after a reload, while allowing a newer
+// formation/load/save action to win over the asynchronous IndexedDB lookup.
+function setResetSnapshot(snapshot) {
+  resetSnapshot = structuredCloneSafe(snapshot);
+  resetSnapshotVersion += 1;
+}
+
+async function restoreResetBaseline() {
+  const presetId = state.currentPresetId;
+  const version = resetSnapshotVersion;
+  if (!presetId) return;
+  const builtIn = BUILT_IN_PRESETS.find((preset) => preset.id === presetId);
+  const snapshot = builtIn ? builtIn.createState() : (await listPresets()).find((preset) => preset.id === presetId)?.state;
+  if (snapshot && state.currentPresetId === presetId && resetSnapshotVersion === version) setResetSnapshot(snapshot);
+}
+
+resetBaselineReady = restoreResetBaseline();
 
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
@@ -144,8 +165,10 @@ function findObject(id) {
 function nudgeObject(id, dx, dy) {
   const object = findObject(id);
   if (!object) return;
+  releaseManuallyMovedObject(state, id);
   object.x = clamp(object.x + dx);
   object.y = clamp(object.y + dy);
+  if (object.team) recordPlayerPosition(object);
   state.selectedObjectId = id;
   commitChange();
 }
@@ -208,8 +231,8 @@ function handleDrawPointerDown(event) {
 
 svg.addEventListener('pointerdown', (event) => {
   const target = event.target.closest('[data-object-id]');
-  if (target) handleObjectPointerDown(event, target);
-  else handleDrawPointerDown(event);
+  if (state.tool === 'move' && target) handleObjectPointerDown(event, target);
+  else if (state.tool !== 'move') handleDrawPointerDown(event);
 });
 
 svg.addEventListener('pointermove', (event) => {
@@ -217,6 +240,7 @@ svg.addEventListener('pointermove', (event) => {
     const object = findObject(drag.id);
     if (!object) return;
     const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
+    if (point.x !== object.x || point.y !== object.y) releaseManuallyMovedObject(state, drag.id);
     object.x = point.x;
     object.y = point.y;
     drag.moved ||= Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 5;
@@ -239,6 +263,10 @@ function finishPointer(event) {
     node?.classList.remove('is-dragging');
     const finishedDrag = drag;
     const isPlayer = finishedDrag.id.startsWith('home-') || finishedDrag.id.startsWith('away-');
+    if (finishedDrag.moved && isPlayer) {
+      const player = findObject(finishedDrag.id);
+      if (player) recordPlayerPosition(player);
+    }
     if (!finishedDrag.moved && isPlayer) openPlayerEditor(finishedDrag.id);
     dragStatus.textContent = `${finishedDrag.id} ${finishedDrag.moved ? 'moved' : 'selected'}.`;
     drag = null;
@@ -273,13 +301,15 @@ svg.addEventListener('keydown', (event) => {
 homeFormation.addEventListener('change', () => {
   state.homeFormation = homeFormation.value;
   state.players = applyFormation(state.players, 'home', state.homeFormation);
-  resetSnapshot = structuredCloneSafe(state);
+  state.currentPresetId = null;
+  setResetSnapshot(state);
   commitChange({ rebuild: true });
 });
 awayFormation.addEventListener('change', () => {
   state.awayFormation = awayFormation.value;
   state.players = applyFormation(state.players, 'away', state.awayFormation);
-  resetSnapshot = structuredCloneSafe(state);
+  state.currentPresetId = null;
+  setResetSnapshot(state);
   commitChange({ rebuild: true });
 });
 awayVisible.addEventListener('click', () => { state.awayVisible = !state.awayVisible; commitChange(); });
@@ -327,7 +357,8 @@ playToggle.addEventListener('click', () => {
   state.tool = 'move';
   commitChange();
 });
-resetBoard.addEventListener('click', () => {
+resetBoard.addEventListener('click', async () => {
+  await resetBaselineReady;
   const keepTheme = state.theme;
   const keepSavedId = state.currentPresetId;
   state = normalizeState(structuredCloneSafe(resetSnapshot));
@@ -362,12 +393,18 @@ playerDialog.querySelectorAll('[data-nudge]').forEach((button) => {
   button.addEventListener('click', () => {
     const player = state.players.find((item) => item.id === playerId.value);
     if (!player) return;
+    releaseManuallyMovedObject(state, player.id);
     const direction = button.dataset.nudge;
-    if (direction === 'center') { player.x = player.anchorX; player.y = player.anchorY; }
+    if (direction === 'center') {
+      const formation = player.team === 'home' ? state.homeFormation : state.awayFormation;
+      const position = formationPosition(state.players, player, formation);
+      if (position) Object.assign(player, position);
+    }
     if (direction === 'left') player.x = clamp(player.x - 0.02);
     if (direction === 'right') player.x = clamp(player.x + 0.02);
     if (direction === 'up') player.y = clamp(player.y - 0.02);
     if (direction === 'down') player.y = clamp(player.y + 0.02);
+    recordPlayerPosition(player);
     commitChange();
   });
 });
@@ -405,18 +442,24 @@ colorsForm.addEventListener('submit', (event) => {
 saveAs.addEventListener('click', () => {
   presetTitle.value = '';
   presetCategory.value = 'Positions';
+  saveError.hidden = true;
   saveDialog.showModal();
   presetTitle.focus();
 });
 saveForm.addEventListener('submit', async (event) => {
   if (event.submitter?.value === 'cancel') return;
   event.preventDefault();
-  const preset = await savePreset({ title: presetTitle.value, category: presetCategory.value, state });
-  state.currentPresetId = preset.id;
-  resetSnapshot = structuredCloneSafe(preset.state);
-  saveDialog.close();
-  scheduleAutosave();
-  showToast('Position saved');
+  try {
+    const preset = await savePreset({ title: presetTitle.value, category: presetCategory.value, state });
+    state.currentPresetId = preset.id;
+    setResetSnapshot(preset.state);
+    saveDialog.close();
+    scheduleAutosave();
+    showToast('Position saved');
+  } catch (error) {
+    saveError.textContent = error instanceof Error ? error.message : 'Unable to save position.';
+    saveError.hidden = false;
+  }
 });
 
 async function refreshSavedList() {
@@ -437,7 +480,7 @@ async function refreshSavedList() {
     load.addEventListener('click', () => {
       state = normalizeState(preset.createState());
       state.currentPresetId = preset.id;
-      resetSnapshot = structuredCloneSafe(state);
+      setResetSnapshot(state);
       savedDialog.close();
       commitChange({ rebuild: true });
       showToast(`Loaded ${preset.title}`);
@@ -469,7 +512,7 @@ async function refreshSavedList() {
     load.addEventListener('click', () => {
       state = normalizeState(structuredCloneSafe(preset.state));
       state.currentPresetId = preset.id;
-      resetSnapshot = structuredCloneSafe(state);
+      setResetSnapshot(state);
       savedDialog.close();
       commitChange({ rebuild: true });
       showToast(`Loaded ${preset.title}`);
@@ -485,9 +528,15 @@ async function refreshSavedList() {
         setTimeout(() => { remove.dataset.armed = ''; remove.textContent = 'Delete'; }, 4000);
         return;
       }
-      await deletePreset(preset.id);
-      await refreshSavedList();
-      showToast('Saved position deleted');
+      try {
+        await deletePreset(preset.id);
+        await refreshSavedList();
+        showToast('Saved position deleted');
+      } catch (error) {
+        remove.dataset.armed = '';
+        remove.textContent = 'Delete';
+        showToast(error instanceof Error ? error.message : 'Unable to delete saved position');
+      }
     });
     item.dataset.presetId = preset.id;
     item.append(text, load, remove);
@@ -517,7 +566,8 @@ importFile.addEventListener('change', async () => {
   if (!file) return;
   try {
     state = await importBackup(await file.text());
-    resetSnapshot = structuredCloneSafe(state);
+    setResetSnapshot(state);
+    resetBaselineReady = restoreResetBaseline();
     commitChange({ rebuild: true });
     showToast('Backup imported');
   } catch (error) {

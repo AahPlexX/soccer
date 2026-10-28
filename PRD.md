@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD): U9 Tactical Soccer Board & Match Simulator
 
 - **Repository:** AahPlexX/soccer
-- **Deployment Target:** GitHub Pages (Static Web Application / Offline-Capable PWA)
+- **Deployment Target:** GitHub Pages (Offline-Capable PWA)
 - **Target Hardware:** Apple iPad (2018 6th Generation through current iPad, iPad Air, iPad Mini, and iPad Pro models)
 - **Primary User:** Single Youth Soccer Coach (U9 / 7v7 Format)
 - **Authentication:** None (Single-user local architecture with client-side persistence)
@@ -255,7 +255,7 @@ Because the tool is designed for a single coach on GitHub Pages without user aut
 ## 10. Technical Architecture & Repository Standards
 
 ### 10.1 Clean GitHub Pages Architecture
-- **Static Deployment:** Built using standard HTML5, modern CSS3, and modular ES6+ JavaScript (or zero-runtime-dependency Canvas/SVG modules) so it deploys cleanly and reliably to GitHub Pages (`https://aahplexx.github.io/soccer/`).
+- **GitHub Pages deployment:** The application must build and deploy cleanly and reliably to GitHub Pages (`https://aahplexx.github.io/soccer/`). Frameworks, languages, build tools, and client-side dependencies may be chosen based on product and engineering needs. The deployed output must work on GitHub Pages and support the offline requirements.
 - **Retina Canvas / SVG Rendering:** Scales automatically using `window.devicePixelRatio` so pitch markings, text labels, and player tokens remain razor-sharp on all Retina iPad screens.
 
 ### 10.2 Normalized Pitch Coordinate System

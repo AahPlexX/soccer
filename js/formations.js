@@ -53,6 +53,18 @@ export function applyFormation(players, team, formation) {
   });
 }
 
+// Coaching repositioning becomes the player's support anchor for the simulation.
+export function recordPlayerPosition(player) {
+  player.anchorX = player.x;
+  player.anchorY = player.y;
+}
+
+export function formationPosition(players, player, formation) {
+  const index = players.filter((item) => item.team === player.team).findIndex((item) => item.id === player.id);
+  const anchor = formationAnchors(player.team, formation)[index];
+  return anchor ? { x: anchor[1], y: anchor[2] } : null;
+}
+
 export function playerColor(player, state) {
   if (player.colorOverride) return player.colorOverride;
   if (player.role === 'GK') return player.team === 'home' ? state.colors.homeGoalkeeper : state.colors.awayGoalkeeper;

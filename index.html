@@ -118,7 +118,7 @@
 
   <dialog id="player-dialog" class="editor-dialog">
     <form method="dialog" id="player-form">
-      <div class="dialog-heading"><h2>Edit player</h2><button value="cancel" class="icon-button" aria-label="Close player editor">×</button></div>
+      <div class="dialog-heading"><h2>Edit player</h2><button value="cancel" formnovalidate class="icon-button" aria-label="Close player editor">×</button></div>
       <input type="hidden" id="player-id">
       <label for="player-number">Jersey number
         <input id="player-number" name="number" type="number" min="1" max="99" inputmode="numeric" required>
@@ -141,31 +141,32 @@
           <span></span><button type="button" data-nudge="down" aria-label="Move player down">↓</button><span></span>
         </div>
       </fieldset>
-      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="player-save" value="default" class="primary-action">Save changes</button></div>
+      <div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button id="player-save" value="default" class="primary-action">Save changes</button></div>
     </form>
   </dialog>
 
   <dialog id="colors-dialog" class="editor-dialog">
     <form method="dialog" id="colors-form">
-      <div class="dialog-heading"><h2>Team colors</h2><button value="cancel" class="icon-button" aria-label="Close team colors">×</button></div>
+      <div class="dialog-heading"><h2>Team colors</h2><button value="cancel" formnovalidate class="icon-button" aria-label="Close team colors">×</button></div>
       <label for="home-color">Our field players<select id="home-color" name="home"></select></label>
       <label for="home-gk-color">Our goalkeeper<select id="home-gk-color" name="homeGoalkeeper"></select></label>
       <label for="away-color">Opposing field players<select id="away-color" name="away"></select></label>
       <label for="away-gk-color">Opposing goalkeeper<select id="away-gk-color" name="awayGoalkeeper"></select></label>
-      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="colors-save" value="default" class="primary-action">Save colors</button></div>
+      <div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button id="colors-save" value="default" class="primary-action">Save colors</button></div>
     </form>
   </dialog>
 
   <dialog id="save-dialog" class="editor-dialog">
     <form method="dialog" id="save-form">
-      <div class="dialog-heading"><h2>Save position</h2><button value="cancel" class="icon-button" aria-label="Close save dialog">×</button></div>
+      <div class="dialog-heading"><h2>Save position</h2><button value="cancel" formnovalidate class="icon-button" aria-label="Close save dialog">×</button></div>
       <label for="preset-title">Title
         <input id="preset-title" type="text" maxlength="48" autocomplete="off" required>
       </label>
       <label for="preset-category">Category
         <select id="preset-category"><option>Formations</option><option selected>Positions</option><option>Plays</option><option>Drills</option><option>Rules</option></select>
       </label>
-      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="preset-save" value="default" class="primary-action">Save position</button></div>
+      <p id="save-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button id="preset-save" value="default" class="primary-action">Save position</button></div>
     </form>
   </dialog>
 
@@ -194,14 +195,15 @@
 
   <dialog id="preset-edit-dialog" class="editor-dialog" aria-labelledby="preset-edit-heading">
     <form method="dialog" id="preset-edit-form">
-      <div class="dialog-heading"><h2 id="preset-edit-heading">Edit saved preset</h2><button value="cancel" class="icon-button" aria-label="Close saved preset editor">×</button></div>
+      <div class="dialog-heading"><h2 id="preset-edit-heading">Edit saved preset</h2><button value="cancel" formnovalidate class="icon-button" aria-label="Close saved preset editor">×</button></div>
       <label for="preset-edit-title">Title
         <input id="preset-edit-title" type="text" maxlength="48" autocomplete="off" required>
       </label>
       <label for="preset-edit-category">Category
         <select id="preset-edit-category"><option>Formations</option><option>Positions</option><option>Plays</option><option>Drills</option><option>Rules</option></select>
       </label>
-      <div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="save" class="primary-action">Save metadata</button></div>
+      <p id="preset-edit-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button value="cancel" formnovalidate autofocus>Cancel</button><button value="save" class="primary-action">Save metadata</button></div>
     </form>
   </dialog>
 

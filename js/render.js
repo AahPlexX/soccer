@@ -1,6 +1,6 @@
 import { PITCH, ZONES } from './constants.js';
 import { playerColor } from './formations.js';
-import { availablePassOptions } from './pass-options.js';
+import { availablePassOptions, passOptionsStatus } from './pass-options.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const W = 1000;
@@ -80,6 +80,12 @@ function renderPassOptions(svg, state) {
   const enabled = document.documentElement.dataset.passOptions === 'true';
   const carrier = enabled ? state.players.find((player) => player.id === state.simulation.carrierId) : null;
   const receivers = carrier ? availablePassOptions(state) : [];
+  const status = document.querySelector('#pass-options-status');
+  if (status) {
+    status.hidden = !enabled;
+    const message = enabled ? passOptionsStatus(state, receivers) : '';
+    if (status.textContent !== message) status.textContent = message;
+  }
 
   lines.forEach((node, index) => {
     const receiver = receivers[index];
@@ -215,11 +221,20 @@ export function rebuildObjects(svg, state) {
   ballLayer.replaceChildren(...state.balls.map(buildBall));
   propLayer.replaceChildren(...state.cones.map(buildCone), ...state.miniGoals.map(buildMiniGoal));
   drawingLayer.replaceChildren(...state.drawings.map(buildDrawing));
+  orientObjectVisuals(svg, svg.getAttribute('data-scene-orientation') === 'portrait');
+}
+
+function orientObjectVisuals(svg, portrait) {
+  svg.querySelectorAll('.object-visual').forEach((node) => {
+    if (portrait) node.setAttribute('transform', 'rotate(-90)');
+    else node.removeAttribute('transform');
+  });
 }
 
 export function setSceneOrientation(svg, portrait) {
   const world = svg.querySelector('#pitch-world');
   if (!world) return;
+  svg.setAttribute('data-scene-orientation', portrait ? 'portrait' : 'landscape');
   if (portrait) {
     svg.setAttribute('viewBox', '0 0 680 1000');
     world.setAttribute('transform', 'translate(680 0) rotate(90)');
@@ -227,10 +242,7 @@ export function setSceneOrientation(svg, portrait) {
     svg.setAttribute('viewBox', '0 0 1000 680');
     world.removeAttribute('transform');
   }
-  svg.querySelectorAll('.object-visual').forEach((node) => {
-    if (portrait) node.setAttribute('transform', 'rotate(-90)');
-    else node.removeAttribute('transform');
-  });
+  orientObjectVisuals(svg, portrait);
 }
 
 export function renderScene(svg, state) {

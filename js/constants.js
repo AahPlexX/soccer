@@ -67,6 +67,10 @@ export const SIMULATION = Object.freeze({
   supportBallShiftX: 0.16,
   supportBallShiftY: 0.12,
   pressureDistance: 0.1,
+  // An outfield defender within 2.5% of pitch length wins possession; protect the new carrier briefly to avoid flicker.
+  tackleDistance: 0.025,
+  tackleCooldownSeconds: 2.2,
+  receiveProtectionSeconds: 0.3,
   // A pass lane is blocked when an opponent stands within this distance of the carrier→receiver line (just under the 0.055 pickup radius).
   passLaneClearance: 0.05,
   // A shot aims at 0.5 + shotAimOffsets[shotCount % length] + (shooter.y - 0.5) * shotAimSpread. The offsets repeat

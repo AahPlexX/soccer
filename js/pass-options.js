@@ -17,3 +17,13 @@ export function availablePassOptions(state) {
   if (carrier.team === 'away' && !state.awayVisible) return [];
   return openPassReceivers(state, carrier);
 }
+
+// Explain why no overlay is visible without inventing possession for a loose ball.
+export function passOptionsStatus(state, receivers = availablePassOptions(state)) {
+  if (state.simulation.ballTarget) return 'Ball in motion; lines appear when a player gains possession.';
+  const carrier = state.players.find((player) => player.id === state.simulation.carrierId);
+  if (!carrier) return 'Ball is loose; play until a player gains possession.';
+  if (carrier.team === 'away' && !state.awayVisible) return 'Show opponents to see their pass options.';
+  if (!receivers.length) return 'No clear pass lanes for the player in possession.';
+  return `${receivers.length} clear pass ${receivers.length === 1 ? 'lane' : 'lanes'} shown.`;
+}

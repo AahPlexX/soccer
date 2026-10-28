@@ -140,6 +140,7 @@ function acquireLooseBall(state) {
     state.simulation.carrierId = candidate.id;
     state.simulation.possessionTeam = candidate.team;
     state.simulation.lastTouchTeam = candidate.team;
+    state.simulation.tackleCooldown = SIMULATION.receiveProtectionSeconds;
     state.simulation.receiverId = null;
     state.simulation.ballTarget = null;
     ball.x = candidate.x;
@@ -207,6 +208,8 @@ function advancePlayers(state, dt) {
   const buildOut = isBuildOutSituation(state, carrier);
   const defendingTeam = opponent(state.simulation.possessionTeam);
   const pressingPlayer = nearestPlayer(state.players, ball, (p) => p.team === defendingTeam && p.role !== 'GK');
+  const looseBallChaser = !carrier && !state.simulation.ballTarget
+    ? nearestPlayer(state.players, ball, () => true) : null;
 
   state.players.forEach((player) => {
     if (player.id === state.simulation.carrierId) {
@@ -226,7 +229,8 @@ function advancePlayers(state, dt) {
     }
     let target = retreat ?? supportTarget(player, state, ball);
 
-    if (!retreat && player.team !== state.simulation.possessionTeam && player.id === pressingPlayer?.id) {
+    if (!retreat && (player.id === looseBallChaser?.id
+      || (player.team !== state.simulation.possessionTeam && player.id === pressingPlayer?.id))) {
       target = { x: ball.x, y: ball.y };
     }
 
@@ -234,6 +238,25 @@ function advancePlayers(state, dt) {
     movePlayer(state, player, target, SIMULATION.playerSpeed * dt, !retreat);
     // Kickoff placement takes precedence when a drill zone or support target crosses halfway.
     if (state.simulation.restart?.type === 'kickoff') keepInOwnHalf(player);
+  });
+}
+
+// Deterministic close-range pressure: an outfield defender wins possession when
+// close enough, with a brief grace period so overlapping players do not swap
+// possession each frame. A held restart or goalkeeper build-out is protected.
+function resolveTackle(state) {
+  const sim = state.simulation;
+  if (sim.tackleCooldown > 0 || sim.restart || sim.ballTarget) return;
+  const carrier = state.players.find((player) => player.id === sim.carrierId);
+  if (!carrier || isBuildOutSituation(state, carrier)) return;
+  const defender = nearestPlayer(state.players, carrier, (player) => player.team !== carrier.team && player.role !== 'GK');
+  if (!defender || distance(defender, carrier) > SIMULATION.tackleDistance) return;
+  Object.assign(sim, {
+    carrierId: defender.id,
+    possessionTeam: defender.team,
+    lastTouchTeam: defender.team,
+    actionClock: 0,
+    tackleCooldown: SIMULATION.tackleCooldownSeconds,
   });
 }
 
@@ -265,13 +288,22 @@ function decideAction(state) {
   if (target) beginPass(state, carrier, target);
 }
 
+// A coach moving the ball (or its carrier) takes control of the position. Drop the
+// previous pass/restart so playback begins from the visible board, not an old target.
+export function releaseManuallyMovedObject(state, objectId) {
+  if (objectId !== state.balls[0]?.id && objectId !== state.simulation.carrierId) return;
+  Object.assign(state.simulation, {
+    carrierId: null, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0,
+  });
+}
+
 export function ensureCarrier(state) {
   if (state.simulation.ballTarget) return;
   if (state.simulation.carrierId && state.players.some((p) => p.id === state.simulation.carrierId)) return;
-  const ball = state.balls[0];
-  const nearest = nearestPlayer(state.players, ball, (p) => p.team === state.simulation.possessionTeam);
-  state.simulation.carrierId = nearest?.id ?? null;
-  if (nearest) state.simulation.lastTouchTeam = nearest.team;
+  state.simulation.carrierId = null;
+  // Do not teleport a loose ball to a distant player. The nearest player collects
+  // it only when physically close; otherwise a player runs towards it.
+  acquireLooseBall(state);
 }
 
 export function stepSimulation(state, dt) {
@@ -279,7 +311,9 @@ export function stepSimulation(state, dt) {
   ensureCarrier(state);
   state.simulation.actionClock += dt * state.speed;
   const scaledDt = dt * state.speed;
+  state.simulation.tackleCooldown = Math.max(0, (Number.isFinite(state.simulation.tackleCooldown) ? state.simulation.tackleCooldown : 0) - scaledDt);
   advancePlayers(state, scaledDt);
+  resolveTackle(state);
   advanceBall(state, scaledDt);
   if (state.simulation.actionClock >= SIMULATION.actionIntervalSeconds) {
     state.simulation.actionClock = 0;

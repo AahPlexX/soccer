@@ -31,6 +31,7 @@ export function createInitialState() {
       possessionTeam: 'home',
       carrierId: null,
       actionClock: 0,
+      tackleCooldown: 0,
       ballTarget: null,
       receiverId: null,
       lastTouchTeam: 'home',

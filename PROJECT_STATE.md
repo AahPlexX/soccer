@@ -9,9 +9,17 @@ Schema version: `1`
 
 Current state: the source implements an offline-capable U9 7v7 tactical board with pitch rendering, the two required formations, touch/keyboard manipulation, selectable zones, player/team color editing, telestration, cones, mini goals, extra balls, all four built-in teaching scenarios, CPU-vs-CPU passing/dribbling/pressing with opponent-lane avoidance and an optional dashed pass-options overlay, deterministic varied shooting with goalkeeper shot tracking and catch/parry outcomes, U9 build-out behavior, explicit throw-in/goal-kick/corner/kickoff restart states with post-goal kickoff half restrictions, optional keep-inside/keep-out zone drill constraints, a categorized saved library with ARIA tabs plus compact select fallback, user-preset title/category editing, two-step in-app deletion, persistence/backup, PWA caching, and an automated validation gate on every push to `main`.
 
-Next action: verify the pass-options overlay, goalkeeper movement, and post-zone layout in a rendered browser. Continue with remaining restart procedural detail where useful for teaching and real-device iPad performance/accessibility/offline verification. Check the latest validation workflow for the current `main` commit before continuing.
+Next action: verify goalkeeper movement, passing lines, and post-zone layout on a physical iPad and continue testing interactions across real device conditions. Continue with remaining restart procedural detail where useful for teaching and real-device iPad performance/accessibility/offline verification. Check the latest validation workflow for the current `main` commit before continuing.
 
 Blockers: real-device validation on the 2018 iPad baseline has not been executed in this repository session.
+
+## Latest control wiring work
+
+- Corrected manual ball placement and loose-ball pursuit, player anchor updates, drawing and prop placement over objects, portrait token orientation after rebuild, and saved-preset reset after reload. Formation changes clear the old preset identity. An unsaved reset baseline is not separately persisted across reloads.
+- Added deterministic close-range turnovers with protected restarts/build-out and a cooldown; this remains a simplified simulation without fouls or tackle animation. Pass options now explain when lines cannot be displayed.
+- Fixed cancel buttons blocked by required fields, surfaced storage failures, merged IndexedDB and fallback records with deletion tombstones, and validated imported preset metadata. Cache generation `v11` refreshes changed assets.
+- Rendered Chromium checks covered formations, zones, visibility, player and color editing, simulation movement and ball placement, tools over players, prop removal, saved presets and reset after reload, export/import, pass-option status and portrait rebuilding at 1024×768 and 768×1024. Physical iPad behavior and actual pass lines/goalkeeper movement remain to be checked.
+- The user clarified that GitHub Pages is the deployment target, not a constraint to hand-authored HTML or a ban on frameworks/build tools. The current zero-build implementation is a choice, not a requirement.
 
 ## Completed requirements in this work unit
 
@@ -85,7 +93,7 @@ Research and standards checked in this work unit:
 ## Known risks
 
 - Locked 60 fps on the 2018 iPad 6th generation remains unverified on physical hardware.
-- iPad Safari/PWA offline/update behavior has not been exercised on physical iPad hardware after cache generation `v10`.
+- iPad Safari/PWA offline/update behavior has not been exercised on physical iPad hardware after cache generation `v11`.
 - Post-zone/post-library layouts have rendered Chromium coverage at three sizes; physical-iPad usability remains unverified.
 - Mini-goal touch dragging/hit-area ergonomics remain physically unverified.
 - Saved-library controls have rendered Chromium interaction coverage; physical-iPad touch usability remains unverified.

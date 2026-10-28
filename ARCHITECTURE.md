@@ -94,7 +94,7 @@ Applying a formation updates role, current position, and anchor position for tha
 
 ## Pass-options overlay
 
-The optional Pass options button is a view-only pressed-state toggle created by `js/pass-options-ui.js`. It dispatches `pass-options-change` to request an immediate redraw even while paused. `js/render.js` reuses six noninteractive, `aria-hidden` SVG lines and shows the open receivers returned by `availablePassOptions()`; no lines appear without a stationary visible carrier. `openPassReceivers()` is shared with the CPU pass selector, including its opponent-lane clearance calculation. The overlay itself is not persisted. The CPU falls back to a blocked receiver if no lane is open, so an empty overlay does not mean that the CPU cannot pass.
+The optional Pass options button is a view-only pressed-state toggle created by `js/pass-options-ui.js`. It dispatches `pass-options-change` to request an immediate redraw even while paused. `js/render.js` reuses six noninteractive, `aria-hidden` SVG lines and shows the open receivers returned by `availablePassOptions()`; no lines appear without a stationary visible carrier. `openPassReceivers()` is shared with the CPU pass selector, including its opponent-lane clearance calculation. A live status explains a loose or in-flight ball, hidden carrier, blocked lanes, or the number of available lanes. The overlay itself is not persisted. The CPU falls back to a blocked receiver if no lane is open, so an empty overlay does not mean that the CPU cannot pass.
 
 ## Drill props
 
@@ -108,9 +108,9 @@ Schema version: `1`.
 
 Current board state is serialized under `u9_tactical_board_state_v1` after a 120 ms debounce. Running simulation state is forced to paused on persistence.
 
-Saved positions are stored in IndexedDB database `u9_tactical_board_v1`, object store `presets`, keyed by UUID. If IndexedDB is unavailable, the saved library falls back to `u9_tactical_board_presets_v1` in localStorage.
+Saved positions are stored in IndexedDB database `u9_tactical_board_v1`, object store `presets`, keyed by UUID. If IndexedDB is unavailable, the saved library falls back to `u9_tactical_board_presets_v1` in localStorage. Reads merge both stores; fallback tombstones prevent deleted database entries from reappearing. Writes wait for transaction completion and report failures to the coach.
 
-A saved preset contains title, category, timestamp, schema version, and the full board state. JSON export contains the current board plus all presets. Import requires the same schema version and merges presets by ID.
+A saved preset contains title, category, timestamp, schema version, and the full board state. JSON export contains the current board plus all presets. Import validates metadata and the schema version before merging presets by ID. The loaded saved preset is restored as the reset baseline after reload; for an unsaved board the autosaved board becomes the baseline on reload.
 
 Backward-compatible additive state currently includes:
 
@@ -155,6 +155,8 @@ Rules implemented now:
 - a shot aims at `0.5 + shotAimOffsets[shotCount % 4] + (shooter.y - 0.5) * shotAimSpread`; the offsets are `[0, 0.04, -0.07, 0.12]` and spread is `0.15`. They repeat without RNG. In a centered reference scenario the sequence yields a catch, parry, goal, and miss, but positions and shot angles can change the outcome. The ball target is extended 0.05 past the goal line along the shot's own line so boundary classification receives it.
 - while an opposing shot is in flight (no receiver and a target at or beyond the keeper's goal line), the defending keeper moves at `keeperTrackingSpeed` (0.03 normalized units per simulated second) toward its projected goal-line crossing, clamped between the same goal posts used for restart classification. A keeper already inside its penalty-area x range tracks laterally; one outside moves back toward that range. A path crossing a touchline before the goal line is not tracked. Ordinary optional zone constraints still apply, and mandatory build-out retreat takes precedence.
 - a shot crossing the goal line inside the goal mouth meets the defending goalkeeper first (`keeperResponse()`), provided the keeper is inside its own penalty area and the last touch was by the opponent. By `|keeper.y - shot.y|`, at most `keeperCatchReach` (0.02) the keeper holds the ball and the U9 build-out gate applies; at most `keeperParryReach` (0.05) it is deflected behind for an attacking corner; otherwise it is a goal. Save reach is an intentionally simplified lateral threshold, not a physical collision model.
+- A manually moved ball or carrier releases stale possession, pass, and restart state; a loose ball remains in place until a nearby player collects it. Manual player placements update their tactical anchors.
+- A nearby opposing outfield player can win possession deterministically; a cooldown prevents immediate repeated turnovers and held restarts and goalkeeper build-outs are protected. This is a simplified teaching mechanic without fouls or tackle animation.
 - receiver choice (`choosePassTarget()`) skips teammates whose carrier→receiver line has any opponent within `SIMULATION.passLaneClearance` (0.05, just under the 0.055 pickup radius; the single definition is `openPassReceivers()` in `js/pass-options.js`, shared by this CPU choice and the on-screen pass options so they cannot drift apart; it measures with `distanceToSegment()` in `js/geometry.js`, so a closely marked receiver counts as blocked). Among clear receivers the existing forward-progress/lateral/distance score picks the winner; if every lane is blocked the choice falls back to all teammates, so a carrier always passes.
 - restart takers remain stationary until the next simulation decision releases the ball as a pass. Goal-kick takers use the goalkeeper, so the existing U9 build-out retreat gate remains in force before the restart is released.
 - ordinary player targets and positions can be constrained to remain inside or outside the coach-selected zone union for the selected team scope.
@@ -210,6 +212,7 @@ Cache history relevant to the current runtime:
 - `v8`: adds the pass-option stylesheet and modules to the app shell.
 - `v9`: refreshes the shot, goalkeeper, and restart modules for goalkeeper tracking; the app-shell path list is unchanged.
 - `v10`: refreshes the simulation module for kickoff half restrictions and the compact portrait control layout; the app-shell path list is unchanged.
+- `v11`: refreshes board interaction, simulation, persistence, pass-option feedback, and portrait rendering assets; the app-shell path list is unchanged.
 
 `tests/pwa-shell.test.mjs` protects this contract by verifying that every declared app-shell file exists, every install-critical local asset referenced by `index.html` is precached, and every static ES-module dependency reachable from the cached module graph is also in `APP_SHELL`.
 

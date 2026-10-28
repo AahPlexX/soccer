@@ -14,3 +14,11 @@
   color: #111;
   border-color: transparent;
 }
+
+#pass-options-status {
+  flex: 0 0 10rem;
+  max-width: 16rem;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}

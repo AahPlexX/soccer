@@ -9,6 +9,10 @@ if (simulationGroup && !document.querySelector('#pass-options-toggle')) {
   button.textContent = 'Pass options';
   button.setAttribute('aria-pressed', 'false');
   button.setAttribute('aria-controls', 'pitch');
+  button.setAttribute('aria-describedby', 'pass-options-status');
+  const status = document.createElement('span');
+  status.id = 'pass-options-status';
+  status.hidden = true;
   button.addEventListener('click', () => {
     const active = button.getAttribute('aria-pressed') !== 'true';
     button.setAttribute('aria-pressed', String(active));
@@ -16,4 +20,5 @@ if (simulationGroup && !document.querySelector('#pass-options-toggle')) {
     document.dispatchEvent(new Event('pass-options-change'));
   });
   simulationGroup.insertBefore(button, resetButton ?? null);
+  simulationGroup.insertBefore(status, resetButton ?? null);
 }

@@ -38,3 +38,22 @@ test('hidden opponent team produces no decision lines for an away carrier', () =
   state.awayVisible = false;
   assert.deepEqual(availablePassOptions(state), []);
 });
+
+test('pass option status explains when and why lanes are unavailable', async () => {
+  const { passOptionsStatus } = await import('../js/pass-options.js');
+  const state = stateWith([
+    { id: 'home-1', team: 'home', x: 0.2, y: 0.5 },
+    { id: 'home-2', team: 'home', x: 0.5, y: 0.5 },
+  ], null);
+  assert.match(passOptionsStatus(state), /loose/);
+  state.simulation.ballTarget = { x: 0.5, y: 0.5 };
+  assert.match(passOptionsStatus(state), /motion/);
+  state.simulation.ballTarget = null;
+  state.simulation.carrierId = 'home-1';
+  assert.match(passOptionsStatus(state), /1 clear pass lane shown/);
+  state.players.push({ id: 'away-1', team: 'away', x: 0.35, y: 0.5 });
+  assert.match(passOptionsStatus(state), /No clear pass lanes/);
+  state.simulation.carrierId = 'away-1';
+  state.awayVisible = false;
+  assert.match(passOptionsStatus(state), /Show opponents/);
+});

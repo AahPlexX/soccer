@@ -9,6 +9,7 @@ const presetEditDialog = document.querySelector('#preset-edit-dialog');
 const presetEditForm = document.querySelector('#preset-edit-form');
 const presetEditTitle = document.querySelector('#preset-edit-title');
 const presetEditCategory = document.querySelector('#preset-edit-category');
+const presetEditError = document.querySelector('#preset-edit-error');
 
 let editingPreset = null;
 let augmentationSequence = 0;
@@ -86,19 +87,25 @@ if (savedList) {
 presetEditForm?.addEventListener('submit', async (event) => {
   if (event.submitter?.value === 'cancel' || !editingPreset) return;
   event.preventDefault();
-  const updated = await savePreset({
-    id: editingPreset.id,
-    title: presetEditTitle.value,
-    category: presetEditCategory.value,
-    state: editingPreset.state,
-  });
-  editingPreset = updated;
-  presetEditDialog.close();
-  savedFilterSelect?.dispatchEvent(new Event('change', { bubbles: true }));
+  try {
+    const updated = await savePreset({
+      id: editingPreset.id,
+      title: presetEditTitle.value,
+      category: presetEditCategory.value,
+      state: editingPreset.state,
+    });
+    editingPreset = updated;
+    presetEditDialog.close();
+    savedFilterSelect?.dispatchEvent(new Event('change', { bubbles: true }));
+  } catch (error) {
+    presetEditError.textContent = error instanceof Error ? error.message : 'Unable to save changes.';
+    presetEditError.hidden = false;
+  }
 });
 
 presetEditDialog?.addEventListener('close', () => {
   editingPreset = null;
+  if (presetEditError) presetEditError.hidden = true;
   presetEditForm?.reset();
 });
 

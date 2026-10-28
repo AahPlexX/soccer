@@ -124,15 +124,21 @@ function playMatch(minutes) {
   const seen = new Set();
   let last = null;
   let offPitchFrames = 0;
+  let turnovers = 0;
   const inside = (o) => o.x >= 0 && o.x <= 1 && o.y >= 0 && o.y <= 1;
   for (let i = 0; i < 60 * 60 * minutes; i += 1) {
+    const previousCarrier = state.simulation.carrierId;
+    const previousTeam = state.simulation.possessionTeam;
+    const previousRestart = state.simulation.restart;
     stepSimulation(state, STEP);
+    if (previousCarrier && !previousRestart && state.simulation.carrierId
+      && state.simulation.possessionTeam !== previousTeam) turnovers += 1;
     const { restart } = state.simulation;
     if (restart && restart !== last) seen.add(restart.type);
     last = restart;
     if (![state.balls[0], ...state.players].every(inside)) offPitchFrames += 1;
   }
-  return { seen, offPitchFrames, state };
+  return { seen, offPitchFrames, turnovers, state };
 }
 
 test('the generated shot cycle produces a catch, parry, goal and miss at both ends and all speeds', () => {
@@ -164,8 +170,9 @@ test('the generated shot cycle produces a catch, parry, goal and miss at both en
 });
 
 test('normal play produces goals, corners and goal kicks and never leaves the ball or players off the pitch', () => {
-  const { seen, offPitchFrames } = playMatch(10);
+  const { seen, offPitchFrames, turnovers } = playMatch(10);
   assert.equal(offPitchFrames, 0);
+  assert.ok(turnovers > 0, 'defensive pressure never won possession');
   ['kickoff', 'corner', 'goal-kick'].forEach((type) => assert.ok(seen.has(type), `no ${type} in 10 minutes`));
 });
 

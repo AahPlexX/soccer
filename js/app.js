@@ -5,6 +5,7 @@ import {
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { PALETTE, ZONES } from './constants.js';
 import { createHistory } from './history.js';
+import { IDENTITY_VIEW, ZOOM_RANGE, clampView, panBy, viewBoxSize, viewTransform, zoomAt } from './view-zoom.js';
 import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
 import { filterPresetsByCategory } from './library.js';
@@ -24,6 +25,9 @@ const awayVisible = document.querySelector('#away-visible');
 const coneColorSelect = document.querySelector('#cone-color');
 const undoButton = document.querySelector('#undo');
 const redoButton = document.querySelector('#redo');
+const zoomInButton = document.querySelector('#zoom-in');
+const zoomOutButton = document.querySelector('#zoom-out');
+const zoomFitButton = document.querySelector('#zoom-fit');
 const zonesToggle = document.querySelector('#zones-toggle');
 const zonePanel = document.querySelector('#zone-panel');
 const zoneButtons = document.querySelector('#zone-buttons');
@@ -84,6 +88,8 @@ let resetSnapshot = snapshotState(state);
 let resetSnapshotVersion = 0;
 const boardHistory = createHistory();
 boardHistory.reset(state);
+let view = IDENTITY_VIEW; // 2D zoom and pan; view-only, not persisted
+const viewGroup = svg.querySelector('#pitch-view');
 let resetBaselineReady;
 let autosaveTimer = null;
 let toastTimer = null;
@@ -202,6 +208,108 @@ document.addEventListener('keydown', (event) => {
   event.preventDefault();
   stepHistory(key === 'y' || event.shiftKey ? 'redo' : 'undo');
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Zoom and pan (CAM-001). The view is a transform on #pitch-view, so pitchPointFromClient (which inverts the world's
+// screen matrix) stays correct at any zoom.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const ZOOM_STEP = 1.4;
+const gesturePointers = new Map(); // active touch pointers: id -> { x, y }
+let gesture = null; // two-finger pinch: last finger distance and midpoint
+let panSession = null; // one-pointer pan of the zoomed board
+
+function applyView(next) {
+  const { width, height } = viewBoxSize(svg.getAttribute('viewBox'));
+  view = clampView(next, width, height);
+  viewGroup.setAttribute('transform', viewTransform(view));
+  zoomInButton.disabled = view.scale >= ZOOM_RANGE.max;
+  zoomOutButton.disabled = view.scale <= ZOOM_RANGE.min;
+  zoomFitButton.disabled = view === IDENTITY_VIEW || (view.scale === 1 && view.x === 0 && view.y === 0);
+}
+
+function clientToViewBox(clientX, clientY) {
+  const point = svg.createSVGPoint();
+  point.x = clientX;
+  point.y = clientY;
+  return point.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+// Zooms by `factor` around a screen point, or around the middle of the board when none is given.
+function zoomBy(factor, clientX, clientY) {
+  const { width, height } = viewBoxSize(svg.getAttribute('viewBox'));
+  const focus = clientX === undefined ? { x: width / 2, y: height / 2 } : clientToViewBox(clientX, clientY);
+  applyView(zoomAt(view, factor, focus.x, focus.y, width, height));
+}
+
+function panByClient(dx, dy) {
+  const { width, height } = viewBoxSize(svg.getAttribute('viewBox'));
+  const unitsPerPixel = 1 / svg.getScreenCTM().a;
+  applyView(panBy(view, dx * unitsPerPixel, dy * unitsPerPixel, width, height));
+}
+
+// A second finger turns an edit that the first finger just started into a zoom gesture, so drop that edit.
+function cancelEditSessions() {
+  if (drag) {
+    svg.querySelector(`#object-${drag.id}`)?.classList.remove('is-dragging');
+    drag = null;
+  }
+  if (drawSession) {
+    state.drawings = state.drawings.filter((drawing) => drawing !== drawSession.drawing);
+    drawSession = null;
+    render({ rebuild: true });
+  }
+}
+
+function pinchState() {
+  const [a, b] = [...gesturePointers.values()];
+  return { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+zoomInButton.addEventListener('click', () => zoomBy(ZOOM_STEP));
+zoomOutButton.addEventListener('click', () => zoomBy(1 / ZOOM_STEP));
+zoomFitButton.addEventListener('click', () => applyView(IDENTITY_VIEW));
+svg.addEventListener('wheel', (event) => {
+  event.preventDefault();
+  zoomBy(Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.0015)), event.clientX, event.clientY);
+}, { passive: false });
+
+// Capture phase, so the gesture layer sees pointers before the move/draw handlers and can cancel their sessions.
+svg.addEventListener('pointerdown', (event) => {
+  if (event.pointerType === 'touch') {
+    gesturePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (gesturePointers.size === 2) {
+      cancelEditSessions();
+      panSession = null;
+      gesture = pinchState();
+      return;
+    }
+  }
+  if (state.tool === 'move' && view.scale > 1 && !gesture && !event.target.closest('[data-object-id]')) {
+    panSession = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    svg.setPointerCapture(event.pointerId);
+  }
+}, true);
+svg.addEventListener('pointermove', (event) => {
+  if (gesturePointers.has(event.pointerId)) gesturePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (gesture && gesturePointers.size === 2) {
+    const next = pinchState();
+    zoomBy(next.distance / gesture.distance, next.x, next.y);
+    panByClient(next.x - gesture.x, next.y - gesture.y);
+    gesture = next;
+  } else if (panSession?.pointerId === event.pointerId) {
+    panByClient(event.clientX - panSession.x, event.clientY - panSession.y);
+    panSession.x = event.clientX;
+    panSession.y = event.clientY;
+  }
+}, true);
+const endGesturePointer = (event) => {
+  gesturePointers.delete(event.pointerId);
+  if (gesturePointers.size < 2) gesture = null;
+  if (panSession?.pointerId === event.pointerId) panSession = null;
+};
+svg.addEventListener('pointerup', endGesturePointer, true);
+svg.addEventListener('pointercancel', endGesturePointer, true);
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Zones.
@@ -629,6 +737,7 @@ importFile.addEventListener('change', async () => {
 const portraitQuery = matchMedia('(orientation: portrait)');
 function updateOrientation() {
   setSceneOrientation(svg, portraitQuery.matches);
+  applyView(view); // the viewport shape changed, so re-fit the pan limits
 }
 portraitQuery.addEventListener?.('change', updateOrientation);
 window.addEventListener('resize', updateOrientation, { passive: true });

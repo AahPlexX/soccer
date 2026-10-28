@@ -52,6 +52,7 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Freehand telestration, solid pass arrows, dashed run arrows, cones in selectable colors, mini goals, extra soccer balls, clear drawings, play/pause/reset, 0.5×/1×/2× simulation speed, and good-spacing/bunching teaching modes.
 - Players are solid: the simulation, tackles, and coach drags or nudges never leave two players overlapping; a player you place stays put and others step aside.
 - Undo and redo (toolbar buttons, Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z) for up to 50 board edits; moving a player, drawing, placing a prop, loading a play, or resetting is one step each.
+- Zoom and pan the board (Zoom in, Zoom out, and Fit buttons, mouse wheel or trackpad pinch, two-finger pinch on iPad, one-finger pan when zoomed) from 1× to 4×.
 - CPU-vs-CPU passing (receivers with an opponent-blocked lane are skipped), deterministic close-range turnovers, an optional dashed pass-options overlay, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states, with players held in their own half until a post-goal kickoff is released.
 - Deterministic varied shooting with goalkeeper movement toward incoming shots and catch/parry/goal outcomes; the fixed aim sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.

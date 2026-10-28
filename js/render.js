@@ -206,7 +206,10 @@ export function initializeScene(svg, state) {
   world.append(el('g', { id: 'prop-layer' }));
   world.append(el('g', { id: 'player-layer' }));
   world.append(el('g', { id: 'ball-layer' }));
-  svg.append(world);
+  // #pitch-view carries the 2D zoom/pan transform (js/view-zoom.js); the world inside keeps the orientation transform.
+  const view = el('g', { id: 'pitch-view' });
+  view.append(world);
+  svg.append(view);
   rebuildObjects(svg, state);
   renderScene(svg, state);
   return world;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInitialState } from '../js/state.js';
-import { ensureCarrier, releaseManuallyMovedObject, stepSimulation } from '../js/simulation.js';
+import { ensureCarrier, releaseFormationCarrier, releaseManuallyMovedObject, stepSimulation } from '../js/simulation.js';
 
 test('simulation acquires a carrier for the possession team', () => {
   const state = createInitialState();
@@ -130,4 +130,38 @@ test('a defender outside tackling range does not win possession', () => {
   Object.assign(state.simulation, { running: true, carrierId: carrier.id, possessionTeam: 'home' });
   stepSimulation(state, 1 / 60);
   assert.equal(state.simulation.carrierId, carrier.id);
+});
+
+test('post-tackle protection survives a pass reception', () => {
+  const state = createInitialState();
+  const receiver = state.players.find((player) => player.id === 'home-6');
+  Object.assign(state.balls[0], { x: receiver.x, y: receiver.y });
+  Object.assign(state.simulation, { running: true, possessionTeam: 'home', carrierId: null,
+    receiverId: receiver.id, ballTarget: { x: receiver.x, y: receiver.y }, tackleCooldown: 3 });
+  stepSimulation(state, 1 / 60);
+  assert.equal(state.simulation.carrierId, receiver.id);
+  assert.ok(state.simulation.tackleCooldown > 2.9, 'reception must not shorten the existing grace period');
+});
+
+
+test('reapplying the carrier team releases possession and a held restart at the ball position', () => {
+  for (const team of ['home', 'away']) {
+    const state = createInitialState();
+    Object.assign(state.balls[0], { x: 0.5, y: 0.1 });
+    Object.assign(state.simulation, { carrierId: `${team}-7`, restart: { type: 'kickoff', team }, actionClock: 1 });
+    releaseFormationCarrier(state, team);
+    assert.equal(state.simulation.carrierId, null);
+    assert.equal(state.simulation.restart, null);
+    state.simulation.running = true;
+    stepSimulation(state, 1 / 60);
+    assert.deepEqual({ x: state.balls[0].x, y: state.balls[0].y }, { x: 0.5, y: 0.1 });
+  }
+});
+
+test('reapplying the other team does not release a held restart', () => {
+  const state = createInitialState();
+  Object.assign(state.simulation, { carrierId: 'home-7', restart: { type: 'kickoff', team: 'home' } });
+  releaseFormationCarrier(state, 'away');
+  assert.equal(state.simulation.carrierId, 'home-7');
+  assert.deepEqual(state.simulation.restart, { type: 'kickoff', team: 'home' });
 });

@@ -2,12 +2,12 @@ import { DEFAULT_COLORS, FORMATION_NAMES } from './constants.js';
 
 const HOME_FORMATIONS = Object.freeze({
   '1-3-2-1': [
-    ['GK', 0.08, 0.5], ['LD', 0.25, 0.34], ['RD', 0.25, 0.66],
-    ['LM', 0.46, 0.18], ['CM', 0.46, 0.5], ['RM', 0.46, 0.82], ['ST', 0.72, 0.5],
+    ['GK', 0.08, 0.5], ['LD', 0.20, 0.34], ['RD', 0.20, 0.66],
+    ['LM', 0.31, 0.18], ['CM', 0.31, 0.5], ['RM', 0.31, 0.82], ['ST', 0.43, 0.5],
   ],
   '1-2-3-1': [
-    ['GK', 0.08, 0.5], ['LD', 0.27, 0.3], ['CD', 0.24, 0.5], ['RD', 0.27, 0.7],
-    ['LM', 0.49, 0.28], ['RM', 0.49, 0.72], ['ST', 0.72, 0.5],
+    ['GK', 0.08, 0.5], ['LD', 0.20, 0.3], ['CD', 0.18, 0.5], ['RD', 0.20, 0.7],
+    ['LM', 0.31, 0.28], ['RM', 0.31, 0.72], ['ST', 0.43, 0.5],
   ],
 });
 
@@ -49,7 +49,7 @@ export function applyFormation(players, team, formation) {
     if (player.team !== team) return player;
     const index = teamPlayers.findIndex((candidate) => candidate.id === player.id);
     const [role, x, y] = anchors[index];
-    return { ...player, role, label: role, x, y, anchorX: x, anchorY: y };
+    return { ...player, role, label: player.label && player.label !== player.role ? player.label : role, x, y, anchorX: x, anchorY: y };
   });
 }
 

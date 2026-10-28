@@ -4,7 +4,7 @@ import { applyFormation, formationPosition, recordPlayerPosition } from './forma
 import { filterPresetsByCategory } from './library.js';
 import { clamp, pitchPointFromClient } from './geometry.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
-import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
+import { releaseFormationCarrier, releaseManuallyMovedObject, stepSimulation } from './simulation.js';
 import { createInitialState, normalizeState } from './state.js';
 import { deletePreset, exportBackup, importBackup, listPresets, loadAutosave, saveAutosave, savePreset } from './storage.js';
 
@@ -298,19 +298,25 @@ svg.addEventListener('keydown', (event) => {
   }
 });
 
-homeFormation.addEventListener('change', () => {
-  state.homeFormation = homeFormation.value;
-  state.players = applyFormation(state.players, 'home', state.homeFormation);
+function applySelectedFormation(team) {
+  const select = team === 'home' ? homeFormation : awayFormation;
+  const key = team === 'home' ? 'homeFormation' : 'awayFormation';
+  state[key] = select.value;
+  releaseFormationCarrier(state, team);
+  state.players = applyFormation(state.players, team, select.value);
   state.currentPresetId = null;
   setResetSnapshot(state);
   commitChange({ rebuild: true });
+}
+homeFormation.addEventListener('change', () => applySelectedFormation('home'));
+awayFormation.addEventListener('change', () => applySelectedFormation('away'));
+document.querySelector('#home-formation-apply').addEventListener('click', () => {
+  applySelectedFormation('home');
+  showToast('Our shape reapplied');
 });
-awayFormation.addEventListener('change', () => {
-  state.awayFormation = awayFormation.value;
-  state.players = applyFormation(state.players, 'away', state.awayFormation);
-  state.currentPresetId = null;
-  setResetSnapshot(state);
-  commitChange({ rebuild: true });
+document.querySelector('#away-formation-apply').addEventListener('click', () => {
+  applySelectedFormation('away');
+  showToast('Their shape reapplied');
 });
 awayVisible.addEventListener('click', () => { state.awayVisible = !state.awayVisible; commitChange(); });
 zonesToggle.addEventListener('click', () => {

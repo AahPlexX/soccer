@@ -13,6 +13,12 @@ Next action: verify goalkeeper movement, passing lines, and post-zone layout on 
 
 Blockers: real-device validation on the 2018 iPad baseline has not been executed in this repository session.
 
+## Formation correction
+
+- Both approved shapes now start each team in its own half, with separated defensive, midfield and forward lines. Custom names, numbers and colors survive a shape change. Each team has a reapply control for coaches using an older autosaved board; existing custom positions are not automatically replaced. Changing a carrier's team shape releases the ball in place.
+- Attacking support advances with the ball, and five seconds of post-tackle protection prevent midfield possession oscillation. Simulations at all three speeds produced shots, turnovers and kickoff, corner and goal-kick restarts. These remain simplified teaching behaviors.
+- All four shape matchups and the reapply control were rendered at desktop, tablet and compact widths. Cache `v12` refreshes the updated app shell.
+
 ## Latest control wiring work
 
 - Corrected manual ball placement and loose-ball pursuit, player anchor updates, drawing and prop placement over objects, portrait token orientation after rebuild, and saved-preset reset after reload. Formation changes clear the old preset identity. An unsaved reset baseline is not separately persisted across reloads.
@@ -93,7 +99,7 @@ Research and standards checked in this work unit:
 ## Known risks
 
 - Locked 60 fps on the 2018 iPad 6th generation remains unverified on physical hardware.
-- iPad Safari/PWA offline/update behavior has not been exercised on physical iPad hardware after cache generation `v11`.
+- iPad Safari/PWA offline/update behavior has not been exercised on physical iPad hardware after cache generation `v12`.
 - Post-zone/post-library layouts have rendered Chromium coverage at three sizes; physical-iPad usability remains unverified.
 - Mini-goal touch dragging/hit-area ergonomics remain physically unverified.
 - Saved-library controls have rendered Chromium interaction coverage; physical-iPad touch usability remains unverified.

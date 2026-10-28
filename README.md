@@ -39,7 +39,7 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 ## Current feature set
 
 - 7v7 pitch with halfway line, penalty areas, build-out lines, goals, center circle, penalty spots, and corner arcs.
-- Independent 1-3-2-1 and 1-2-3-1 formations for both teams. No other preset formations exist.
+- Independent 1-3-2-1 and 1-2-3-1 formations for both teams, with each starting in its own half. Use the ↺ button beside a team’s shape to reapply it; saved custom arrangements are preserved until changed. No other preset formations exist.
 - Touch, pen, mouse, and keyboard player/ball movement through Pointer Events and keyboard nudging.
 - Multi-select teaching zones with adjustable opacity; overlaps naturally emphasize intersections.
 - Optional zone drill rules: keep Our team, Opponents, or Both teams inside or out of the currently selected zone union. Mandatory U9 build-out retreat and legal restart placement take precedence over optional drill constraints.
@@ -50,7 +50,7 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Deterministic varied shooting with goalkeeper movement toward incoming shots and catch/parry/goal outcomes; the fixed aim sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
 - Autosave within a 120 ms debounce, IndexedDB saved positions with localStorage fallback, category tabs over built-in and saved items, a title/category editor for saved presets, a two-step in-app delete confirmation, and JSON backup export/import.
-- Offline app-shell caching and installable web-app manifest; cache generation `v11` includes the pass-option overlay, goalkeeper tracking, and kickoff half restrictions. Actual offline operation on iPad remains to be verified.
+- Offline app-shell caching and installable web-app manifest; cache generation `v12` includes the pass-option overlay, goalkeeper tracking, and kickoff half restrictions. Actual offline operation on iPad remains to be verified.
 
 ## Documentation
 

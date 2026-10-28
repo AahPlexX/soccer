@@ -31,8 +31,14 @@ function supportTarget(player, state, ball) {
     const sign = player.team === 'home' ? -1 : 1;
     return { x: clamp(ball.x + sign * 0.04), y: clamp(ball.y + ((Number(player.id.split('-')[1]) % 3) - 1) * 0.04) };
   }
+  const direction = attackingDirection(player.team);
+  const progress = player.team === 'home' ? ball.x : 1 - ball.x;
+  // Kickoff anchors are in the team's own half; move the attacking formation
+  // up together as the ball advances, keeping its relative width and depth.
+  const attackShift = player.team === state.simulation.possessionTeam && player.role !== 'GK'
+    ? direction * Math.max(0, progress - 0.2) * SIMULATION.attackSupportAdvance : 0;
   const shifted = {
-    x: clamp(player.anchorX + (ball.x - 0.5) * SIMULATION.supportBallShiftX),
+    x: clamp(player.anchorX + attackShift + (ball.x - 0.5) * SIMULATION.supportBallShiftX),
     y: clamp(player.anchorY + (ball.y - 0.5) * SIMULATION.supportBallShiftY),
   };
   return clampSupportForOffside(player, shifted, state.players, ball);
@@ -140,7 +146,7 @@ function acquireLooseBall(state) {
     state.simulation.carrierId = candidate.id;
     state.simulation.possessionTeam = candidate.team;
     state.simulation.lastTouchTeam = candidate.team;
-    state.simulation.tackleCooldown = SIMULATION.receiveProtectionSeconds;
+    state.simulation.tackleCooldown = Math.max(state.simulation.tackleCooldown || 0, SIMULATION.receiveProtectionSeconds);
     state.simulation.receiverId = null;
     state.simulation.ballTarget = null;
     ball.x = candidate.x;
@@ -295,6 +301,13 @@ export function releaseManuallyMovedObject(state, objectId) {
   Object.assign(state.simulation, {
     carrierId: null, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0,
   });
+}
+
+// Reapplying a formation moves that team's players. If its carrier is moved,
+// leave the ball where it is and release any held restart just like a manual drag.
+export function releaseFormationCarrier(state, team) {
+  const carrier = state.players.find((player) => player.id === state.simulation.carrierId);
+  if (carrier?.team === team) releaseManuallyMovedObject(state, carrier.id);
 }
 
 export function ensureCarrier(state) {

@@ -45,3 +45,38 @@ test('manually placed players use their new support anchor while formation reset
     assert.deepEqual(formationPosition(state.players, player, formation), original);
   }
 });
+
+
+test('both team formations begin in their own halves, face forward, and do not overlap opponents', () => {
+  const formations = ['1-3-2-1', '1-2-3-1'];
+  for (const homeFormation of formations) for (const awayFormation of formations) {
+    const home = createTeamPlayers('home', homeFormation);
+    const away = createTeamPlayers('away', awayFormation);
+    assert.ok(home.every((p) => p.x < 0.5));
+    assert.ok(away.every((p) => p.x > 0.5));
+    for (const team of [home, away]) {
+      const forward = team.find((p) => p.role === 'ST');
+      const midfield = team.filter((p) => p.role.endsWith('M'));
+      const defense = team.filter((p) => p.role.endsWith('D'));
+      const towardOpposingGoal = team[0].team === 'home' ? (a, b) => a > b : (a, b) => a < b;
+      assert.ok(midfield.every((p) => towardOpposingGoal(forward.x, p.x)));
+      assert.ok(midfield.every((mid) => defense.every((def) => towardOpposingGoal(mid.x, def.x))));
+    }
+    // Player discs have a 25-unit radius on the 1000 × 680 pitch viewBox.
+    for (const a of home) for (const b of away) {
+      assert.ok(Math.hypot((a.x - b.x) * 1000, (a.y - b.y) * 680) >= 50);
+    }
+  }
+});
+
+
+test('changing formation preserves custom names, numbers and colors while updating default role labels', () => {
+  const state = createInitialState();
+  const custom = state.players.find((player) => player.id === 'home-4');
+  Object.assign(custom, { label: 'Alex', number: 42, colorOverride: '#ffffff' });
+  const next = applyFormation(state.players, 'home', '1-2-3-1');
+  assert.deepEqual(Object.fromEntries(['role', 'label', 'number', 'colorOverride'].map((key) => [key, next.find((p) => p.id === 'home-4')[key]])),
+    { role: 'RD', label: 'Alex', number: 42, colorOverride: '#ffffff' });
+  assert.equal(next.find((p) => p.id === 'home-3').label, 'CD');
+  assert.deepEqual(next.filter((p) => p.team === 'away'), state.players.filter((p) => p.team === 'away'));
+});

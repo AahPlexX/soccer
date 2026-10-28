@@ -4,11 +4,19 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.0.3**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.0.4**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+
+## Coach on the field
+
+Open **Coach workspace** to prepare a drill brief, choose participants (including 3v3/4v4 or unopposed setups), capture an ordered teaching/practice sequence, set a persistent starting setup, update a saved drill, and print the board or a multi-page plan. The board has a real-time drill clock and Previous/Next snapshot controls. **Advance 1 second** pauses the CPU for controlled discussion.
+
+Use **Route arrow** for an authored path, **Erase drawing** for one annotation, and Undo for corrections. Cones, mini goals and extra balls can be duplicated or cleared without deleting the match ball. 3D now shows annotations and optional pass lanes; editing stays in 2D. Written instructions, arrows and mini goals are teaching aids; the CPU uses simplified U9 rules and the main goals.
+
+Read [COACH_WORKFLOWS.md](./COACH_WORKFLOWS.md) for preparation, rehearsal, field use, saving and PDF workflows. Everything remains on one coach's device; no collaboration features or accounts are included.
 
 ## Run locally
 
-The application has no build step and no runtime dependencies. Serve the repository root over HTTP because service workers do not run from `file://` URLs.
+The application has no build step and needs no package installation; the optional Three.js renderer is vendored for offline use. Serve the repository root over HTTP because service workers do not run from `file://` URLs.
 
 ```bash
 python -m http.server 8080
@@ -62,6 +70,7 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 
 ## Documentation
 
+- [COACH_WORKFLOWS.md](./COACH_WORKFLOWS.md) — field workflow guide and product boundaries.
 - [PRD.md](./PRD.md) — authoritative product requirements.
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — current technical design and invariants.
 - [PROJECT_STATE.md](./PROJECT_STATE.md) — live implementation status, verification evidence, known gaps, and next work.
@@ -71,5 +80,3 @@ Keep these files synchronized with code changes. `PROJECT_STATE.md` is the hando
 Version 1.0.1 completes player separation at crowded pitch edges, including fixed restart takers.
 
 Version 1.0.2 keeps the 3D ball visible during possession and behind other players; its display sits beside the carrier without changing the tactical ball coordinates.
-
-Version 1.0.3 adds the per-player bench: tick "On the bench" in a player's editor to take that player off the pitch for 3v3 or 4v4 drills and unopposed work; benched players are skipped by the simulation, passing and spacing, and a "Return" chip over the pitch puts them back.

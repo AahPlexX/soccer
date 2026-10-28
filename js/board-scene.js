@@ -1,3 +1,4 @@
+import { availablePassOptions } from './pass-options.js';
 // The 3D board scene (CAM-002): builds a Three.js scene for the pitch and keeps it in step with the board state. Three.js
 // is injected (this file never imports it) so the heavy library loads lazily and tests can build the scene in Node;
 // textures come from an injected factory because canvases only exist in a browser. World axes are in camera-orbit.js:
@@ -129,6 +130,33 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
   const balls = new Map();
   const cones = new Map();
   const miniGoals = new Map();
+  const drawings = new Map();
+  const passLines = new THREE.Group();
+  scene.add(passLines);
+  const passSlots = Array.from({ length: 6 }, () => {
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+      new THREE.LineDashedMaterial({ color: '#ffd43b', dashSize: 0.65, gapSize: 0.4, depthTest: false, transparent: true }));
+    line.renderOrder = 10; line.visible = false; passLines.add(line); return line;
+  });
+
+  function pathGroup(points, dashed, arrow) {
+    const group = new THREE.Group();
+    if (points.length < 2) return group;
+    const vectors = points.map((point) => { const p = toWorld(point.x, point.y); return new THREE.Vector3(p.x, 0.12, p.z); });
+    const material = dashed ? new THREE.LineDashedMaterial({ color: '#ffd43b', dashSize: 0.65, gapSize: 0.4, depthTest: false, transparent: true })
+      : new THREE.LineBasicMaterial({ color: '#ffffff', depthTest: false, transparent: true });
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(vectors), material);
+    line.computeLineDistances(); line.renderOrder = 10; group.add(line);
+    if (arrow) {
+      const end = vectors.at(-1); const direction = end.clone().sub(vectors.at(-2));
+      if (direction.lengthSq() > 1e-8) {
+        const head = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.9, 12), new THREE.MeshBasicMaterial({ color: dashed ? '#ffd43b' : '#ffffff', depthTest: false, transparent: true }));
+        head.position.copy(end); head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()); head.renderOrder = 11; group.add(head);
+      }
+    }
+    return group;
+  }
+
 
   function createPlayer() {
     const group = new THREE.Group();
@@ -204,7 +232,24 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     }
   }
 
-  function sync(state) {
+  function sync(state, { showPassOptions = false } = {}) {
+    reconcile(drawings, state.drawings, () => ({ group: new THREE.Group(), signature: '' }), (entry, drawing) => {
+      const signature = JSON.stringify(drawing);
+      if (entry.signature === signature) return;
+      entry.signature = signature;
+      [...entry.group.children].forEach((child) => { disposeObject(child); entry.group.remove(child); });
+      entry.group.add(pathGroup(['freehand', 'curve'].includes(drawing.type) ? drawing.points : drawing.points.slice(0, 2), drawing.type === 'run', drawing.type !== 'freehand'));
+    });
+    const carrier = state.players.find((player) => player.id === state.simulation.carrierId && !player.benched);
+    const receivers = showPassOptions ? availablePassOptions(state) : [];
+    passSlots.forEach((line, index) => {
+      const receiver = receivers[index]; line.visible = Boolean(carrier && receiver);
+      if (!line.visible) return;
+      const from = toWorld(carrier.x, carrier.y); const to = toWorld(receiver.x, receiver.y);
+      const positions = line.geometry.attributes.position;
+      positions.setXYZ(0, from.x, 0.12, from.z); positions.setXYZ(1, to.x, 0.12, to.z); positions.needsUpdate = true;
+      line.geometry.computeBoundingSphere(); line.computeLineDistances();
+    });
     for (const [id, mesh] of zones) {
       mesh.visible = state.selectedZones.includes(id);
       mesh.material.opacity = state.zoneOpacity;
@@ -251,14 +296,15 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     disposeObject(scene);
     labelTextures.forEach((texture) => texture?.dispose());
     labelTextures.clear();
-    [players, balls, cones, miniGoals].forEach((map) => map.clear());
+    [players, balls, cones, miniGoals, drawings].forEach((map) => map.clear());
   }
 
   return {
     scene,
     sync,
     dispose,
+    passOptions: () => passSlots.filter((line) => line.visible).length,
     counts: () => ({ players: players.size, balls: balls.size, cones: cones.size, miniGoals: miniGoals.size, zones: zones.size }),
-    objectFor: (id) => (players.get(id) ?? balls.get(id) ?? cones.get(id) ?? miniGoals.get(id))?.group ?? null,
+    objectFor: (id) => (players.get(id) ?? balls.get(id) ?? cones.get(id) ?? miniGoals.get(id) ?? drawings.get(id))?.group ?? null,
   };
 }

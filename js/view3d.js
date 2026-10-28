@@ -51,7 +51,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
     frame = requestAnimationFrame(render);
     resize();
     if (!width) return;
-    board.sync(getState());
+    board.sync(getState(), { showPassOptions: document.documentElement.dataset.passOptions === 'true' });
     const position = orbitPosition(orbit);
     camera.position.set(position.x, position.y, position.z);
     camera.lookAt(orbit.target.x, 0, orbit.target.z);

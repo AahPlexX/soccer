@@ -32,6 +32,7 @@ function goalKickBuildOut() {
   state.balls[0].x = 0.09; state.balls[0].y = 0.5;
   state.simulation.possessionTeam = 'home'; state.simulation.carrierId = 'home-1';
   state.selectedZones = ['homeBuild', 'homeMid'];
+  Object.assign(state.coaching, {"title": "Goal kick build-out", "objective": "Create width and a safe first pass out of the back.", "setup": "7v7 board. Defenders split to either side of the goalkeeper. Opponents retreat behind the build-out line.", "instructions": "Start paused. Ask the goalkeeper to identify two options. Play the scenario, pause at the first reception, then return to the starting setup and compare options.", "cues": "Can the receiver see the next pass? Where is the space when an opponent presses? Support behind and beside the ball.", "progression": "Easier: bench two opponents. Harder: apply pressure after distribution and require the receiving player to find a different teammate.", "minutes": 6});
   return state;
 }
 
@@ -48,6 +49,7 @@ function pressOpponentBuildOut() {
   state.balls[0].x = 0.91; state.balls[0].y = 0.5;
   state.simulation.possessionTeam = 'away'; state.simulation.carrierId = 'away-1';
   state.selectedZones = ['awayMid', 'awayGoal'];
+  Object.assign(state.coaching, {"title": "Press the opponent build-out", "objective": "One player presses while teammates protect passing lanes.", "setup": "Opponent goalkeeper has the ball. Organize the striker and midfield line behind the build-out line.", "instructions": "Wait for the goalkeeper to distribute. Pause when the first defender presses. Identify the covering players before resuming.", "cues": "Who goes to the ball? Who protects the middle? Approach under control and show the ball toward a teammate.", "progression": "Easier: pause and move covering players manually. Harder: switch to good spacing and compare against the bunching demonstration.", "minutes": 5});
   return state;
 }
 
@@ -61,6 +63,7 @@ function offsideVisualizer() {
   state.balls[0].x = 0.58; state.balls[0].y = 0.72;
   state.simulation.possessionTeam = 'home'; state.simulation.carrierId = 'home-6';
   state.selectedZones = ['awayGoal'];
+  Object.assign(state.coaching, {"title": "U9 offside discussion", "objective": "Recognize space beyond the attacking build-out line and time forward support.", "setup": "Use the highlighted attacking zone. The forward begins inside it, with defenders between the forward and goal.", "instructions": "Move the forward and defenders while paused. Ask whether being in this zone alone means offside. Then advance one second at a time to discuss the ball and second-last defender.", "cues": "Where is the ball? Where is the second-last defender? Time the run rather than waiting behind the defense.", "progression": "Repeat with the ball farther forward or a defender dropping back. The CPU uses simplified support positioning, not a full referee model.", "minutes": 4});
   return state;
 }
 
@@ -79,6 +82,7 @@ function switchField() {
     type: 'freehand',
     points: [{ x: 0.46, y: 0.16 }, { x: 0.42, y: 0.5 }, { x: 0.48, y: 0.84 }],
   }];
+  Object.assign(state.coaching, {"title": "Switch the field", "objective": "Find the far-side space instead of crowding the ball.", "setup": "Wide players on both sides, central support and two defenders. The drawing shows an illustrative route to the opposite wing.", "instructions": "Show the board before playing. Capture a teaching step for each intended reception. Use Previous / Next for the authored sequence, or Play to explore the CPU choices.", "cues": "Look across the field before receiving. Can a supporting player face both sides? What space appears when everyone follows the ball?", "progression": "Easier: bench opponents for an unopposed walk-through. Harder: add pressure and compare the clear pass options.", "minutes": 5});
   return state;
 }
 

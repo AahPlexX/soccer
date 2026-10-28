@@ -180,6 +180,7 @@ function drawingPath(points) {
 }
 
 function buildDrawing(drawing) {
+  if (drawing.type === 'curve') return el('path', { d: drawingPath(drawing.points), class: 'drawing-arrow', 'marker-end': 'url(#arrowhead)' });
   if (drawing.type !== 'freehand' && drawing.points.length >= 2) {
     const [start, end] = drawing.points;
     return el('line', {

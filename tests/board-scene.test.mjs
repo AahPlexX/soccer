@@ -189,3 +189,16 @@ test('loose and extra balls retain their coordinates and remain visible through 
     assert.ok(mesh.renderOrder > 0);
   }
 });
+
+test('3D teaching drawings and optional pass lines follow the board and are removed when cleared', () => {
+  const { state, board } = setup();
+  state.drawings = [{ id: 'pass', type: 'arrow', points: [{ x: 0.2, y: 0.3 }, { x: 0.4, y: 0.5 }] },
+    { id: 'run', type: 'run', points: [{ x: 0.3, y: 0.2 }, { x: 0.5, y: 0.4 }] }];
+  state.simulation.carrierId = 'home-2';
+  board.sync(state, { showPassOptions: true });
+  assert.ok(board.objectFor('pass').children.length);
+  assert.equal(board.objectFor('run').children[0].children[0].material.type, 'LineDashedMaterial');
+  assert.ok(board.passOptions() > 0);
+  board.sync(state, { showPassOptions: false }); assert.equal(board.passOptions(), 0);
+  state.drawings = []; board.sync(state); assert.equal(board.objectFor('pass'), null);
+});

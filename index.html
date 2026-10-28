@@ -42,6 +42,7 @@
       <button id="away-visible" class="rail-button" type="button" aria-pressed="true">Hide opponents</button>
       <button id="zones-toggle" class="rail-button" type="button" aria-expanded="false" aria-controls="zone-panel">Zones</button>
       <button id="saved-open" class="rail-button" type="button">Saved positions</button>
+      <button id="coach-open" class="rail-button" type="button">Coach workspace</button>
       <button id="colors-open" class="rail-button" type="button">Team colors</button>
       <label class="theme-control" for="theme-select"><span>View</span>
         <select id="theme-select">
@@ -75,10 +76,20 @@
     </section>
 
     <main id="workspace" class="workspace" tabindex="-1">
+        <div id="teaching-strip" class="teaching-strip" aria-label="Teaching controls">
+          <button id="teaching-prev" type="button" aria-label="Previous teaching step">←</button>
+          <span id="teaching-position" aria-live="polite">0 saved steps</span>
+          <button id="teaching-next" type="button" aria-label="Next teaching step">→</button>
+          <output id="drill-clock" aria-label="Drill time remaining">5:00</output>
+          <button id="clock-toggle" type="button">Start clock</button>
+          <button id="clock-reset" type="button">Reset clock</button>
+          <span id="clock-status" class="visually-hidden" role="status">Drill clock paused</span>
+        </div>
+        <div id="bench" class="bench" role="group" aria-label="Benched players" hidden></div>
       <section class="pitch-stage" aria-label="Interactive U9 soccer pitch">
+
         <svg id="pitch" class="pitch" aria-label="Tactical soccer pitch. Players and ball are keyboard focusable." role="group"></svg>
         <div id="view3d" class="view3d" hidden></div>
-        <div id="bench" class="bench" role="group" aria-label="Benched players" hidden></div>
         <div id="drag-status" class="visually-hidden" aria-live="polite"></div>
       </section>
     </main>
@@ -89,6 +100,8 @@
         <button class="tool-button" data-tool="draw" type="button" aria-pressed="false">Draw</button>
         <button class="tool-button" data-tool="arrow" type="button" aria-pressed="false">Pass arrow</button>
         <button class="tool-button" data-tool="run" type="button" aria-pressed="false">Run arrow</button>
+        <button class="tool-button" data-tool="curve" type="button" aria-pressed="false">Route arrow</button>
+        <button class="tool-button" data-tool="erase" type="button" aria-pressed="false">Erase drawing</button>
         <button class="tool-button" data-tool="cone" type="button" aria-pressed="false">Add cone</button>
         <label class="cone-color-control" for="cone-color">Cone color
           <select id="cone-color" name="coneColor"></select>
@@ -111,6 +124,7 @@
       </div>
       <div class="simulation-group">
         <button id="play-toggle" class="primary-action" type="button">Play simulation</button>
+        <button id="simulation-step" type="button" title="Pause and advance one simulated second">Advance 1 second</button>
         <button id="reset-board" type="button">Reset</button>
         <label for="speed-select">Speed
           <select id="speed-select">
@@ -135,6 +149,48 @@
     </footer>
   </div>
 
+  <section id="coach-print-sheet" aria-label="Printable coaching diagram"></section>
+  <dialog id="coach-dialog" class="coach-dialog" aria-labelledby="coach-heading">
+    <div class="dialog-heading"><div><h2 id="coach-heading">Coach workspace</h2><p>Set up, teach, rehearse, then save to your library.</p></div><button id="coach-close" type="button" aria-label="Close coach workspace">Close</button></div>
+    <p id="coach-feedback" role="status"></p>
+    <details open><summary>Drill brief &amp; teaching points</summary>
+      <div class="coach-fields">
+        <label for="coach-title">Drill / session title</label><input id="coach-title" maxlength="80" type="text">
+        <label for="coach-objective">Learning objective</label><textarea id="coach-objective" maxlength="2000" placeholder="What should the players learn?"></textarea>
+        <label for="coach-setup">Setup &amp; equipment</label><textarea id="coach-setup" maxlength="2000" placeholder="Area size, players, cones, goals, spare balls"></textarea>
+        <label for="coach-instructions">Instructions &amp; rules</label><textarea id="coach-instructions" maxlength="2000" placeholder="How to start, rotate, and restart the activity"></textarea>
+        <label for="coach-cues">Coaching cues &amp; questions</label><textarea id="coach-cues" maxlength="2000" placeholder="One or two things to notice; a question to ask"></textarea>
+        <label for="coach-progression">Progression / easier variation</label><textarea id="coach-progression" maxlength="2000" placeholder="Change space, numbers, pressure or a rule"></textarea>
+        <label for="coach-minutes">Duration in minutes</label><input id="coach-minutes" type="number" min="1" max="120" value="5">
+      </div><button id="brief-apply" type="button">Apply brief</button>
+      <button id="coach-save-existing" type="button">Save changes to loaded setup</button>
+      <p>The brief and sequence are included when you save a position or export a backup. The clock uses real time, independently of simulation speed, and starts paused.</p>
+    </details>
+    <details><summary>Players on pitch &amp; bench</summary>
+      <p>Uncheck players for small-sided drills. Hidden opponents still play; bench them for unopposed work.</p>
+      <div class="coach-actions"><button id="small-sided-3" type="button">3v3 without goalkeepers</button><button id="small-sided-4" type="button">4v4 without goalkeepers</button></div>
+      <div id="coach-roster" class="coach-roster"></div>
+      <label class="check-control"><input id="keep-roster" type="checkbox"> Keep these names, numbers and team colors when loading other setups</label>
+    </details>
+    <details><summary>Teaching / practice sequence</summary>
+      <p>Capture up to 12 board snapshots with teaching points. Arrange a play, drill progressions, or a practice plan. Previous / Next loads each snapshot paused; arrows illustrate intent and do not command the CPU.</p>
+      <label for="teaching-title">Step name</label><input id="teaching-title" maxlength="80" type="text" placeholder="e.g. 1. Split wide; 2. Receive on the turn">
+      <button id="teaching-capture" type="button">Capture board &amp; brief</button>
+      <ol id="teaching-steps"></ol>
+    </details>
+    <details><summary>Setup &amp; equipment actions</summary>
+      <div class="coach-actions">
+        <button id="coach-new" type="button">New drill · keep roster</button>
+        <button id="set-start" type="button">Use current board as starting setup</button>
+        <button id="return-start" type="button">Return to starting setup</button>
+        <button id="prop-duplicate" type="button">Duplicate selected prop</button>
+        <button id="props-clear" type="button">Clear all props</button>
+        <label class="check-control"><input id="print-sequence" type="checkbox"> Include captured sequence in PDF / print</label>
+        <button id="coach-print" type="button">Print / Save PDF</button>
+      </div>
+      <p>Clear props preserves players and the main ball. Undo can recover edits. Mini goals and cones are visual props; CPU play uses the main goals. Print uses the full 2D diagram and your applied brief.</p>
+    </details>
+  </dialog>
   <dialog id="update-dialog" class="editor-dialog" aria-labelledby="update-heading" aria-describedby="update-message">
     <div class="dialog-heading"><h2 id="update-heading">Update available</h2></div>
     <p id="update-message">Version <strong id="update-version"></strong> is ready.</p>

@@ -1,3 +1,5 @@
+import { setupCoaching } from './coaching-ui.js';
+import { captureBoard, eraseDrawingNear, retainRoster } from './coaching.js';
 import {
   addProp, applyTeamFormation, findObject, isPlayerId, keyboardNudge, loadPresetState, moveObjectBy, nudgePlayer,
   removeSelectedProp, resetBoardState, settlePlayers, toggleZone, updatePlayerDetails, updateTeamColors,
@@ -12,7 +14,7 @@ import { pitchPointFromClient } from './geometry.js';
 import { filterPresetsByCategory } from './library.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
-import { createInitialState, snapshotState } from './state.js';
+import { createInitialState, normalizeState, snapshotState } from './state.js';
 import { deletePreset, exportBackup, importBackup, listPresets, loadAutosave, saveAutosave, savePreset } from './storage.js';
 import { setupUpdates } from './update.js';
 
@@ -103,8 +105,9 @@ let toastTimer = null;
 let drag = null;
 let drawSession = null;
 // Drawing tools and the drawing type each creates. Arrow types are two-point lines; freehand collects points.
-const DRAWING_TYPE_BY_TOOL = new Map([['draw', 'freehand'], ['arrow', 'arrow'], ['run', 'run']]);
+const DRAWING_TYPE_BY_TOOL = new Map([['draw', 'freehand'], ['arrow', 'arrow'], ['run', 'run'], ['curve', 'curve']]);
 let lastFrame = performance.now();
+let coachingUI;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Reset baseline, autosave, toast, rendering.
@@ -160,6 +163,7 @@ function syncControls() {
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-pressed', String(active));
   });
+  coachingUI?.sync();
   zoneButtons.querySelectorAll('button').forEach((button) => {
     button.setAttribute('aria-pressed', String(state.selectedZones.includes(button.dataset.zone)));
   });
@@ -452,6 +456,10 @@ function handleObjectPointerDown(event, target) {
 
 function handleToolPointerDown(event) {
   const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
+  if (state.tool === 'erase') {
+    if (eraseDrawingNear(state, point)) commitChange({ rebuild: true }); else showToast('Tap near a drawing to erase it. Players and props are protected.');
+    return;
+  }
   const added = addProp(state, state.tool, point);
   if (added) {
     commitChange({ rebuild: true });
@@ -492,7 +500,7 @@ svg.addEventListener('pointermove', (event) => {
   }
   if (drawSession?.pointerId === event.pointerId) {
     const point = pitchPointFromClient(svg, world, event.clientX, event.clientY);
-    if (drawSession.drawing.type !== 'freehand') drawSession.drawing.points[1] = point;
+    if (!['freehand', 'curve'].includes(drawSession.drawing.type)) drawSession.drawing.points[1] = point;
     else drawSession.drawing.points.push(point);
     rebuildObjects(svg, state);
     world = svg.querySelector('#pitch-world');
@@ -586,6 +594,7 @@ removeSelected.addEventListener('click', () => {
 });
 
 playToggle.addEventListener('click', () => {
+  if (!state.players.some((player) => !player.benched)) { showToast('Put at least one player on the pitch in Coach workspace.'); return; }
   state.simulation.running = !state.simulation.running;
   state.tool = 'move';
   commitChange();
@@ -593,7 +602,8 @@ playToggle.addEventListener('click', () => {
 
 resetBoard.addEventListener('click', async () => {
   await resetBaselineReady;
-  replaceBoard(resetBoardState(resetSnapshot, state), { baseline: false });
+  const baseline = { ...(state.coaching.startBoard ?? resetSnapshot), coaching: state.coaching };
+  replaceBoard(resetBoardState(baseline, state), { baseline: false });
   showToast('Board reset to starting position');
 });
 
@@ -724,7 +734,8 @@ function rowButton(label, onClick) {
 
 function loadIntoBoard(next, title) {
   savedDialog.close();
-  replaceBoard(next);
+  replaceBoard(retainRoster(state, next));
+  coachingUI?.onLoad();
   showToast(`Loaded ${title}`);
 }
 
@@ -807,6 +818,7 @@ importFile.addEventListener('change', async () => {
   if (!file) return;
   try {
     replaceBoard(await importBackup(await file.text()));
+    coachingUI?.onLoad();
     resetBaselineReady = restoreResetBaseline();
     showToast('Backup imported');
   } catch (error) {
@@ -834,11 +846,32 @@ function animationLoop(now) {
   if (state.simulation.running && !drag && !drawSession) {
     stepSimulation(state, dt);
     renderScene(svg, state);
+    if (!state.simulation.running) syncControls();
   }
   requestAnimationFrame(animationLoop);
 }
 
+coachingUI = setupCoaching({
+  getState: () => state, commit: commitChange, replace: replaceBoard, toast: showToast,
+  newSetup: () => replaceBoard(retainRoster({ ...state, coaching: { ...state.coaching, keepRoster: true } }, createInitialState())),
+  saveExisting: async () => {
+    const current = (await listPresets()).find((preset) => preset.id === state.currentPresetId);
+    if (!current) throw new Error('Save a new position first; built-in setups stay unchanged.');
+    const saved = await savePreset({ id: current.id, title: current.title, category: current.category, state });
+    setResetSnapshot(saved.state); scheduleAutosave();
+  },
+  setStart: () => { state.simulation.running = false; state.coaching.startBoard = captureBoard(state); setResetSnapshot(state); commitChange(); },
+  returnStart: () => resetBoard.click(),
+  step: () => {
+    if (!state.players.some((p) => !p.benched)) { showToast('Put a player on the pitch first.'); return; }
+    const speed = state.speed; state.speed = 1; state.simulation.running = true;
+    try { for (let i = 0; i < 60; i++) stepSimulation(state, 1 / 60); }
+    finally { state.simulation.running = false; state.speed = speed; }
+    commitChange(); showToast('Advanced one simulated second; paused for discussion.');
+  },
+});
 buildZoneButtons();
+renderBench();
 updateOrientation();
 syncControls();
 saveAutosave(state);

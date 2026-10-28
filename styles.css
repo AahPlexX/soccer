@@ -360,3 +360,62 @@ dialog::backdrop { background: rgba(0,0,0,.58); backdrop-filter: blur(4px); }
     overflow: visible;
   }
 }
+
+/* Field-side teaching tools stay compact; editing lives in an explicitly opened workspace. */
+.pitch-stage { position: relative; }
+.workspace { display: flex; flex-direction: column; gap: 6px; }
+.pitch-stage { flex: 1; }
+.teaching-strip { flex-shrink: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 4px; width: fit-content; max-width: 100%; background: var(--rail); border: 1px solid var(--line); border-radius: 10px; font-size: 12px; }
+.teaching-strip button { min-height: 48px; padding: 4px 8px; font-size: 12px; }
+#teaching-position { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#drill-clock { font-size: 18px; font-variant-numeric: tabular-nums; margin-inline: 6px; }
+.coach-dialog { width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 20px; color: var(--text); background: var(--rail); border: 1px solid var(--line); border-radius: 14px; overflow: auto; }
+.coach-dialog details { border-top: 1px solid var(--line); padding-block: 12px; }
+.coach-dialog summary { min-height: 48px; cursor: pointer; font-weight: 700; }
+.coach-dialog p { font-size: 14px; line-height: 1.5; color: var(--muted); }
+.coach-dialog input[type="text"], .coach-dialog input[type="number"], .coach-dialog textarea { width: 100%; min-width: 0; }
+.coach-dialog textarea { min-height: 72px; resize: vertical; padding: 8px; background: var(--input, #fff); color: #111; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.coach-fields { display: grid; gap: 8px; margin-bottom: 12px; }
+.coach-fields label { font-weight: 600; }
+.coach-roster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.coach-roster fieldset { min-width: 0; border: 1px solid var(--line); border-radius: 10px; }
+.coach-roster label, .check-control { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.coach-roster input, .check-control input { width: 24px; height: 24px; }
+.coach-actions, #teaching-steps li { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 8px; }
+#coach-print-sheet { display: none; }
+@media (max-width: 620px) { .coach-roster { grid-template-columns: 1fr; } .teaching-strip { font-size: 11px; } #teaching-position { max-width: 120px; } }
+@media print {
+  @page { size: landscape; margin: 12mm; }
+  html, body { height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
+  body > * { display: none !important; }
+  #coach-print-sheet { display: block !important; color: black; font: 12pt system-ui, sans-serif; }
+  #coach-print-sheet article { break-after: page; }
+  #coach-print-sheet article:last-child { break-after: auto; }
+  #coach-print-sheet h1 { font-size: 20pt; margin: 0 0 8pt; }
+  #coach-print-sheet h2 { font-size: 12pt; margin: 8pt 0 2pt; }
+  #coach-print-sheet p { white-space: pre-wrap; margin: 0 0 6pt; }
+  #coach-print-sheet .print-pitch { display: block !important; width: 100%; height: 125mm; background: #0d8251; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+
+/* Let controls scroll within their own rows instead of shrinking the teaching pitch. */
+@media (orientation: landscape) {
+  .bottom-dock { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .simulation-group { grid-column: 1 / -1; grid-row: 1; }
+  .tool-group { grid-column: 1 / -1; grid-row: 2; }
+  .view-group { grid-column: 1; grid-row: 3; }
+  .save-group { grid-column: 2; grid-row: 3; }
+  .tool-group, .simulation-group, .view-group, .save-group { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; min-width: 0; }
+  .bottom-dock button, .bottom-dock label { flex-shrink: 0; }
+}
+@media (max-width: 1100px) and (orientation: landscape) {
+  .top-rail { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) and (orientation: landscape) {
+  .formation-control { grid-template-columns: minmax(0, 1fr) 48px; gap: 2px; }
+  .formation-control label { grid-column: 1 / -1; }
+  .formation-control select { padding-inline: 8px 24px; }
+}
+
+/* Returned-player chips remain accessible without covering the pitch. */
+.bench { position: static; flex-shrink: 0; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; padding-block: 2px; }
+.bench button { flex-shrink: 0; }

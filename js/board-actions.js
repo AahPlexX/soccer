@@ -1,3 +1,4 @@
+import { setPlayerBenched } from './coaching.js';
 import { createLocalId, FORMATION_NAMES, SIMULATION, TEAM_IDS, ZONES } from './constants.js';
 import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
 import { clamp, separatePlayers } from './geometry.js';
@@ -191,8 +192,7 @@ export function updatePlayerDetails(state, id, { number, label, colorOverride, b
   player.label = typeof label === 'string' && label.trim() ? label.trim() : player.role;
   player.colorOverride = isHexColor(colorOverride) ? colorOverride : null;
   if (typeof benched === 'boolean') {
-    player.benched = benched;
-    if (benched) releaseManuallyMovedObject(state, id); // a benched player cannot keep the ball
+    setPlayerBenched(state, id, benched);
   }
   return 'updated';
 }

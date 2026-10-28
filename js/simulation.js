@@ -175,7 +175,10 @@ function advanceBall(state, dt) {
   }
   ball.x = clamp(next.x);
   ball.y = clamp(next.y);
-  if (distance(ball, state.simulation.ballTarget) < 0.015) acquireLooseBall(state);
+  if (distance(ball, state.simulation.ballTarget) < 0.015) {
+    acquireLooseBall(state);
+    if (!state.simulation.carrierId) { state.simulation.ballTarget = null; state.simulation.receiverId = null; }
+  }
 }
 
 function beginRestart(state, restart, exitPoint) {
@@ -202,6 +205,7 @@ function beginRestart(state, restart, exitPoint) {
     ? state.players.find((player) => player.team === restart.team && player.role === 'GK')
     : nearestPlayer(state.players, point, (player) => player.team === restart.team);
   state.simulation.carrierId = taker?.id ?? null;
+  if (!taker) state.simulation.restart = null;
   if (taker) {
     taker.x = point.x;
     taker.y = point.y;
@@ -319,21 +323,8 @@ export function ensureCarrier(state) {
   acquireLooseBall(state);
 }
 
-// Benched players are off the pitch: the simulation runs on the players who remain and the full roster is restored
-// afterwards, so none of the rules below needs to know about the bench.
-export function stepSimulation(state, dt) {
+function stepActiveSimulation(state, dt) {
   if (!state.simulation.running) return state;
-  const roster = state.players;
-  state.players = roster.filter((player) => !player.benched);
-  try {
-    stepOnPitch(state, dt);
-  } finally {
-    state.players = roster;
-  }
-  return state;
-}
-
-function stepOnPitch(state, dt) {
   ensureCarrier(state);
   state.simulation.actionClock += dt * state.speed;
   const scaledDt = dt * state.speed;
@@ -353,4 +344,14 @@ function stepOnPitch(state, dt) {
   const carrier = state.players.find((p) => p.id === state.simulation.carrierId);
   if (carrier) Object.assign(state.balls[0], { x: carrier.x, y: carrier.y });
   return state;
+}
+
+// The roster remains intact in saves; only on-pitch participants may affect play.
+export function stepSimulation(state, dt) {
+  const roster = state.players;
+  const active = roster.filter((player) => !player.benched);
+  if (!active.length) { state.simulation.running = false; return state; }
+  state.players = active;
+  try { return stepActiveSimulation(state, dt); }
+  finally { state.players = roster; }
 }

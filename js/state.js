@@ -1,17 +1,18 @@
+import { emptyCoaching, normalizeCoaching } from './coaching.js';
 import { DEFAULT_COLORS, FORMATION_NAMES, PALETTE, SCHEMA_VERSION, TEAM_IDS, ZONES } from './constants.js';
 import { defaultPlayers } from './formations.js';
 
 // Every persisted enumeration in one place. normalizeState() falls back to the createInitialState() value whenever a
 // stored value is not listed here, so a corrupted or hand-edited autosave, preset, or backup cannot break the board.
 export const THEMES = Object.freeze(['turf', 'dark', 'field']);
-export const TOOLS = Object.freeze(['move', 'draw', 'arrow', 'run', 'cone', 'minigoal', 'ball']);
+export const TOOLS = Object.freeze(['move', 'draw', 'arrow', 'run', 'curve', 'erase', 'cone', 'minigoal', 'ball']);
 export const SPEEDS = Object.freeze([0.5, 1, 2]);
 export const SPACING_MODES = Object.freeze(['good', 'swarm']);
 export const ZONE_RESTRICTION_MODES = Object.freeze(['off', 'keep-in', 'keep-out']);
 export const ZONE_RESTRICTION_SCOPES = Object.freeze(['home', 'away', 'both']);
 export const RESTART_TYPES = Object.freeze(['throw-in', 'goal-kick', 'corner', 'kickoff']);
 // 'arrow' is the solid pass/shot arrow and 'run' the dashed player run/dribble arrow (PRD 7.1); both are two-point lines.
-export const DRAWING_TYPES = Object.freeze(['freehand', 'arrow', 'run']);
+export const DRAWING_TYPES = Object.freeze(['freehand', 'arrow', 'run', 'curve']);
 export const ZONE_OPACITY_RANGE = Object.freeze({ min: 0.1, max: 0.45 });
 
 const PLAYERS_PER_TEAM = 7;
@@ -31,6 +32,7 @@ const stringOrNull = (value) => (isNonEmptyString(value) ? value : null);
 export function createInitialState() {
   return {
     schemaVersion: SCHEMA_VERSION,
+    coaching: emptyCoaching(),
     homeFormation: '1-3-2-1',
     awayFormation: '1-2-3-1',
     awayVisible: true,
@@ -173,7 +175,7 @@ function normalizeRestart(restart) {
 // is kept unclamped because shot targets deliberately extend past the goal line.
 function normalizeSimulation(simulation, fallback, players) {
   const merged = { ...fallback, ...(isRecord(simulation) ? simulation : {}) };
-  const playerIds = new Set(players.map((player) => player.id));
+  const playerIds = new Set(players.filter((player) => !player.benched).map((player) => player.id));
   const playerReference = (id) => (typeof id === 'string' && playerIds.has(id) ? id : null);
   return {
     ...merged,
@@ -204,6 +206,7 @@ export function normalizeState(candidate) {
     ...base,
     ...candidate,
     schemaVersion: SCHEMA_VERSION,
+    coaching: normalizeCoaching(candidate.coaching),
     homeFormation: oneOf(FORMATION_NAMES, candidate.homeFormation, base.homeFormation),
     awayFormation: oneOf(FORMATION_NAMES, candidate.awayFormation, base.awayFormation),
     awayVisible: typeof candidate.awayVisible === 'boolean' ? candidate.awayVisible : base.awayVisible,

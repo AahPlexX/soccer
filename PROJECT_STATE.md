@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-28
 Branch: `main` · application version: **1.0.6** · persistence schema: `1`
-Status: 1.0.6 workspace and board interactions implemented; local automated/rendered verification passed, production release checks pending.
+Status: 1.0.6 released; 228 tests, runtime syntax, responsive/interaction Chromium checks, CI and GitHub Pages deployment passed.
 
 ## Resume here
 
@@ -33,7 +33,7 @@ Previous release implementation `c1305db` passed [Validate main](https://github.
 - Present hides edit chrome and blocks manual/keyboard edits while allowing deliberate simulation, clock, snapshot and view controls. Escape exits.
 - Edit in 3D raycasts visible players/balls/props, moves them on the ground, pauses play and commits through the same board model. Camera-only mode is default; right/Shift-drag, two fingers and background drag manipulate the camera. Selecting a drawing, placement or unit tool switches back to 2D.
 - Modules: `board-ui.css` is the final visual layer, `js/board-surface.js` owns surface controls and view-only selection feedback, `js/board-interactions.js` holds testable group translation/possession setup. All are in the app shell and deploy artifact.
-- Local tests: **228/228 pass**. Chromium verified unit drag, possession, quick capture, presentation lock and actual 3D dragging, plus keyboard/drawer/Escape/reduced-motion/long-title and no page overflow at 320, 390, 683, 768, 1024 and 1366 CSS px. Themes were visually inspected. Actual browser zoom, screen-reader operation and physical iPad touch/performance are not certified by these checks. Production evidence pending deployment.
+- Local tests: **228/228 pass**. Chromium verified unit drag, possession, quick capture, presentation lock and actual 3D dragging, plus keyboard/drawer/Escape/reduced-motion/long-title and no page overflow at 320, 390, 683, 768, 1024 and 1366 CSS px. Themes were visually inspected. Actual browser zoom, screen-reader operation and physical iPad touch/performance are not certified by these checks. Release `8a5fd8f` passed [Validate main](https://github.com/AahPlexX/soccer/actions/runs/40784096632) and [Pages deployment](https://github.com/AahPlexX/soccer/actions/runs/40784096672). Fresh hosted Chromium sessions repeated unit drag, Give ball, capture, presentation lock, actual 3D editing and 3D→drawing switching, plus 3v3 roster, two-step teaching plan, print/PDF preparation, clock, save/reload and 3D playback with no page errors. The deployed worker reports 1.0.6 and build `8a5fd8f2c41d51a7c72008dadbe3688ca0af16b3-40784096672-1`.
 
 ## Modules and storage
 

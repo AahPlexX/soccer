@@ -49,7 +49,7 @@ The implementation currently uses the PRD's exact normalized boundaries:
 - left zone: `y = 0.00..0.50`.
 - right zone: `y = 0.50..1.00`.
 
-Zone rectangles are independent SVG overlays backed by the single `ZONES` object in `js/constants.js`. Selecting overlapping zones causes ordinary alpha compositing, making their intersection visually stronger without introducing a second geometry model. The simulation constraint layer consumes the same selected zone IDs and the same `ZONES` rectangles, so rendering and rules cannot silently drift into two incompatible definitions.
+Zone rectangles are independent SVG overlays backed by the single `ZONES` object in `js/constants.js`. Selecting overlapping zones causes ordinary alpha compositing, making their intersection visually stronger without introducing a second geometry model. The simulation constraint layer consumes the same selected zone IDs and the same `ZONES` rectangles, so rendering and rules cannot silently drift into two incompatible definitions. Paint order inside `#pitch-world`: the zone layer is drawn first and the `.pitch-markings` group (outer boundary, lines, circles, goals) on top of it, so every markings shape must be unfilled: `.pitch-markings { fill: none }` in `styles.css` sets that default (SVG's default fill is solid black, and an unfilled-by-accident outer rectangle hides the grass and all zone highlights); shapes that need a fill, such as `.field-dot`, set their own. `tests/pitch-markings.test.mjs` guards the rule and the layer order.
 
 ### Zone-constraint model
 

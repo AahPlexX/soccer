@@ -176,6 +176,8 @@ input[type="text"], input[type="number"] {
 .pitch-fill { fill: #0c7c4d; }
 .pitch-stripe { fill: rgba(255,255,255,.025); }
 .pitch-stripe-alt { fill: rgba(0,0,0,.045); }
+/* Markings are outlines. SVG's default fill is solid black, which would hide the grass and the zone overlays beneath. */
+.pitch-markings { fill: none; }
 .field-line, .goal-net { stroke: rgba(255,255,255,.92); stroke-width: 3.5; vector-effect: non-scaling-stroke; }
 .field-fill-none, .goal-net { fill: none; }
 .field-dot { fill: rgba(255,255,255,.95); }

@@ -1,8 +1,8 @@
 # Project state — handoff entry point
 
-Last updated: 2026-10-28
+Last updated: 2026-10-29
 Branch: `main` · application version: **1.0.15** · persistence schema: `1`
-Status: 1.0.6 released; 228 tests, runtime syntax, responsive/interaction Chromium checks, CI and GitHub Pages deployment passed.
+Status: 1.0.15 released; 253 tests pass locally, and 1.0.12, 1.0.13 and the 1.0.14 fix were green on Validate main and Pages. Rendered-browser checks (desktop Chromium, 1280x800 down to 390x844) show no console errors. See the 1.0.7 to 1.0.15 entries under Current implemented behavior for what changed since 1.0.6.
 
 ## Resume here
 
@@ -10,7 +10,7 @@ The app is a single-coach U9 7v7 tactical board on GitHub Pages: https://aahplex
 
 Concurrent release `e1fa605` added ground-plane 3D dragging in 1.0.5 while this workspace was in progress. This 1.0.6 integration preserves the picking/conversion helpers and tests, and refines editing with mesh picking, opt-in mode, contextual actions and collision settlement.
 
-Previous release implementation `c1305db` passed [Validate main](https://github.com/AahPlexX/soccer/actions/runs/40776203794) and [Pages deployment](https://github.com/AahPlexX/soccer/actions/runs/40776203853). A fresh Chromium session on the hosted app verified the coaching flow without page errors. Check later workflow runs for any subsequent documentation or implementation commits. Next priorities are physical-iPad field testing, dedicated half-field framing and follow-camera gaps; do not infer touch/offline/performance from desktop Chromium or CI.
+Previous release implementation `c1305db` passed [Validate main](https://github.com/AahPlexX/soccer/actions/runs/40776203794) and [Pages deployment](https://github.com/AahPlexX/soccer/actions/runs/40776203853). A fresh Chromium session on the hosted app verified the coaching flow without page errors. Check later workflow runs for any subsequent documentation or implementation commits. Next priorities: (1) physical-iPad field testing of touch, 48px targets, offline and 60 fps (nothing here can be inferred from desktop Chromium or CI); (2) COACH-005 flip attack direction (the home team still attacks toward +x; a flip touches the simulation, restarts and the 3D scene together); (3) 2D half-field framing and a per-player follow camera; (4) the play script has no conditions or timing beyond stage completion. Before pushing, run `npm test` and push only on zero failures: 1.0.14 once reached `main` red because a chained command ignored a failing test.
 
 ## Current implemented behavior
 

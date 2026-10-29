@@ -21,7 +21,7 @@ export const fromWorld = (x, z) => ({ x: Math.min(1, Math.max(0, x / L + 0.5)), 
 
 // The View menu (Turf, Dark, Field mode) also restyles the 3D scene; styles.css uses the same pitch stripes in 2D.
 export const THEME_COLORS = Object.freeze({
-  turf: Object.freeze({ sky: '#8fc9f2', surround: '#1f6b45', stripes: ['#0d8251', '#0b7448'] }),
+  turf: Object.freeze({ sky: '#8fc9f2', surround: '#1f6b45', stripes: ['#146944', '#186e49'] }), // the same stripes as the 2D pitch
   dark: Object.freeze({ sky: '#08110d', surround: '#0a1a12', stripes: ['#0e4f34', '#0b432d'] }),
   field: Object.freeze({ sky: '#ecf7e8', surround: '#b9dfae', stripes: ['#2e9e5f', '#27915a'] }),
 });
@@ -80,15 +80,27 @@ export function drawNumberLabel(ctx, width, height, number) {
   ctx.fillText(String(number), width / 2, height / 2);
 }
 
+// A soft round contact shadow: black at the middle, fading to nothing at the edge.
+export function drawSoftShadow(ctx, width, height) {
+  const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width / 2);
+  gradient.addColorStop(0, 'rgba(0,0,0,0.6)');
+  gradient.addColorStop(0.6, 'rgba(0,0,0,0.32)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
 export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#8fc9f2');
-  scene.add(new THREE.HemisphereLight('#ffffff', '#4a7a4a', 1.5));
-  const sun = new THREE.DirectionalLight('#ffffff', 1.4);
+  scene.fog = new THREE.Fog('#8fc9f2', 90, 260); // the far ground melts into the sky instead of ending in a hard horizon line
+  scene.add(new THREE.HemisphereLight('#ffffff', '#4a7a4a', 1.15));
+  const sun = new THREE.DirectionalLight('#ffffff', 1.8);
   sun.position.set(-20, 60, 30);
   scene.add(sun);
 
-  const surround = new THREE.Mesh(new THREE.PlaneGeometry(L * 3, W * 4), new THREE.MeshBasicMaterial({ color: '#1f6b45' }));
+  const surround = new THREE.Mesh(new THREE.PlaneGeometry(L * 10, W * 14), new THREE.MeshBasicMaterial({ color: '#1f6b45' })); // reaches past the fog, so no edge shows
   surround.rotation.x = -Math.PI / 2;
   surround.position.y = -0.05;
   scene.add(surround);
@@ -97,7 +109,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
   const pitchTexture = makeTexture((ctx, w, h) => drawPitchTexture(ctx, w, h), GRASS_TEXTURE.width, GRASS_TEXTURE.height);
   const pitch = new THREE.Mesh(
     new THREE.PlaneGeometry(L, W),
-    new THREE.MeshBasicMaterial({ color: pitchTexture ? '#ffffff' : '#0d8251', map: pitchTexture }),
+    new THREE.MeshBasicMaterial({ color: pitchTexture ? '#ffffff' : THEME_COLORS.turf.stripes[0], map: pitchTexture }),
   );
   pitch.rotation.x = -Math.PI / 2;
   scene.add(pitch);
@@ -107,6 +119,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     theme = THEME_COLORS[name] ? name : 'turf';
     const colors = THEME_COLORS[theme];
     scene.background.set(colors.sky);
+    scene.fog.color.set(colors.sky);
     surround.material.color.set(colors.surround);
     if (pitchTexture) {
       drawPitchTexture(pitchTexture.image.getContext('2d'), GRASS_TEXTURE.width, GRASS_TEXTURE.height, colors.stripes);
@@ -144,6 +157,8 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     zones.set(id, mesh);
   }
 
+  const shadowMap = makeTexture(drawSoftShadow, 64, 64);
+  const shadowMaterial = (opacity) => new THREE.MeshBasicMaterial({ color: '#000000', map: shadowMap, transparent: true, opacity: shadowMap ? 1 : opacity, depthWrite: false });
   const labelTextures = new Map();
   const labelTexture = (number) => {
     if (!labelTextures.has(number)) labelTextures.set(number, makeTexture((ctx, w, h) => drawNumberLabel(ctx, w, h, number), 128, 128));
@@ -185,7 +200,14 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
 
   function createPlayer() {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.2, 24), new THREE.MeshStandardMaterial({ color: '#ffffff' }));
+    // A soft contact shadow grounds each figure; the emissive tint (set to the team color) keeps dark kits readable.
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(2.1, 24), shadowMaterial(0.28));
+    // A thin white rim (a larger back-face shell) separates every kit, dark blue included, from the green pitch.
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.26, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', side: THREE.BackSide }));
+    rim.position.y = 1.1;
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.03;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.2, 24), new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.3 }));
     body.position.y = 1.1;
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshStandardMaterial({ color: SKIN }));
     head.position.y = 2.75;
@@ -196,7 +218,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true }));
     label.scale.set(2.2, 2.2, 1);
     label.position.y = 4.1;
-    group.add(body, head, ring, label);
+    group.add(body, head, ring, label, shadow, rim);
     return { group, body, ring, label, color: '', number: null };
   }
 
@@ -208,6 +230,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     if (color !== entry.color) {
       entry.color = color;
       entry.body.material.color.set(color);
+      entry.body.material.emissive.set(color);
     }
     if (player.number !== entry.number) {
       entry.number = player.number;
@@ -220,10 +243,17 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
   function createBall() {
     // Render the teaching ball last, including over players and zone overlays.
     // It must remain trackable from low camera angles and while passing a body.
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 12), new THREE.MeshStandardMaterial({
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.72, 20, 14), new THREE.MeshStandardMaterial({
       color: '#ffffff', transparent: true, depthTest: false, depthWrite: false,
     }));
     mesh.renderOrder = 100;
+    // A dark back-face shell outlines the ball against the pitch and any player body; the shadow sits on the grass.
+    const outline = new THREE.Mesh(new THREE.SphereGeometry(0.86, 20, 14), new THREE.MeshBasicMaterial({ color: '#111111', side: THREE.BackSide, transparent: true, depthTest: false, depthWrite: false }));
+    outline.renderOrder = 99;
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1.3, 20), shadowMaterial(0.32));
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = -0.69; // on the grass: the ball center sits one radius up
+    mesh.add(outline, shadow);
     return { group: mesh };
   }
 
@@ -300,7 +330,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
         const ahead = position.x + direction * offset;
         position.x = Math.abs(ahead) <= L / 2 - 0.45 ? ahead : position.x - direction * offset;
       }
-      entry.group.position.set(position.x, 0.45, position.z);
+      entry.group.position.set(position.x, 0.72, position.z);
     });
     reconcile(cones, state.cones, createCone, (entry, cone) => {
       const { x, z } = toWorld(cone.x, cone.y);

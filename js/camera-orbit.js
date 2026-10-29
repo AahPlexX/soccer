@@ -35,7 +35,7 @@ export function presetOrbit(name, aspect = 4 / 3, flipped = false) {
   const widen = Math.max(1, (4 / 3) / (Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3));
   return clampOrbit({
     // On a flipped board our goal and our half are on the other side, so goal-relative presets turn with them.
-    target: { x: (preset.targetX ?? 0) * (flipped ? -1 : 1), z: 0 },
+    target: { x: (preset.targetX ?? 0) * (flipped ? -1 : 1), z: preset.targetZ ?? 0 },
     azimuth: preset.goalRelative && flipped ? preset.azimuth + Math.PI : preset.azimuth,
     polar: preset.polar,
     distance: preset.distance * widen,

@@ -83,14 +83,14 @@ test('zooming halves or doubles the distance and stays within limits', () => {
 });
 
 test('panning moves the target along the ground relative to the camera direction', () => {
-  const facingAcross = { ...presetOrbit('broadcast'), azimuth: 0 };
+  const facingAcross = { ...presetOrbit('sideline'), azimuth: 0 }; // a preset centered on the pitch (broadcast sits 2.5 units off-center)
   const right = panOrbit(facingAcross, 5, 0);
   near(right.target.x, 5);
   near(right.target.z, 0);
   const forward = panOrbit(facingAcross, 0, 5);
   near(forward.target.x, 0);
   near(forward.target.z, -5);
-  const fromTheSide = { ...presetOrbit('broadcast'), azimuth: Math.PI / 2 };
+  const fromTheSide = { ...presetOrbit('sideline'), azimuth: Math.PI / 2 };
   near(panOrbit(fromTheSide, 0, 5).target.x, -5);
   near(panOrbit(fromTheSide, 5, 0).target.z, -5);
 });

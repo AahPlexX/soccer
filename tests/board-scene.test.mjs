@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
 import { ZONES, PALETTE } from '../js/constants.js';
 import { PITCH_WORLD } from '../js/camera-orbit.js';
-import { THEME_COLORS, buildBoardScene, drawNumberLabel, drawPitchTexture, toWorld } from '../js/board-scene.js';
+import { THEME_COLORS, buildBoardScene, drawNumberLabel, drawPitchTexture, drawSoftShadow, toWorld } from '../js/board-scene.js';
 import { createInitialState } from '../js/state.js';
 import { GOAL_MAX_Y, GOAL_MIN_Y } from '../js/restarts.js';
 
@@ -37,7 +37,7 @@ test('players and the ball sit at their board positions and follow them when the
   near(group.position.x, expected.x);
   near(group.position.z, expected.z);
   near(group.position.y, 0);
-  near(board.objectFor('ball-main').position.y, 0.45);
+  near(board.objectFor('ball-main').position.y, 0.72);
 
   player.x = 0.9;
   player.y = 0.1;
@@ -139,7 +139,7 @@ test('repeated syncs do not leak objects, and dispose clears the scene bookkeepi
 
 test('a textured pitch has a white base color so the grass texture is not darkened', () => {
   const pitchColor = (board) => board.scene.children.find((child) => child.geometry?.type === 'PlaneGeometry' && child.material.type === 'MeshBasicMaterial' && !child.material.transparent && child.position.y === 0).material.color.getHexString();
-  assert.equal(pitchColor(buildBoardScene(THREE)), '0d8251', 'flat green without a texture');
+  assert.equal(pitchColor(buildBoardScene(THREE)), THEME_COLORS.turf.stripes[0].slice(1), 'flat green without a texture');
   assert.equal(pitchColor(buildBoardScene(THREE, { makeTexture: () => new THREE.Texture() })), 'ffffff');
 });
 
@@ -157,6 +157,23 @@ test('no geometry in the scene has NaN positions, and the goals span the real go
   });
   assert.deepEqual(bad, []);
   assert.equal(crossbars, 2);
+});
+
+test('soft contact shadows: a radial fade painter, shared by players and the ball, plus a rim and an outline for legibility', () => {
+  const stops = [];
+  const ctx = { createRadialGradient: () => ({ addColorStop: (at, color) => stops.push([at, color]) }), clearRect() {}, fillRect() {}, set fillStyle(value) { this.fill = value; } };
+  drawSoftShadow(ctx, 64, 64);
+  assert.deepEqual(stops.map(([at]) => at), [0, 0.6, 1]);
+  assert.ok(stops.at(-1)[1].endsWith('0)'), 'the shadow fades to fully transparent at its edge');
+
+  const shadowTexture = new THREE.Texture();
+  const board = buildBoardScene(THREE, { makeTexture: (draw, w, h) => (w === 64 ? shadowTexture : null) });
+  board.sync(createInitialState());
+  const meshes = (id) => board.objectFor(id).children;
+  assert.ok(meshes('home-3').some((child) => child.material?.map === shadowTexture), 'players use the soft shadow');
+  assert.ok(meshes('home-3').some((child) => child.material?.side === THREE.BackSide), 'players have a white rim shell');
+  assert.ok(board.objectFor('ball-main').children.length >= 2, 'the ball has an outline and a shadow');
+  assert.ok(board.objectFor('ball-main').children.some((child) => child.material?.map === shadowTexture));
 });
 
 test('the View theme restyles the 3D sky, surround and pitch, and a repaint reaches the texture', () => {
@@ -177,7 +194,7 @@ test('the View theme restyles the 3D sky, surround and pitch, and a repaint reac
 
   const painted = [];
   const textured = buildBoardScene(THREE, { makeTexture: (draw, w, h) => {
-    const canvas = { getContext: () => new Proxy({}, { get: () => () => {}, set: (_, k, v) => { if (k === 'fillStyle') painted.push(v); return true; } }) };
+    const canvas = { getContext: () => new Proxy({}, { get: (_, k) => (k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set: (_, k, v) => { if (k === 'fillStyle') painted.push(v); return true; } }) };
     draw(canvas.getContext(), w, h);
     return Object.assign(new THREE.Texture(), { image: canvas });
   } });

@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.0.18**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.0.19**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Board workspace (1.0.6)
 
@@ -113,3 +113,5 @@ Version 1.0.16 turns the 3D Follow control into a menu (Off, Ball, Selected play
 Version 1.0.17 adds a Frame menu (Whole pitch, Our half, Their half) that zooms the 2D board, or moves the 3D camera, to one half.
 
 Version 1.0.18 adds Flip direction, which turns the whole board a half turn so our team attacks the other way; the simulation, zones, formations, actions and cameras all follow.
+
+Version 1.0.19 is a visual polish release: depth and motion on controls, a lit pitch, clearer tool tiles and labels, and a more legible 3D scene with soft shadows, a horizon that blends into the sky, and a larger outlined ball.

@@ -177,3 +177,86 @@ body.presentation #presentation-toggle { background: #e0edbd; color: #173e2c; }
  .simulation-group { display: grid; grid-template-columns: 1.4fr repeat(3,minmax(0,1fr)); overflow: visible; }
  .simulation-group button, #play-toggle { min-width: 0; min-height: 48px; padding-inline: 5px; white-space: normal; }
 }
+
+/* ---- Production finish (1.0.19): elevation, motion, hierarchy and a lit pitch, layered over the workspace above. ---- */
+:root {
+  --radius: 12px; --ease: cubic-bezier(.2, .7, .2, 1);
+  --lift: 0 1px 2px rgba(15, 40, 28, .10), 0 3px 8px rgba(15, 40, 28, .07);
+  --lift-strong: 0 2px 4px rgba(15, 40, 28, .14), 0 10px 22px rgba(15, 40, 28, .16);
+}
+:root[data-theme="dark"] { --lift: 0 1px 2px rgba(0, 0, 0, .45), 0 3px 8px rgba(0, 0, 0, .3); --lift-strong: 0 2px 4px rgba(0, 0, 0, .5), 0 10px 22px rgba(0, 0, 0, .42); }
+button, select { border-radius: var(--radius); transition: background-color .14s var(--ease), border-color .14s var(--ease), box-shadow .14s var(--ease), transform .14s var(--ease), color .14s var(--ease); }
+:is(.board-panel, .workspace, .bottom-dock) :is(button, select):not(:disabled) { box-shadow: var(--lift); }
+:is(.board-panel, .workspace, .bottom-dock) :is(button, select):not(:disabled):hover { box-shadow: var(--lift-strong); transform: translateY(-1px); }
+:is(.board-panel, .workspace, .bottom-dock) button:not(:disabled):active { transform: translateY(0) scale(.985); box-shadow: none; }
+:is(.board-panel, .workspace, .bottom-dock) button[aria-pressed="true"], :is(.board-panel, .workspace, .bottom-dock) .tool-button.is-active, .primary-action {
+  background: linear-gradient(180deg, #e6f7a0, #d2e973); border-color: #a9c94c; box-shadow: var(--lift), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+#play-toggle { font-size: 15px; letter-spacing: .01em; min-width: 150px; }
+.top-rail { background: linear-gradient(180deg, #1c4b36, #173e2c); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 6px 18px rgba(8, 28, 17, .24); position: relative; z-index: 6; }
+.brand-block strong { letter-spacing: -.2px; }
+.board-panel { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.panel-heading .eyebrow, .panel-section h3 { text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.panel-section h3 { margin-bottom: 10px; }
+.workspace { background: radial-gradient(120% 80% at 50% 0, color-mix(in srgb, var(--page) 70%, #fff), var(--page)); }
+.pitch-stage {
+  border: 0; border-radius: 18px;
+  background: repeating-linear-gradient(90deg, var(--pitch-a, #146944) 0 10%, var(--pitch-b, #186e49) 10% 20%);
+  box-shadow: 0 0 0 1px rgba(8, 40, 24, .45), 0 2px 4px rgba(8, 28, 17, .2), 0 18px 44px rgba(8, 28, 17, .28);
+}
+.pitch-stage::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(120% 100% at 50% 30%, rgba(255, 255, 255, .09), rgba(255, 255, 255, 0) 55%), radial-gradient(130% 120% at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .28) 100%); }
+.player-token { cursor: grab; } .player-token.is-dragging { cursor: grabbing; }
+.selection-bar { border-radius: 14px; box-shadow: var(--lift-strong); }
+.bench-label { box-shadow: var(--lift); }
+.bottom-dock { box-shadow: 0 -6px 18px rgba(8, 28, 17, .07); position: relative; z-index: 5; }
+@media (min-width: 1100px) { .board-heading h1 { font-size: 27px; font-weight: 700; letter-spacing: -.9px; } }
+@media (prefers-reduced-motion: reduce) { :is(.board-panel, .workspace, .bottom-dock) :is(button, select) { transition: none; transform: none !important; } }
+
+/* ---- Finish pass 2 (from the visual QA of the 1.0.18 screenshots) ---- */
+/* Tool tiles: icon over label so every label sits on one line and all eight tiles share one height. */
+.tool-grid button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; text-align: center; line-height: 1.15; }
+.tool-grid .tool-symbol { margin: 0; width: 22px; height: 22px; }
+/* One selection treatment for every color swatch. */
+.swatch[aria-checked="true"]::before { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--rail), 0 0 0 4px var(--text); }
+/* Selects share one custom chevron so none looks like an unstyled native control. */
+select { appearance: none; -webkit-appearance: none; padding-right: 38px; background-repeat: no-repeat; background-position: right 13px center; background-size: 12px 8px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%2352675a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+:root[data-theme="dark"] select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23b1c6b6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+/* Hierarchy and contrast. */
+.board-heading p { color: color-mix(in srgb, var(--text) 80%, var(--page)); }
+.header-actions button:disabled, #undo:disabled, #redo:disabled { opacity: .62; }
+#coach-open { background: rgba(255, 255, 255, .12); color: #f6faef; border-color: rgba(255, 255, 255, .38); }
+#coach-open:hover { background: rgba(255, 255, 255, .2); }
+.teaching-strip button:disabled { opacity: .55; }
+#drill-clock { margin-inline: 12px; font-variant-numeric: tabular-nums; }
+/* Bottom bar: Play is the primary action, the rest are quiet secondary controls with clear spacing. */
+#play-toggle { margin-right: 10px; }
+.simulation-group button:not(#play-toggle) { background: transparent; box-shadow: none; }
+.simulation-group button:not(#play-toggle):hover { background: var(--surface); }
+/* Pitch labels: larger and heavier so they read at arm's length on a tablet. */
+.player-number { font-size: 24px; }
+.player-label { font-size: 18px; font-weight: 800; letter-spacing: .02em; stroke-width: 5px; }
+/* Selection: a ring on the token, never the browser's rectangular focus box around an SVG group. */
+.player-token:focus, .ball-token:focus, .cone-token:focus, .minigoal-token:focus { outline: none; }
+.player-token.is-selected .player-halo, .player-token.is-dragging .player-halo { stroke-width: 5; }
+.ball-token:focus-visible .ball-hit, .cone-token:focus-visible .cone-hit { stroke: #fff; stroke-width: 4; }
+/* Stable 2D/3D toolbar: the 3D-only controls wrap onto their own row instead of reshuffling the main controls. */
+.view-group { row-gap: 6px; }
+.view-group .camera-preset-control, .view-group #edit-3d { order: 5; }
+/* Phones: respect the home-indicator safe area. */
+.bottom-dock { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+@media (max-width: 680px) { .bottom-dock { padding-bottom: max(8px, env(safe-area-inset-bottom)); } }
+
+/* ---- Finish pass 3: contrast, grouping and the phone bottom bar ---- */
+.player-label { font-size: 20px; stroke-width: 6px; }
+.header-actions button:disabled, #undo:disabled, #redo:disabled { opacity: .78; border-color: rgba(255, 255, 255, .3); }
+/* Quiet containers group the bottom bar into playback and steps/clock, with a clear gap between them. */
+.simulation-group, .teaching-strip { background: color-mix(in srgb, var(--surface) 60%, transparent); border-radius: 14px; padding: 4px 6px; }
+.bottom-dock { gap: 8px 20px; }
+.teaching-strip { flex-wrap: nowrap; }
+@media (max-width: 680px) {
+  .teaching-strip { padding: 2px 4px; gap: 2px; }
+  #teaching-position { max-width: 88px; }
+  #drill-clock { margin-inline: 4px; font-size: 18px; }
+  .teaching-strip button { min-width: 44px; padding-inline: 6px; }
+  .simulation-group, .teaching-strip { padding: 3px; }
+}

@@ -242,7 +242,7 @@ export function rebuildObjects(svg, state) {
   const ballLayer = svg.querySelector('#ball-layer');
   const propLayer = svg.querySelector('#prop-layer');
   const drawingLayer = svg.querySelector('#drawing-layer');
-  svg.querySelector('#hit-layer').replaceChildren(...state.players.map((player) => el('circle', { class: 'player-hit', r: PLAYER_HIT_RADIUS, 'data-hit-for': player.id })));
+  svg.querySelector('#hit-layer')?.replaceChildren(...state.players.map((player) => el('circle', { class: 'player-hit', r: PLAYER_HIT_RADIUS, 'data-hit-for': player.id })));
   playerLayer.replaceChildren(...state.players.map((player) => buildPlayer(player, state)));
   ballLayer.replaceChildren(...state.balls.map(buildBall));
   propLayer.replaceChildren(...state.cones.map(buildCone), ...state.miniGoals.map(buildMiniGoal));

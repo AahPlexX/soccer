@@ -29,6 +29,15 @@ jobs:
           node-version: 24.22.1
           package-manager-cache: false
 
+      - name: Install development tools from the lockfile
+        run: npm ci
+
+      - name: Lint for bugs
+        run: npm run lint
+
+      - name: Type-check the logic modules
+        run: npm run typecheck
+
       - name: Run behavior and integrity tests
         run: npm test
 

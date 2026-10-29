@@ -19,7 +19,7 @@ import { flipBoard } from './board-rotation.js';
 import { filterPresetsByCategory } from './library.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
-import { createInitialState, normalizeState, snapshotState } from './state.js';
+import { createInitialState, snapshotState } from './state.js';
 import { deletePreset, exportBackup, importBackup, listPresets, loadAutosave, saveAutosave, savePreset } from './storage.js';
 import { setupUpdates } from './update.js';
 

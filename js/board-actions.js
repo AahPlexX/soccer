@@ -206,8 +206,10 @@ export function applyTeamFormation(state, team, formation) {
 /**
  * Applies player-editor values. The number must be an integer from 1 to 99; an empty label falls back to the role and
  * an empty or invalid color clears the override. Returns 'missing', 'invalid-number', or 'updated'.
+ * @param {{ number?: number, label?: string, colorOverride?: string, benched?: boolean }} [details]
  */
-export function updatePlayerDetails(state, id, { number, label, colorOverride, benched } = {}) {
+export function updatePlayerDetails(state, id, details = {}) {
+  const { number, label, colorOverride, benched } = details;
   const player = state.players.find((item) => item.id === id);
   if (!player) return 'missing';
   if (!Number.isInteger(number) || number < 1 || number > 99) return 'invalid-number';

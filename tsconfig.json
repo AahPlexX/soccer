@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false
+  },
+  "include": [
+    "js/simulation.js", "js/geometry.js", "js/state.js", "js/formations.js", "js/restarts.js", "js/zone-constraints.js",
+    "js/pass-options.js", "js/play-script.js", "js/player-actions.js", "js/board-actions.js", "js/board-rotation.js",
+    "js/coaching.js", "js/history.js", "js/view-zoom.js", "js/camera-orbit.js", "js/board-interactions.js", "js/library.js"
+  ],
+  "exclude": ["node_modules", "vendor", "coverage"]
+}

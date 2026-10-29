@@ -115,3 +115,7 @@ Version 1.0.17 adds a Frame menu (Whole pitch, Our half, Their half) that zooms 
 Version 1.0.18 adds Flip direction, which turns the whole board a half turn so our team attacks the other way; the simulation, zones, formations, actions and cameras all follow.
 
 Version 1.0.19 is a visual polish release: depth and motion on controls, a lit pitch, clearer tool tiles and labels, and a more legible 3D scene with soft shadows, a horizon that blends into the sky, and a larger outlined ball.
+
+## Development tooling
+
+Development tools are optional: the app has no build step and runs by serving the repository root. For contributors, `npm ci` installs `eslint`, `typescript`, `fast-check` and `c8`; `npm run check` runs lint, JSDoc type-checking of the logic modules and the full test suite, and `npm run coverage` prints coverage.

@@ -3,6 +3,7 @@ import { createLocalId, FORMATION_NAMES, SIMULATION, TEAM_IDS, ZONES } from './c
 import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
 import { clamp, separatePlayers, spacingDistance } from './geometry.js';
 import { resetScript } from './play-script.js';
+import { rotateXY } from './board-rotation.js';
 import { releaseFormationCarrier, releaseManuallyMovedObject } from './simulation.js';
 import { normalizeState, snapshotState } from './state.js';
 
@@ -174,7 +175,7 @@ export function nudgePlayer(state, id, direction) {
     const position = formationPosition(state.players, player, state[formationKey(player.team)]);
     if (!position) return false;
     releaseManuallyMovedObject(state, id);
-    Object.assign(player, position);
+    Object.assign(player, state.flipped ? rotateXY(position) : position);
   } else {
     if (!hasOwn(DIALOG_DIRECTIONS, direction)) return false;
     const [dx, dy] = DIALOG_DIRECTIONS[direction];
@@ -196,6 +197,8 @@ export function applyTeamFormation(state, team, formation) {
   state[formationKey(team)] = formation;
   releaseFormationCarrier(state, team);
   state.players = applyFormation(state.players, team, formation);
+  // Formations are authored for an unflipped board; a flipped board gets them rotated a half turn.
+  if (state.flipped) state.players.filter((player) => player.team === team).forEach((player) => Object.assign(player, rotateXY(player), { anchorX: 1 - player.anchorX, anchorY: 1 - player.anchorY }));
   state.currentPresetId = null;
   return true;
 }

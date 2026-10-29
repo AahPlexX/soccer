@@ -2,6 +2,7 @@ import { PITCH, SIMULATION } from './constants.js';
 import { clamp, clampSupportForOffside, distance, moveToward, separatePlayers, spacingDistance } from './geometry.js';
 import { openPassReceivers } from './pass-options.js';
 import { activeStage, pendingBallPlayer, SCRIPT_LIMITS, scriptRunTargets } from './play-script.js';
+import { rotateSpatial, swapFlankZones } from './board-rotation.js';
 import { classifyBoundaryRestart, GOAL_MAX_Y, GOAL_MIN_Y, restartPoint } from './restarts.js';
 import { constrainPlayerPositionForZones } from './zone-constraints.js';
 
@@ -393,8 +394,20 @@ function stepActiveSimulation(state, dt) {
   return state;
 }
 
-// The roster remains intact in saves; only on-pitch participants may affect play.
+// A flipped board (the home team attacks left) is simulated as an unflipped one: rotate the spatial fields a half turn and
+// the flank selections with them, step, and rotate back. Every rule below can therefore assume home attacks toward +x.
 export function stepSimulation(state, dt) {
+  if (!state.flipped) return stepOnPitch(state, dt);
+  rotateSpatial(state);
+  swapFlankZones(state);
+  try { return stepOnPitch(state, dt); } finally {
+    rotateSpatial(state);
+    swapFlankZones(state);
+  }
+}
+
+// The roster remains intact in saves; only on-pitch participants may affect play.
+function stepOnPitch(state, dt) {
   const roster = state.players;
   const active = roster.filter((player) => !player.benched);
   if (!active.length) { state.simulation.running = false; return state; }

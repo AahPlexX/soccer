@@ -18,7 +18,7 @@ export const CAMERA_FOV_DEGREES = 40;
 export const CAMERA_PRESETS = Object.freeze({
   top: Object.freeze({ label: 'Top-down', azimuth: 0, polar: 0.02, distance: 62 }),
   broadcast: Object.freeze({ label: 'Broadcast', azimuth: 0, polar: 1.05, distance: 72 }),
-  goal: Object.freeze({ label: 'Behind our goal', azimuth: -Math.PI / 2, polar: 1.2, distance: 58 }),
+  goal: Object.freeze({ label: 'Behind our goal', azimuth: -Math.PI / 2, polar: 1.2, distance: 58, goalRelative: true }),
   sideline: Object.freeze({ label: 'Sideline low', azimuth: 0, polar: 1.38, distance: 50 }),
   // Half-field framing (COACH-007): the home team attacks toward +x, so its own half is at -x.
   ourHalf: Object.freeze({ label: 'Our half', azimuth: 0, polar: 0.9, distance: 44, targetX: -PITCH_WORLD.length / 4 }),
@@ -30,12 +30,13 @@ export const DEFAULT_PRESET = 'broadcast';
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 /** An orbit for a named preset, centered on the pitch, with the distance widened for viewports narrower than 4:3. */
-export function presetOrbit(name, aspect = 4 / 3) {
+export function presetOrbit(name, aspect = 4 / 3, flipped = false) {
   const preset = CAMERA_PRESETS[name] ?? CAMERA_PRESETS[DEFAULT_PRESET];
   const widen = Math.max(1, (4 / 3) / (Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3));
   return clampOrbit({
-    target: { x: preset.targetX ?? 0, z: 0 },
-    azimuth: preset.azimuth,
+    // On a flipped board our goal and our half are on the other side, so goal-relative presets turn with them.
+    target: { x: (preset.targetX ?? 0) * (flipped ? -1 : 1), z: 0 },
+    azimuth: preset.goalRelative && flipped ? preset.azimuth + Math.PI : preset.azimuth,
     polar: preset.polar,
     distance: preset.distance * widen,
   });

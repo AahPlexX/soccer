@@ -57,8 +57,8 @@ export function actionDrawings(actionId, a, b) {
 }
 
 /** The drawing (type and points, or null when too short) for a one-player action by `player`. */
-export function soloDrawing(actionId, player) {
-  const dir = player.team === 'away' ? -1 : 1; // attacking direction along x
+export function soloDrawing(actionId, player, flipped = false) {
+  const dir = (player.team === 'away' ? -1 : 1) * (flipped ? -1 : 1); // attacking direction along x
   const goal = { x: dir > 0 ? 1 : 0, y: 0.5 };
   const ahead = { x: clamp01(player.x + dir * RUN_LENGTH), y: player.y };
   const back = { x: clamp01(player.x - dir * RUN_LENGTH), y: player.y };
@@ -92,7 +92,7 @@ function addAction(state, drawings, stages) {
  */
 export function applySoloAction(state, actionId, id) {
   const player = state.players.find((item) => item.id === id && !item.benched);
-  const drawing = player && soloDrawing(actionId, player);
+  const drawing = player && soloDrawing(actionId, player, state.flipped === true);
   if (!drawing) return 0;
   return addAction(state, [drawing], [[actionId === 'shoot' ? shootTask(id) : runTask(id, drawing)]]);
 }

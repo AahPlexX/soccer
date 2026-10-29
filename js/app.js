@@ -15,6 +15,7 @@ import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
 import { PLAYER_ACTIONS, SOLO_ACTIONS, applyPlayerAction, applySoloAction } from './player-actions.js';
 import { addSwatches } from './color-swatches.js';
+import { flipBoard } from './board-rotation.js';
 import { filterPresetsByCategory } from './library.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
@@ -41,6 +42,7 @@ const zoomInButton = document.querySelector('#zoom-in');
 const zoomOutButton = document.querySelector('#zoom-out');
 const zoomFitButton = document.querySelector('#zoom-fit');
 const frameSelect = document.querySelector('#view-frame');
+const flipButton = document.querySelector('#flip-direction');
 const view3dToggle = document.querySelector('#view-3d-toggle');
 const view3dContainer = document.querySelector('#view3d');
 const cameraPresetControl = document.querySelector('#camera-preset-control');
@@ -169,6 +171,8 @@ function syncControls() {
   coneColorSelect.value = state.coneColor;
   scriptClear.hidden = !state.script.length;
   scriptClear.textContent = `Clear script (${state.script.length})`;
+  flipButton.setAttribute('aria-pressed', String(state.flipped === true));
+  flipButton.textContent = `Flip direction (attacking ${state.flipped ? '←' : '→'})`;
   zoneColorSelect.value = state.zoneColor;
   drawColorSelect.value = state.drawColor;
   drawWidthSelect.value = state.drawWidth;
@@ -348,6 +352,15 @@ function pinchState() {
 
 zoomInButton.addEventListener('click', () => (mode3d ? view3d.zoom(ZOOM_STEP) : zoomBy(ZOOM_STEP)));
 zoomOutButton.addEventListener('click', () => (mode3d ? view3d.zoom(1 / ZOOM_STEP) : zoomBy(1 / ZOOM_STEP)));
+flipButton.addEventListener('click', () => {
+  flipBoard(state);
+  commitChange({ rebuild: true });
+  // "Our half" is now on the other side: keep the same named framing, in 2D and in 3D.
+  if (!mode3d && (frameSelect.value === 'ours' || frameSelect.value === 'theirs')) applyView(frameView(frameSelect.value));
+  view3d?.setPreset(cameraPresetSelect.value);
+  showToast(`Our team now attacks ${state.flipped ? 'left' : 'right'}. Undo reverses it.`);
+});
+
 frameSelect.addEventListener('change', () => {
   const choice = frameSelect.value;
   if (!mode3d) { applyView(frameView(choice)); return; }

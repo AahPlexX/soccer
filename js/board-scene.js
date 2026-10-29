@@ -5,6 +5,7 @@ import { availablePassOptions } from './pass-options.js';
 // the board's x runs along world x and its y across world z, so the 3D view has the same orientation as the 2D board.
 import { PITCH, ZONES } from './constants.js';
 import { GOAL_MAX_Y, GOAL_MIN_Y } from './restarts.js';
+import { zoneRect } from './board-rotation.js';
 import { PITCH_WORLD } from './camera-orbit.js';
 import { playerColor } from './formations.js';
 
@@ -280,6 +281,10 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
       mesh.visible = state.selectedZones.includes(id);
       mesh.material.opacity = state.zoneOpacity;
       mesh.material.color.set(state.zoneColor);
+      const rect = zoneRect(id, state.flipped); // team-relative zones follow their team on a flipped board
+      const a = toWorld(rect.x1, rect.y1);
+      const b = toWorld(rect.x2, rect.y2);
+      mesh.position.set((a.x + b.x) / 2, 0.04, (a.z + b.z) / 2);
     }
     reconcile(players, state.players, createPlayer, (entry, player) => updatePlayer(entry, player, state));
     reconcile(balls, state.balls, createBall, (entry, ball) => {
@@ -290,7 +295,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
       if (carrier) {
         // Presentation only: keep possession physics at the player's coordinate,
         // but show the ball outside the radius-1 body rather than embedded in it.
-        const direction = carrier.team === 'home' ? 1 : -1;
+        const direction = (carrier.team === 'home' ? 1 : -1) * (state.flipped ? -1 : 1);
         const offset = 1.65;
         const ahead = position.x + direction * offset;
         position.x = Math.abs(ahead) <= L / 2 - 0.45 ? ahead : position.x - direction * offset;

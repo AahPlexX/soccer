@@ -1,4 +1,5 @@
 import { PITCH, ZONES } from './constants.js';
+import { zoneRect } from './board-rotation.js';
 import { playerColor } from './formations.js';
 import { availablePassOptions, passOptionsStatus } from './pass-options.js';
 
@@ -279,6 +280,11 @@ export function renderScene(svg, state) {
   svg.querySelectorAll('.zone-overlay').forEach((node) => {
     const active = state.selectedZones.includes(node.dataset.zoneId);
     node.classList.toggle('is-active', active);
+    const rect = zoneRect(node.dataset.zoneId, state.flipped); // team-relative zones follow their team on a flipped board
+    node.setAttribute('x', sx(rect.x1));
+    node.setAttribute('y', sy(rect.y1));
+    node.setAttribute('width', sx(rect.x2 - rect.x1));
+    node.setAttribute('height', sy(rect.y2 - rect.y1));
     node.style.setProperty('--zone-opacity', String(state.zoneOpacity));
     node.style.setProperty('--zone-color', state.zoneColor);
   });

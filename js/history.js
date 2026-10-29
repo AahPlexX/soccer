@@ -2,7 +2,7 @@
 // shapes), never the tool, theme, selection, or the running simulation, so changing tools is not an undo step.
 export const EDIT_KEYS = Object.freeze([
   'homeFormation', 'awayFormation', 'awayVisible', 'selectedZones', 'zoneRestrictionMode', 'zoneRestrictionScope',
-  'coaching', 'zoneOpacity', 'zoneColor','colors', 'coneColor', 'players', 'balls', 'cones', 'miniGoals', 'drawings', 'script',
+  'coaching', 'zoneOpacity', 'zoneColor','colors', 'coneColor', 'players', 'balls', 'cones', 'miniGoals', 'drawings', 'script', 'flipped',
 ]);
 
 const read = (state) => JSON.stringify(EDIT_KEYS.map((key) => state[key]));

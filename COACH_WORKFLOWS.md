@@ -55,3 +55,7 @@ Select one player for solo actions (Shoot at goal, Run forward, Track back towar
 ## Play script (1.0.12)
 
 Player actions run in the simulation. Add actions in the order you want them to happen (for example Pass, then Run to, then Shoot at goal). Press Play (or Step 1 sec): the players named in the first action do it, then the next action starts, and so on; when the script ends the CPU plays freely. Passes and shots start from the named player, who is given the ball if they do not have it. Reset restores the starting positions but keeps your actions and arrows so you can replay; Clear script (shown with the number of queued actions) removes them. A stage that cannot finish (for example the passer lost the ball) is skipped after 10 simulated seconds.
+
+## Flip direction (1.0.18)
+
+Flip direction (Teams and formations) turns the whole board a half turn so our team attacks the other way: players, the ball, cones, mini goals, arrows and the play script all turn together, our zones follow our team, and the camera presets follow our goal. Left, Right and Center Channel zones stay where you selected them on screen. Undo reverses a flip. Use it when your next drill runs the other direction or to match the field you are standing on.

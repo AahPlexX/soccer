@@ -173,9 +173,9 @@ export async function createView3D({ container, getState, onContextLost = () => 
     /** Stops drawing; the scene and renderer stay ready for the next start. */
     stop() { cancelAnimationFrame(frame); frame = 0; },
     /** Moves the camera to a named preset (js/camera-orbit.js). */
-    setPreset(name) { preset = name; orbit = presetOrbit(name, width && height ? width / height : 4 / 3); },
+    setPreset(name) { preset = name; orbit = presetOrbit(name, width && height ? width / height : 4 / 3, getState().flipped === true); },
     /** Returns the camera to the current preset. */
-    reset() { orbit = presetOrbit(preset, width && height ? width / height : 4 / 3); },
+    reset() { orbit = presetOrbit(preset, width && height ? width / height : 4 / 3, getState().flipped === true); },
     /** Zooms by a factor (greater than 1 moves closer). */
     zoom(factor) { orbit = zoomOrbit(orbit, factor); },
     /** Keeps the camera centered on the 'ball' or the 'selected' player (CAM-006) until 'off' or the coach pans by hand. */

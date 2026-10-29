@@ -58,6 +58,7 @@ export function createInitialState() {
     miniGoals: [],
     drawings: [],
     script: [],
+    flipped: false, // true: the home team attacks toward the left (js/board-rotation.js)
     selectedObjectId: null,
     currentPresetId: null,
     simulation: {
@@ -237,6 +238,7 @@ export function normalizeState(candidate) {
     miniGoals: normalizePositionedList(candidate.miniGoals),
     drawings: normalizeDrawings(candidate.drawings),
     script: normalizeScript(candidate.script),
+    flipped: candidate.flipped === true,
     coneColor: isHexColor(candidate.coneColor) ? candidate.coneColor : base.coneColor,
     selectedObjectId: stringOrNull(candidate.selectedObjectId),
     currentPresetId: stringOrNull(candidate.currentPresetId),

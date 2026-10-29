@@ -30,6 +30,7 @@ const awayFormation = document.querySelector('#away-formation');
 const awayVisible = document.querySelector('#away-visible');
 const coneColorSelect = document.querySelector('#cone-color');
 const zoneColorSelect = document.querySelector('#zone-color');
+const scriptClear = document.querySelector('#script-clear');
 const drawColorSelect = document.querySelector('#draw-color');
 const drawWidthSelect = document.querySelector('#draw-width');
 const undoButton = document.querySelector('#undo');
@@ -161,6 +162,8 @@ function syncControls() {
   awayVisible.textContent = state.awayVisible ? 'Hide opponents' : 'Show opponents';
   themeSelect.value = state.theme;
   coneColorSelect.value = state.coneColor;
+  scriptClear.hidden = !state.script.length;
+  scriptClear.textContent = `Clear script (${state.script.length})`;
   zoneColorSelect.value = state.zoneColor;
   drawColorSelect.value = state.drawColor;
   drawWidthSelect.value = state.drawWidth;
@@ -668,10 +671,17 @@ document.querySelectorAll('.tool-button[data-tool]').forEach((button) => {
   });
 });
 
-drawingsClear.addEventListener('click', () => {
-  state.drawings = [];
+scriptClear.addEventListener('click', () => {
+  state.script = [];
+  state.drawings = state.drawings.filter((drawing) => drawing.source !== 'action');
   commitChange({ rebuild: true });
-  showToast('Drawings cleared');
+  showToast('Script and its arrows cleared');
+});
+
+drawingsClear.addEventListener('click', () => {
+  state.drawings = state.drawings.filter((drawing) => drawing.source === 'action'); // those belong to the play script
+  commitChange({ rebuild: true });
+  showToast('Drawings cleared (play-script arrows stay until you clear the script)');
 });
 
 removeSelected.addEventListener('click', () => {
@@ -984,7 +994,7 @@ function renderActionDialog() {
       if (!drawn) { showToast(pair ? 'Those players are too close to draw an arrow between.' : 'No room to draw that from here.'); return; }
       actionDialog.close();
       commitChange({ rebuild: true });
-      showToast(`${action.label} drawn. Undo removes it.`);
+      showToast(`${action.label} added to the play script. Press Play to run it; Undo removes it.`);
     });
     return button;
   }));

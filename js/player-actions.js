@@ -1,4 +1,5 @@
 import { PITCH_ASPECT } from './geometry.js';
+import { SCRIPT_LIMITS } from './play-script.js';
 
 // Player action steps: with two players selected the coach picks what the first does with or for the second, and the
 // board draws it with the ordinary pass (solid) and run (dashed) arrows, so it prints, undoes, saves and shows in 3D.
@@ -69,13 +70,31 @@ export function soloDrawing(actionId, player) {
   }
 }
 
-/** Adds the arrow for a one-player action. Returns 1 when drawn, 0 for an unknown action or player, or no room. */
+// The script tasks (js/play-script.js) that make the simulation carry out what the arrows show.
+const passTask = (player, to) => ({ type: 'pass', player, to, done: false, sent: false });
+const runTask = (player, drawing) => ({ type: 'run', player, point: drawing.points.at(-1), done: false });
+const shootTask = (player) => ({ type: 'shoot', player, done: false, sent: false });
+
+/** Draws the arrows and queues the stages (each an array of tasks that run together). Returns the arrows added. */
+function addAction(state, drawings, stages) {
+  if (!drawings.length || state.script.length + stages.length > SCRIPT_LIMITS.stages) return 0;
+  const stamp = Date.now().toString(36);
+  drawings.forEach((drawing, index) => state.drawings.push({
+    id: `drawing-${stamp}-${state.drawings.length}-${index}`, ...drawing, color: state.drawColor, width: state.drawWidth, source: 'action',
+  }));
+  stages.forEach((tasks, index) => state.script.push({ id: `stage-${stamp}-${state.script.length}-${index}`, tasks, started: false, age: 0 }));
+  return drawings.length;
+}
+
+/**
+ * Draws a one-player action and queues it in the play script, so the simulation makes the player do it.
+ * Returns 1 when added, 0 for an unknown action or player, no room to draw, or a full script.
+ */
 export function applySoloAction(state, actionId, id) {
   const player = state.players.find((item) => item.id === id && !item.benched);
   const drawing = player && soloDrawing(actionId, player);
   if (!drawing) return 0;
-  state.drawings.push({ id: `drawing-${Date.now().toString(36)}-${state.drawings.length}`, ...drawing, color: state.drawColor, width: state.drawWidth });
-  return 1;
+  return addAction(state, [drawing], [[actionId === 'shoot' ? shootTask(id) : runTask(id, drawing)]]);
 }
 
 /**
@@ -86,10 +105,14 @@ export function applyPlayerAction(state, actionId, firstId, secondId) {
   const find = (id) => state.players.find((player) => player.id === id && !player.benched);
   const [a, b] = [find(firstId), find(secondId)];
   if (!a || !b || a === b) return 0;
-  const drawings = actionDrawings(actionId, a, b).filter(Boolean);
-  const stamp = Date.now().toString(36);
-  drawings.forEach((drawing, index) => state.drawings.push({
-    id: `drawing-${stamp}-${state.drawings.length}-${index}`, ...drawing, color: state.drawColor, width: state.drawWidth,
-  }));
-  return drawings.length;
+  const [first, second] = actionDrawings(actionId, a, b);
+  const drawings = [first, second].filter(Boolean);
+  const stages = {
+    pass: () => first && [[passTask(a.id, b.id)]],
+    receive: () => first && [[passTask(b.id, a.id)]],
+    'run-to': () => first && [[runTask(a.id, first)]],
+    swap: () => [[first && runTask(a.id, first), second && runTask(b.id, second)].filter(Boolean)],
+    'pass-and-follow': () => [first && [passTask(a.id, b.id)], second && [runTask(a.id, second)]].filter(Boolean),
+  }[actionId]?.() ?? [];
+  return addAction(state, drawings, stages.filter((tasks) => tasks.length));
 }

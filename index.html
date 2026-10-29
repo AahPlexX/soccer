@@ -231,7 +231,8 @@
     <footer class="bottom-dock" aria-label="Coaching and simulation controls">
 <div class="simulation-group">
         <button id="play-toggle" class="primary-action" type="button">Play simulation</button>
-        <button id="simulation-step" type="button" title="Play exactly one second of the simulation, then pause, so you can stop on a moment and discuss it">Step 1 sec</button>
+        <button id="script-clear" type="button" hidden title="Remove the queued player actions and their arrows">Clear script</button>
+<button id="simulation-step" type="button" title="Play exactly one second of the simulation, then pause, so you can stop on a moment and discuss it">Step 1 sec</button>
         <button id="reset-board" type="button">Reset setup</button>
 
 
@@ -421,6 +422,7 @@
     <form method="dialog" id="action-form">
       <div class="dialog-heading"><h2>Player action</h2><button value="cancel" formnovalidate class="icon-button" aria-label="Close player actions">×</button></div>
       <p id="action-pair" role="status"></p>
+      <p class="action-note">The action is drawn on the board and queued in the play script: press Play and the players carry it out, in the order you add them. Reset replays it.</p>
       <div id="action-list" class="action-list"></div>
       <div class="dialog-actions"><button type="button" id="action-flip">Swap order</button><button value="cancel" formnovalidate>Cancel</button></div>
     </form>

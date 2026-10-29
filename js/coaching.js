@@ -3,7 +3,7 @@ import { distanceToSegment } from './geometry.js';
 
 export const BRIEF_FIELDS = Object.freeze(['title', 'objective', 'setup', 'instructions', 'cues', 'progression']);
 export const MAX_TEACHING_STEPS = 12;
-const BOARD_KEYS = ['schemaVersion', 'homeFormation', 'awayFormation', 'awayVisible', 'theme', 'tool', 'speed', 'spacingMode', 'selectedZones', 'zoneRestrictionMode', 'zoneRestrictionScope', 'zoneOpacity', 'zoneColor', 'drawColor', 'drawWidth','colors', 'coneColor', 'players', 'balls', 'cones', 'miniGoals', 'drawings', 'simulation'];
+const BOARD_KEYS = ['schemaVersion', 'homeFormation', 'awayFormation', 'awayVisible', 'theme', 'tool', 'speed', 'spacingMode', 'selectedZones', 'zoneRestrictionMode', 'zoneRestrictionScope', 'zoneOpacity', 'zoneColor', 'drawColor', 'drawWidth','colors', 'coneColor', 'players', 'balls', 'cones', 'miniGoals', 'drawings', 'script', 'simulation'];
 const clone = (value) => JSON.parse(JSON.stringify(value));
 export const emptyCoaching = () => ({ title: '', objective: '', setup: '', instructions: '', cues: '', progression: '', minutes: 5, keepRoster: false, startBoard: null, steps: [] });
 

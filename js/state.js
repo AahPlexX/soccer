@@ -1,6 +1,7 @@
 import { emptyCoaching, normalizeCoaching } from './coaching.js';
 import { DEFAULT_COLORS, FORMATION_NAMES, PALETTE, SCHEMA_VERSION, TEAM_IDS, ZONES } from './constants.js';
 import { defaultPlayers } from './formations.js';
+import { normalizeScript } from './play-script.js';
 
 // Every persisted enumeration in one place. normalizeState() falls back to the createInitialState() value whenever a
 // stored value is not listed here, so a corrupted or hand-edited autosave, preset, or backup cannot break the board.
@@ -56,6 +57,7 @@ export function createInitialState() {
     cones: [],
     miniGoals: [],
     drawings: [],
+    script: [],
     selectedObjectId: null,
     currentPresetId: null,
     simulation: {
@@ -148,8 +150,9 @@ function normalizeDrawings(drawings) {
   if (!Array.isArray(drawings)) return [];
   return drawings
     .filter((drawing) => isRecord(drawing) && Array.isArray(drawing.points) && drawing.points.length > 0 && drawing.points.every(isPoint))
-    .map(({ color, width, ...drawing }) => ({
+    .map(({ color, width, source, ...drawing }) => ({
       ...drawing,
+      ...(source === 'action' ? { source } : {}), // arrows made by the player-action dialog; they belong to the play script
       type: oneOf(DRAWING_TYPES, drawing.type, 'freehand'),
       points: drawing.points.map((point) => ({ x: clamp01(point.x), y: clamp01(point.y) })),
       ...(isHexColor(color) ? { color } : {}),
@@ -233,6 +236,7 @@ export function normalizeState(candidate) {
     cones: normalizePositionedList(candidate.cones),
     miniGoals: normalizePositionedList(candidate.miniGoals),
     drawings: normalizeDrawings(candidate.drawings),
+    script: normalizeScript(candidate.script),
     coneColor: isHexColor(candidate.coneColor) ? candidate.coneColor : base.coneColor,
     selectedObjectId: stringOrNull(candidate.selectedObjectId),
     currentPresetId: stringOrNull(candidate.currentPresetId),

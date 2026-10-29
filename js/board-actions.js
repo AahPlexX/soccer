@@ -2,6 +2,7 @@ import { setPlayerBenched } from './coaching.js';
 import { createLocalId, FORMATION_NAMES, SIMULATION, TEAM_IDS, ZONES } from './constants.js';
 import { applyFormation, formationPosition, recordPlayerPosition } from './formations.js';
 import { clamp, separatePlayers, spacingDistance } from './geometry.js';
+import { resetScript } from './play-script.js';
 import { releaseFormationCarrier, releaseManuallyMovedObject } from './simulation.js';
 import { normalizeState, snapshotState } from './state.js';
 
@@ -229,6 +230,10 @@ export function resetBoardState(snapshot, current) {
   next.theme = current.theme;
   next.currentPresetId = current.currentPresetId;
   next.simulation.running = false;
+  // The authored play (script and its arrows) survives a reset, with progress cleared, so it can be replayed.
+  next.script = resetScript(current.script);
+  const have = new Set(next.drawings.map((drawing) => drawing.id));
+  next.drawings.push(...current.drawings.filter((drawing) => drawing.source === 'action' && !have.has(drawing.id)));
   return next;
 }
 

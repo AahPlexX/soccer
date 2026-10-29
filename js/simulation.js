@@ -1,6 +1,7 @@
 import { PITCH, SIMULATION } from './constants.js';
 import { clamp, clampSupportForOffside, distance, moveToward, separatePlayers, spacingDistance } from './geometry.js';
 import { openPassReceivers } from './pass-options.js';
+import { activeStage, pendingBallPlayer, SCRIPT_LIMITS, scriptRunTargets } from './play-script.js';
 import { classifyBoundaryRestart, GOAL_MAX_Y, GOAL_MIN_Y, restartPoint } from './restarts.js';
 import { constrainPlayerPositionForZones } from './zone-constraints.js';
 
@@ -220,8 +221,15 @@ function advancePlayers(state, dt) {
   const pressingPlayer = nearestPlayer(state.players, ball, (p) => p.team === defendingTeam && p.role !== 'GK');
   const looseBallChaser = !carrier && !state.simulation.ballTarget
     ? nearestPlayer(state.players, ball, () => true) : null;
+  const scripted = scriptRunTargets(state);
 
   state.players.forEach((player) => {
+    // The coach's play script overrides the CPU for players it is moving (js/play-script.js).
+    const scriptedTarget = scripted.get(player.id);
+    if (scriptedTarget) {
+      movePlayer(state, player, scriptedTarget, SIMULATION.playerSpeed * (player.id === state.simulation.carrierId ? 0.78 : 1) * dt, false);
+      return;
+    }
     if (player.id === state.simulation.carrierId) {
       // Legal restart placement and the mandatory U9 goalkeeper build-out hold take precedence over drill constraints.
       if (state.simulation.restart || (buildOut && player.role === 'GK')) return;
@@ -273,6 +281,7 @@ function resolveTackle(state) {
 function decideAction(state) {
   const carrier = state.players.find((p) => p.id === state.simulation.carrierId);
   if (!carrier) return;
+  if (pendingBallPlayer(state) === carrier.id) return; // the play script decides for them
   if (isBuildOutSituation(state, carrier)) {
     const allRetreated = state.players.filter((p) => p.team !== carrier.team).every((p) =>
       carrier.team === 'home' ? p.x >= PITCH.homeBuildOutX : p.x <= PITCH.awayBuildOutX,
@@ -296,6 +305,43 @@ function decideAction(state) {
   }
   const target = choosePassTarget(state, carrier);
   if (target) beginPass(state, carrier, target);
+}
+
+// Carries out the coach's play script after the ball moves and before the CPU decides. Each stage runs its tasks
+// together and ends when all are done or it times out; then the next stage starts, and when none are left the CPU is free.
+function advanceScript(state, dt) {
+  const stage = activeStage(state.script);
+  if (!stage) return;
+  const sim = state.simulation;
+  if (!stage.started) {
+    stage.started = true;
+    // A pass or shot needs the ball: the stage hands it to that player, like the Give ball action.
+    stage.tasks.forEach((task) => {
+      const player = task.type === 'run' ? null : state.players.find((p) => p.id === task.player);
+      if (!player || sim.carrierId === player.id) return;
+      Object.assign(sim, { carrierId: player.id, possessionTeam: player.team, lastTouchTeam: player.team, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0 });
+      Object.assign(state.balls[0], { x: player.x, y: player.y });
+    });
+  }
+  stage.age += dt;
+  stage.tasks.forEach((task) => {
+    if (task.done) return;
+    const player = state.players.find((p) => p.id === task.player);
+    if (!player) { task.done = true; return; } // benched or removed
+    if (task.type === 'run') {
+      if (spacingDistance(player, task.point) < SCRIPT_LIMITS.arriveDistance) task.done = true;
+      return;
+    }
+    const target = task.type === 'pass' ? state.players.find((p) => p.id === task.to) : null;
+    if (task.type === 'pass' && !target) { task.done = true; return; }
+    if (!task.sent) {
+      if (sim.carrierId !== player.id || sim.ballTarget) return;
+      sim.restart = null;
+      if (target) beginPass(state, player, target); else beginShot(state, player);
+      task.sent = true;
+    } else if (!sim.ballTarget) task.done = true; // received, intercepted, saved or out: the ball is no longer in flight
+  });
+  if (stage.age >= SCRIPT_LIMITS.timeoutSeconds) stage.tasks.forEach((task) => { task.done = true; });
 }
 
 // A coach moving the ball (or its carrier) takes control of the position. Drop the
@@ -332,6 +378,7 @@ function stepActiveSimulation(state, dt) {
   advancePlayers(state, scaledDt);
   resolveTackle(state);
   advanceBall(state, scaledDt);
+  advanceScript(state, scaledDt);
   if (state.simulation.actionClock >= SIMULATION.actionIntervalSeconds) {
     state.simulation.actionClock = 0;
     decideAction(state);

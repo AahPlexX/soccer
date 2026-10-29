@@ -33,10 +33,17 @@ export async function createView3D({ container, getState, onContextLost = () => 
 
   let preset = DEFAULT_PRESET;
   let orbit = presetOrbit(preset);
-  let follow = false; // the camera target eases toward the ball each frame; panning by hand turns it off
+  let follow = 'off'; // 'ball' or 'selected': the camera target eases toward it each frame; panning by hand turns it off
   let frame = 0;
   let width = 0;
   let height = 0;
+
+  // What the follow camera tracks: the match ball, or the selected player (or ball) when one is selected.
+  function followSubject(state) {
+    if (follow === 'ball') return state.balls[0] ?? null;
+    if (follow !== 'selected') return null;
+    return [...state.players.filter((player) => !player.benched), ...state.balls].find((item) => item.id === state.selectedObjectId) ?? null;
+  }
 
   function resize() {
     const { clientWidth, clientHeight } = container;
@@ -53,8 +60,8 @@ export async function createView3D({ container, getState, onContextLost = () => 
     resize();
     if (!width) return;
     board.sync(getState(), { showPassOptions: document.documentElement.dataset.passOptions === 'true' });
-    const ball = follow ? getState().balls[0] : null;
-    if (ball) orbit = followOrbit(orbit, toWorld(ball.x, ball.y));
+    const subject = followSubject(getState());
+    if (subject) orbit = followOrbit(orbit, toWorld(subject.x, subject.y));
     const position = orbitPosition(orbit);
     camera.position.set(position.x, position.y, position.z);
     camera.lookAt(orbit.target.x, 0, orbit.target.z);
@@ -83,7 +90,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
     return { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   };
   const panByPixels = (dx, dy) => {
-    if (follow) { follow = false; onFollowChange(false); }
+    if (follow !== 'off') { follow = 'off'; onFollowChange('off'); }
     const ground = groundPerPixel(orbit, height || 1);
     orbit = panOrbit(orbit, -dx * ground, dy * ground);
   };
@@ -171,8 +178,8 @@ export async function createView3D({ container, getState, onContextLost = () => 
     reset() { orbit = presetOrbit(preset, width && height ? width / height : 4 / 3); },
     /** Zooms by a factor (greater than 1 moves closer). */
     zoom(factor) { orbit = zoomOrbit(orbit, factor); },
-    /** Keeps the camera centered on the ball (CAM-006) until it is turned off or the coach pans by hand. */
-    setFollow(on) { follow = Boolean(on); },
+    /** Keeps the camera centered on the 'ball' or the 'selected' player (CAM-006) until 'off' or the coach pans by hand. */
+    setFollow(mode) { follow = mode === 'ball' || mode === 'selected' ? mode : 'off'; },
     get orbit() { return orbit; },
     dispose() {
       finishObjectDrag();

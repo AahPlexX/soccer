@@ -403,7 +403,7 @@ async function setView3D(on) {
         container: view3dContainer,
         getState: () => state,
         isEditing: () => editing3D && !document.body.classList.contains('presentation'),
-        onFollowChange: (on) => { cameraFollow.checked = on; },
+        onFollowChange: (mode) => { cameraFollow.value = mode; },
         onGroundTap: (point) => {
           const added = addProp(state, state.tool, point); // null unless a placement tool is active
           if (added) { commitChange({ rebuild: true }); showToast(added.message); }
@@ -457,7 +457,7 @@ async function setView3D(on) {
 document.querySelector('#edit-3d').addEventListener('click', () => { editing3D = !editing3D; view3d?.setEditing(editing3D); document.querySelector('#edit-3d').setAttribute('aria-pressed', String(editing3D)); syncControls(); });
 view3dToggle.addEventListener('click', () => setView3D(!mode3d));
 cameraPresetSelect.addEventListener('change', () => view3d?.setPreset(cameraPresetSelect.value));
-cameraFollow.addEventListener('change', () => view3d?.setFollow(cameraFollow.checked));
+cameraFollow.addEventListener('change', () => view3d?.setFollow(cameraFollow.value));
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Zones.

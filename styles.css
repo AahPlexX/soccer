@@ -155,15 +155,19 @@ input[type="text"], input[type="number"] {
 
 .workspace { grid-area: workspace; min-height: 0; min-width: 0; padding: 10px; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.05), transparent 45%); }
 .check-row { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.check-row[hidden] { display: none; } /* the display rule above would otherwise override the hidden attribute */
 .check-row input { width: 24px; height: 24px; }
 .bench { position: absolute; top: 8px; left: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 16px); }
 .bench[hidden] { display: none; }
 .player-hit { fill: rgba(0, 0, 0, 0.001); pointer-events: all; cursor: grab; }
 .player-hit[hidden] { display: none; }
-.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.swatch { width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55); }
-.swatch[aria-checked="true"] { border-color: var(--focus, #fff); box-shadow: 0 0 0 3px #000; }
-.swatch[aria-checked="true"]::after { content: "✓"; color: #fff; font-size: 22px; font-weight: 800; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+.swatches { display: flex; flex-wrap: wrap; gap: 0; margin: 4px -4px 0; }
+/* A 48px hit area (PRD 9.2) around a compact 30px color dot; the check mark keeps color from being the only cue. */
+.swatch { position: relative; display: grid; place-items: center; width: 48px; height: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 12px; background: transparent; box-shadow: none; }
+.swatch::before { content: ""; width: 30px; height: 30px; border-radius: 50%; background: var(--swatch); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.45); transition: transform 120ms ease, box-shadow 120ms ease; }
+.swatch:hover::before { transform: scale(1.08); }
+.swatch[aria-checked="true"]::before { box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px #111, 0 0 0 5px #fff; }
+.swatch[aria-checked="true"]::after { content: "✓"; position: absolute; color: #fff; font-size: 16px; font-weight: 800; text-shadow: 0 0 3px #000, 0 0 3px #000; }
 .action-list { display: grid; gap: 8px; margin: 12px 0; }
 .action-list button { min-height: 48px; padding: 8px 16px; text-align: left; }
 .action-list small { display: block; opacity: 0.8; }

@@ -185,7 +185,9 @@
           <select id="camera-preset" name="cameraPreset">
 </select>
         </label>
-      <label id="camera-follow-control" class="check-row" for="camera-follow" hidden title="Keep the 3D camera centered on the ball. Moving the camera by hand turns this off."><input id="camera-follow" type="checkbox"> Follow ball</label>
+      <label id="camera-follow-control" class="camera-preset-control" for="camera-follow" hidden title="Keep the 3D camera centered on the ball or on the selected player. Moving the camera by hand turns this off.">Follow
+        <select id="camera-follow" name="cameraFollow"><option value="off">Off</option><option value="ball">Ball</option><option value="selected">Selected player</option></select>
+      </label>
       <button class="" id="edit-3d" type="button" aria-controls="view3d" hidden="" aria-pressed="false">Edit in 3D</button>
 </div>
 </div>

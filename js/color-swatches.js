@@ -15,7 +15,7 @@ export function addSwatches(select, labels) {
     swatch.type = 'button';
     swatch.className = 'swatch';
     swatch.dataset.value = value;
-    swatch.style.background = value;
+    swatch.style.setProperty('--swatch', value);
     swatch.setAttribute('role', 'radio');
     swatch.setAttribute('aria-label', labels[name] ?? name);
     swatch.addEventListener('click', () => {

@@ -14,6 +14,7 @@ export const RESTART_TYPES = Object.freeze(['throw-in', 'goal-kick', 'corner', '
 // 'arrow' is the solid pass/shot arrow and 'run' the dashed player run/dribble arrow (PRD 7.1); both are two-point lines.
 export const DRAWING_TYPES = Object.freeze(['freehand', 'arrow', 'run', 'curve']);
 export const ZONE_OPACITY_RANGE = Object.freeze({ min: 0.1, max: 0.45 });
+export const DRAW_WIDTHS = Object.freeze(['thin', 'medium', 'thick']);
 
 const PLAYERS_PER_TEAM = 7;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -44,6 +45,9 @@ export function createInitialState() {
     zoneRestrictionMode: 'off',
     zoneRestrictionScope: 'home',
     zoneOpacity: 0.2,
+    zoneColor: PALETTE.yellow,
+    drawColor: PALETTE.yellow,
+    drawWidth: 'medium',
     colors: { ...DEFAULT_COLORS },
     // Color of newly placed cones, and of the selected cone when the coach picks one (PRD 7.2).
     coneColor: PALETTE.orange,
@@ -144,10 +148,12 @@ function normalizeDrawings(drawings) {
   if (!Array.isArray(drawings)) return [];
   return drawings
     .filter((drawing) => isRecord(drawing) && Array.isArray(drawing.points) && drawing.points.length > 0 && drawing.points.every(isPoint))
-    .map((drawing) => ({
+    .map(({ color, width, ...drawing }) => ({
       ...drawing,
       type: oneOf(DRAWING_TYPES, drawing.type, 'freehand'),
       points: drawing.points.map((point) => ({ x: clamp01(point.x), y: clamp01(point.y) })),
+      ...(isHexColor(color) ? { color } : {}),
+      ...(DRAW_WIDTHS.includes(width) ? { width } : {}),
     }));
 }
 
@@ -218,6 +224,9 @@ export function normalizeState(candidate) {
     zoneRestrictionMode: oneOf(ZONE_RESTRICTION_MODES, candidate.zoneRestrictionMode, base.zoneRestrictionMode),
     zoneRestrictionScope: oneOf(ZONE_RESTRICTION_SCOPES, candidate.zoneRestrictionScope, base.zoneRestrictionScope),
     zoneOpacity: normalizeZoneOpacity(candidate.zoneOpacity, base.zoneOpacity),
+    zoneColor: isHexColor(candidate.zoneColor) ? candidate.zoneColor : base.zoneColor,
+    drawColor: isHexColor(candidate.drawColor) ? candidate.drawColor : base.drawColor,
+    drawWidth: oneOf(DRAW_WIDTHS, candidate.drawWidth, base.drawWidth),
     colors: normalizeColors(candidate.colors, base.colors),
     players,
     balls: normalizeBalls(candidate.balls, base.balls),

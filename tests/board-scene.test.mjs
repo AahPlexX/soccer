@@ -5,6 +5,7 @@ import { ZONES, PALETTE } from '../js/constants.js';
 import { PITCH_WORLD } from '../js/camera-orbit.js';
 import { THEME_COLORS, buildBoardScene, drawNumberLabel, drawPitchTexture, toWorld } from '../js/board-scene.js';
 import { createInitialState } from '../js/state.js';
+import { GOAL_MAX_Y, GOAL_MIN_Y } from '../js/restarts.js';
 
 const near = (actual, expected, message = '') => assert.ok(Math.abs(actual - expected) < 1e-9, `${message} ${actual} != ${expected}`);
 
@@ -140,6 +141,22 @@ test('a textured pitch has a white base color so the grass texture is not darken
   const pitchColor = (board) => board.scene.children.find((child) => child.geometry?.type === 'PlaneGeometry' && child.material.type === 'MeshBasicMaterial' && !child.material.transparent && child.position.y === 0).material.color.getHexString();
   assert.equal(pitchColor(buildBoardScene(THREE)), '0d8251', 'flat green without a texture');
   assert.equal(pitchColor(buildBoardScene(THREE, { makeTexture: () => new THREE.Texture() })), 'ffffff');
+});
+
+test('no geometry in the scene has NaN positions, and the goals span the real goal mouth', () => {
+  const { board } = setup();
+  const bad = [];
+  let crossbars = 0;
+  board.scene.traverse((node) => {
+    const array = node.geometry?.attributes?.position?.array;
+    if (array && [...array].some(Number.isNaN)) bad.push(node.geometry.type);
+    if (node.geometry?.type === 'BoxGeometry' && node.position.y === 2.2 && Math.abs(node.parent?.position.x ?? 0) === PITCH_WORLD.length / 2) {
+      crossbars += 1;
+      assert.ok(Math.abs(node.geometry.parameters.depth - ((GOAL_MAX_Y - GOAL_MIN_Y) * PITCH_WORLD.width + 0.3)) < 1e-9);
+    }
+  });
+  assert.deepEqual(bad, []);
+  assert.equal(crossbars, 2);
 });
 
 test('the View theme restyles the 3D sky, surround and pitch, and a repaint reaches the texture', () => {

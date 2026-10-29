@@ -2,14 +2,14 @@
 // Three.js (vendor/three) costs nothing until then. createView3D() throws when WebGL is unavailable; the caller falls
 // back to the 2D board. The camera is an orbit (js/camera-orbit.js): drag to rotate and tilt, wheel or pinch to zoom,
 // two fingers, right-drag, or Shift-drag to pan. The scene reads the live board state every frame (js/board-scene.js).
-import { buildBoardScene, fromWorld } from './board-scene.js';
-import { CAMERA_FOV_DEGREES, DEFAULT_PRESET, groundPerPixel, orbitPosition, panOrbit, presetOrbit, rotateOrbit, zoomOrbit } from './camera-orbit.js';
+import { buildBoardScene, fromWorld, toWorld } from './board-scene.js';
+import { CAMERA_FOV_DEGREES, DEFAULT_PRESET, followOrbit, groundPerPixel, orbitPosition, panOrbit, presetOrbit, rotateOrbit, zoomOrbit } from './camera-orbit.js';
 
 const ROTATE_RADIANS_PER_PIXEL = 0.006;
 const WHEEL_ZOOM_PER_PIXEL = 0.0015;
 const PINCH_WHEEL_ZOOM_PER_PIXEL = 0.01; // a trackpad pinch arrives as a wheel event with ctrlKey
 
-export async function createView3D({ container, getState, onContextLost = () => {}, isEditing = () => false, onObjectSelect = () => {}, onObjectMove = () => {}, onObjectCommit = () => {}, onGroundTap = () => {} }) {
+export async function createView3D({ container, getState, onContextLost = () => {}, isEditing = () => false, onObjectSelect = () => {}, onObjectMove = () => {}, onObjectCommit = () => {}, onGroundTap = () => {}, onFollowChange = () => {} }) {
   const THREE = await import('../vendor/three/three.module.js');
   const renderer = new THREE.WebGLRenderer({ antialias: true }); // throws without WebGL
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -33,6 +33,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
 
   let preset = DEFAULT_PRESET;
   let orbit = presetOrbit(preset);
+  let follow = false; // the camera target eases toward the ball each frame; panning by hand turns it off
   let frame = 0;
   let width = 0;
   let height = 0;
@@ -52,6 +53,8 @@ export async function createView3D({ container, getState, onContextLost = () => 
     resize();
     if (!width) return;
     board.sync(getState(), { showPassOptions: document.documentElement.dataset.passOptions === 'true' });
+    const ball = follow ? getState().balls[0] : null;
+    if (ball) orbit = followOrbit(orbit, toWorld(ball.x, ball.y));
     const position = orbitPosition(orbit);
     camera.position.set(position.x, position.y, position.z);
     camera.lookAt(orbit.target.x, 0, orbit.target.z);
@@ -80,6 +83,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
     return { distance: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   };
   const panByPixels = (dx, dy) => {
+    if (follow) { follow = false; onFollowChange(false); }
     const ground = groundPerPixel(orbit, height || 1);
     orbit = panOrbit(orbit, -dx * ground, dy * ground);
   };
@@ -167,6 +171,8 @@ export async function createView3D({ container, getState, onContextLost = () => 
     reset() { orbit = presetOrbit(preset, width && height ? width / height : 4 / 3); },
     /** Zooms by a factor (greater than 1 moves closer). */
     zoom(factor) { orbit = zoomOrbit(orbit, factor); },
+    /** Keeps the camera centered on the ball (CAM-006) until it is turned off or the coach pans by hand. */
+    setFollow(on) { follow = Boolean(on); },
     get orbit() { return orbit; },
     dispose() {
       finishObjectDrag();

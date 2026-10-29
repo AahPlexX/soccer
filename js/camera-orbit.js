@@ -41,6 +41,14 @@ export function presetOrbit(name, aspect = 4 / 3) {
   });
 }
 
+/** Eases the orbit's target a fraction of the way toward a ground point; called every frame by the follow camera. */
+export function followOrbit(orbit, point, smoothing = 0.12) {
+  return clampOrbit({
+    ...orbit,
+    target: { x: orbit.target.x + (point.x - orbit.target.x) * smoothing, z: orbit.target.z + (point.z - orbit.target.z) * smoothing },
+  });
+}
+
 /** Keeps polar and distance in range and the target near the pitch. */
 export function clampOrbit(orbit) {
   const limit = ORBIT_LIMITS.panMargin;

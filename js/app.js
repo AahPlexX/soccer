@@ -44,6 +44,8 @@ const view3dToggle = document.querySelector('#view-3d-toggle');
 const view3dContainer = document.querySelector('#view3d');
 const cameraPresetControl = document.querySelector('#camera-preset-control');
 const cameraPresetSelect = document.querySelector('#camera-preset');
+const cameraFollow = document.querySelector('#camera-follow');
+const cameraFollowControl = document.querySelector('#camera-follow-control');
 const zonesToggle = document.querySelector('#zones-toggle');
 const zonePanel = document.querySelector('#zone-panel');
 const zoneButtons = document.querySelector('#zone-buttons');
@@ -401,6 +403,7 @@ async function setView3D(on) {
         container: view3dContainer,
         getState: () => state,
         isEditing: () => editing3D && !document.body.classList.contains('presentation'),
+        onFollowChange: (on) => { cameraFollow.checked = on; },
         onGroundTap: (point) => {
           const added = addProp(state, state.tool, point); // null unless a placement tool is active
           if (added) { commitChange({ rebuild: true }); showToast(added.message); }
@@ -438,6 +441,7 @@ async function setView3D(on) {
   svg.style.display = on ? 'none' : '';
   view3dContainer.hidden = !on;
   cameraPresetControl.hidden = !on;
+  cameraFollowControl.hidden = !on;
   if (on) {
     [zoomInButton, zoomOutButton, zoomFitButton].forEach((button) => { button.disabled = false; });
     view3d.setEditing(editing3D);
@@ -453,6 +457,7 @@ async function setView3D(on) {
 document.querySelector('#edit-3d').addEventListener('click', () => { editing3D = !editing3D; view3d?.setEditing(editing3D); document.querySelector('#edit-3d').setAttribute('aria-pressed', String(editing3D)); syncControls(); });
 view3dToggle.addEventListener('click', () => setView3D(!mode3d));
 cameraPresetSelect.addEventListener('change', () => view3d?.setPreset(cameraPresetSelect.value));
+cameraFollow.addEventListener('change', () => view3d?.setFollow(cameraFollow.checked));
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Zones.

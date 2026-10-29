@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CAMERA_PRESETS, ORBIT_LIMITS, PITCH_WORLD, clampOrbit, groundPerPixel, orbitPosition, panOrbit, presetOrbit, rotateOrbit, zoomOrbit,
+  CAMERA_PRESETS, ORBIT_LIMITS, PITCH_WORLD, clampOrbit, followOrbit, groundPerPixel, orbitPosition, panOrbit, presetOrbit, rotateOrbit, zoomOrbit,
 } from '../js/camera-orbit.js';
 
 const near = (actual, expected, message = '') => assert.ok(Math.abs(actual - expected) < 1e-9, `${message} ${actual} != ${expected}`);
@@ -30,6 +30,19 @@ test('the behind-our-goal preset sits beyond our goal line (negative x) at the p
 test('the sideline preset is the lowest preset', () => {
   const heights = Object.keys(CAMERA_PRESETS).map((name) => orbitPosition(presetOrbit(name)).y);
   assert.equal(orbitPosition(presetOrbit('sideline')).y, Math.min(...heights));
+});
+
+test('the follow camera eases its target toward a point, converges, and stays near the pitch', () => {
+  let orbit = presetOrbit('broadcast');
+  const point = { x: 20, z: -10 };
+  const first = followOrbit(orbit, point);
+  assert.ok(first.target.x > orbit.target.x && first.target.z < orbit.target.z);
+  assert.ok(Math.abs(first.target.x - point.x) < Math.abs(orbit.target.x - point.x));
+  for (let i = 0; i < 120; i += 1) orbit = followOrbit(orbit, point);
+  assert.ok(Math.abs(orbit.target.x - point.x) < 0.01 && Math.abs(orbit.target.z - point.z) < 0.01);
+  assert.equal(orbit.distance, presetOrbit('broadcast').distance, 'zoom and angle are untouched');
+  const far = followOrbit(presetOrbit('top'), { x: 1000, z: 1000 }, 1);
+  assert.ok(far.target.x <= PITCH_WORLD.length / 2 + ORBIT_LIMITS.panMargin);
 });
 
 test('half-field presets center on their own half and share the pitch-fitting widening', () => {

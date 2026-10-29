@@ -304,3 +304,7 @@ Progress is stored in the script, so `history.js` (`script` is an edit key), sav
 ## Player hit areas (1.0.14)
 
 `js/render.js` adds a `#hit-layer` below `#prop-layer` and `#player-layer` holding one transparent `.player-hit` circle per player (`PLAYER_HIT_RADIUS`, 38 SVG units). Hit circles are positioned and hidden together with their token in `renderScene`, carry `data-hit-for` rather than `data-object-id` (so they are never focusable or counted as objects), and `app.js` resolves a press on one to the token via `#object-<id>`. Because they sit below props and tokens, a visible token or cone always wins a tap over a neighbour larger target.
+
+## Follow camera (1.0.15)
+
+`followOrbit(orbit, point, smoothing)` (js/camera-orbit.js) eases the orbit target toward a ground point. When `setFollow(true)` is on, `view3d.js` calls it every frame with the ball (`toWorld`); `panByPixels` turns follow off and reports it through `onFollowChange` so the Follow ball checkbox (`#camera-follow`, hidden outside 3D) stays accurate. Follow is not persisted. The 3D goal frames now derive their width from `GOAL_MIN_Y`/`GOAL_MAX_Y` (js/restarts.js).

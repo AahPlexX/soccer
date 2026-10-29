@@ -4,6 +4,7 @@ import { availablePassOptions } from './pass-options.js';
 // textures come from an injected factory because canvases only exist in a browser. World axes are in camera-orbit.js:
 // the board's x runs along world x and its y across world z, so the 3D view has the same orientation as the 2D board.
 import { PITCH, ZONES } from './constants.js';
+import { GOAL_MAX_Y, GOAL_MIN_Y } from './restarts.js';
 import { PITCH_WORLD } from './camera-orbit.js';
 import { playerColor } from './formations.js';
 
@@ -119,7 +120,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     return mesh;
   };
   // Goals face along x; the mouth width is the drawn goal width on a 40.8 yard wide pitch.
-  const goalHalf = (PITCH.goalWidth * W) / 2;
+  const goalHalf = ((GOAL_MAX_Y - GOAL_MIN_Y) * W) / 2;
   for (const side of [-1, 1]) {
     const goal = new THREE.Group();
     goal.add(box(0.3, 2.2, 0.3, 0, 1.1, -goalHalf), box(0.3, 2.2, 0.3, 0, 1.1, goalHalf), box(0.3, 0.3, goalHalf * 2 + 0.3, 0, 2.2, 0));

@@ -209,6 +209,7 @@
 </span>
 </div>
 <div class="selection-actions">
+<button id="selection-actions" type="button" hidden title="Choose what the first selected player does with the second: pass, receive, run, swap">Player action…</button>
 <button id="selection-edit" type="button">Edit player</button>
 <button id="selection-ball" type="button">Give ball</button>
 <button id="selection-bench" type="button">Bench</button>
@@ -413,6 +414,15 @@
 <button value="cancel" formnovalidate="">Cancel</button>
 <button id="colors-save" value="default" class="primary-action">Save colors</button>
 </div>
+    </form>
+  </dialog>
+
+  <dialog id="action-dialog" class="editor-dialog">
+    <form method="dialog" id="action-form">
+      <div class="dialog-heading"><h2>Player action</h2><button value="cancel" formnovalidate class="icon-button" aria-label="Close player actions">×</button></div>
+      <p id="action-pair" role="status"></p>
+      <div id="action-list" class="action-list"></div>
+      <div class="dialog-actions"><button type="button" id="action-flip">Swap order</button><button value="cancel" formnovalidate>Cancel</button></div>
     </form>
   </dialog>
 

@@ -158,6 +158,9 @@ input[type="text"], input[type="number"] {
 .check-row input { width: 24px; height: 24px; }
 .bench { position: absolute; top: 8px; left: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 16px); }
 .bench[hidden] { display: none; }
+.action-list { display: grid; gap: 8px; margin: 12px 0; }
+.action-list button { min-height: 48px; padding: 8px 16px; text-align: left; }
+.action-list small { display: block; opacity: 0.8; }
 .bench-label { align-self: center; padding: 8px 12px; border-radius: 12px; background: #12202b; color: #fff; font-weight: 700; }
 .bench button { min-height: 48px; padding: 0 14px; border-radius: 24px; border: 2px solid #fff; background: #12202b; color: #fff; font: inherit; font-weight: 700; }
 .pitch-stage {

@@ -15,7 +15,7 @@ const HINTS = {
   ball: 'Tap the pitch to add a spare ball. The CPU uses the main ball.',
 };
 
-export function setupBoardSurface({ getState, getSelection, clearSelection, commit, edit, nudge, capture, mode3D, edit3D, onPresentation }) {
+export function setupBoardSurface({ getState, getSelection, clearSelection, commit, edit, nudge, capture, mode3D, edit3D, onPresentation, actions }) {
   const byId = (id) => document.getElementById(id);
   const icons = {
     move: '<path d="M5 3l14 10-7 1-3 7z"/>',
@@ -87,6 +87,7 @@ export function setupBoardSurface({ getState, getSelection, clearSelection, comm
   byId('quick-capture').addEventListener('click', capture);
   byId('selection-capture').addEventListener('click', capture);
   byId('selection-edit').addEventListener('click', () => edit(getState().selectedObjectId));
+  byId('selection-actions').addEventListener('click', () => actions(getSelection()));
   byId('selection-ball').addEventListener('click', () => { if (giveBallToPlayer(getState(), getState().selectedObjectId)) commit(); });
   byId('selection-bench').addEventListener('click', () => {
     const ids = getSelection().length ? getSelection() : [getState().selectedObjectId];
@@ -109,6 +110,7 @@ export function setupBoardSurface({ getState, getSelection, clearSelection, comm
     const selectionTitle = many ? `${ids.length} objects selected` : player ? `#${object.number} ${object.label || object.role}` : object?.primary ? 'Match ball' : object ? 'Drill equipment' : '';
     if (byId('selection-title').textContent !== selectionTitle) byId('selection-title').textContent = selectionTitle;
     byId('selection-detail').textContent = many ? 'Move the unit together · arrow keys or drag' : player ? `${object.team === 'home' ? 'Our team' : 'Opponents'} · ${object.role}` : 'Drag to reposition · arrow keys to nudge';
+    byId('selection-actions').hidden = !(ids.length === 2 && ids.every((id) => findObject(state, id)?.team));
     byId('selection-edit').hidden = many || !player;
     byId('selection-ball').hidden = many || !player;
     byId('selection-bench').hidden = !(many ? ids.some((id) => findObject(state,id)?.team) : player);

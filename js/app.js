@@ -13,6 +13,7 @@ import { IDENTITY_VIEW, ZOOM_RANGE, clampView, panBy, viewBoxSize, viewTransform
 import { CAMERA_PRESETS, DEFAULT_PRESET } from './camera-orbit.js';
 import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
+import { PLAYER_ACTIONS, applyPlayerAction } from './player-actions.js';
 import { filterPresetsByCategory } from './library.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
@@ -493,7 +494,7 @@ function openPlayerEditor(id) {
 }
 
 function handleObjectPointerDown(event, target) {
-  if (state.tool === 'select') {
+  if (state.tool === 'select' || event.shiftKey) { // Shift-click builds a multi-selection with any tool
     const id = target.dataset.objectId;
     const wasSelected = selectedUnit.has(id);
     selectedUnit.add(id); state.selectedObjectId = id;
@@ -505,6 +506,7 @@ function handleObjectPointerDown(event, target) {
   }
   const id = target.dataset.objectId;
   if (!findObject(state, id)) return;
+  selectedUnit.clear(); // a plain press leaves any multi-selection
   state.selectedObjectId = id;
   drag = { id, pointerId: event.pointerId, moved: false, startX: event.clientX, startY: event.clientY };
   target.setPointerCapture(event.pointerId);
@@ -959,7 +961,37 @@ coachingUI = setupCoaching({
     commitChange(); showToast('Advanced one simulated second; paused for discussion.');
   },
 });
+// Player action steps: two selected players, pick an action, and arrows are drawn between them.
+const actionDialog = document.querySelector('#action-dialog');
+const actionPair = document.querySelector('#action-pair');
+const actionList = document.querySelector('#action-list');
+let actionIds = [];
+const playerName = (id) => { const player = findObject(state, id); return `#${player.number} ${player.label || player.role}`; };
+const renderActionPair = () => { actionPair.textContent = `${playerName(actionIds[0])} → ${playerName(actionIds[1])}`; };
+PLAYER_ACTIONS.forEach((action) => {
+  const button = document.createElement('button');
+  const hint = document.createElement('small');
+  hint.textContent = action.hint;
+  button.type = 'button';
+  button.append(action.label, hint);
+  button.addEventListener('click', () => {
+    if (!applyPlayerAction(state, action.id, actionIds[0], actionIds[1])) { showToast('Those players are too close to draw an arrow between.'); return; }
+    actionDialog.close();
+    commitChange({ rebuild: true });
+    showToast(`${action.label} drawn. Undo removes it.`);
+  });
+  actionList.append(button);
+});
+document.querySelector('#action-flip').addEventListener('click', () => { actionIds.reverse(); renderActionPair(); });
+function openActionDialog(ids) {
+  actionIds = ids.filter((id) => state.players.some((player) => player.id === id && !player.benched)).slice(0, 2);
+  if (actionIds.length !== 2) return;
+  renderActionPair();
+  actionDialog.showModal();
+}
+
 surfaceUI = setupBoardSurface({
+  actions: openActionDialog,
   getState: () => state, getSelection: () => [...selectedUnit], commit: commitChange,
   clearSelection: () => { selectedUnit.clear(); state.selectedObjectId = null; render(); },
   edit: openPlayerEditor, nudge: (dx, dy) => {

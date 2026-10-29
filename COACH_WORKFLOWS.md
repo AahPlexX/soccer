@@ -47,3 +47,7 @@ Use **Present** to hide editing chrome and lock manual edits while teaching; Pla
 This release has no accounts, multi-user editing, chat, shared workspaces, remote sync, invites or collaboration features. Saved boards belong to the current browser/device. The product is a tactical teaching aid, not attendance software, a match officiating system or a player-tracking service.
 
 Still requiring real-device evidence: 2018 iPad performance, touch comfort, Home Screen/offline update behavior, and Safari printing. Optional future improvements include player-follow cameras, dedicated half-field framing and richer drill-rule enforcement. No claim of verified 60 fps is made.
+
+## Player action steps (1.0.10)
+
+Select two players with Shift-click (any tool) or the Select unit tool (touch). The selection bar shows Player action; the dialog lists Pass, Receive from, Run to, Pass and follow and Swap places for "first selected to second selected" (Swap order flips them). The action is drawn with the solid pass and dashed run arrows in the current Drawing color and Line size, clear of the player discs. One Undo removes it. Actions are annotations, not commands to the CPU; use captured steps for sequences.

@@ -180,6 +180,9 @@
         <button id="zoom-out" class="tool-button" type="button" title="Zoom out (pinch, or mouse wheel)" aria-label="Zoom out">−</button>
         <button id="zoom-in" class="tool-button" type="button" title="Zoom in (pinch, or mouse wheel)" aria-label="Zoom in">+</button>
         <button id="zoom-fit" class="tool-button" type="button" title="Reset the view: 2D shows the whole pitch again; 3D returns the camera to the selected angle">Reset view</button>
+        <label class="camera-preset-control frame-control" for="view-frame" title="Frame the whole pitch, or zoom to one half. In 3D this moves the camera to that half.">Frame
+          <select id="view-frame" name="viewFrame"><option value="whole">Whole pitch</option><option value="ours">Our half</option><option value="theirs">Their half</option><option value="custom" disabled hidden>Custom</option></select>
+        </label>
         <button id="view-3d-toggle" class="tool-button" type="button" aria-pressed="false" title="Switch between the 2D board and a 3D camera view">3D view</button>
         <label id="camera-preset-control" class="camera-preset-control" for="camera-preset" hidden="">Camera
           <select id="camera-preset" name="cameraPreset">

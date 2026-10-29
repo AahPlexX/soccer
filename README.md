@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.0.16**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.0.17**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Board workspace (1.0.6)
 
@@ -109,3 +109,5 @@ Version 1.0.14 gives player tokens invisible 48px-plus hit areas on iPad-width s
 Version 1.0.15 adds a Follow ball camera for the 3D view and fixes the 3D goals, which were never drawn.
 
 Version 1.0.16 turns the 3D Follow control into a menu (Off, Ball, Selected player), hides it outside 3D, and compacts the color swatches.
+
+Version 1.0.17 adds a Frame menu (Whole pitch, Our half, Their half) that zooms the 2D board, or moves the 3D camera, to one half.

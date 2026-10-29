@@ -9,7 +9,7 @@ import {
 import { BUILT_IN_PRESETS } from './builtins.js';
 import { PALETTE, ZONES } from './constants.js';
 import { createHistory } from './history.js';
-import { IDENTITY_VIEW, ZOOM_RANGE, clampView, panBy, viewBoxSize, viewTransform, zoomAt } from './view-zoom.js';
+import { IDENTITY_VIEW, ZOOM_RANGE, clampView, halfView, panBy, viewBoxSize, viewTransform, zoomAt } from './view-zoom.js';
 import { CAMERA_PRESETS, DEFAULT_PRESET } from './camera-orbit.js';
 import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
@@ -40,6 +40,7 @@ const redoButton = document.querySelector('#redo');
 const zoomInButton = document.querySelector('#zoom-in');
 const zoomOutButton = document.querySelector('#zoom-out');
 const zoomFitButton = document.querySelector('#zoom-fit');
+const frameSelect = document.querySelector('#view-frame');
 const view3dToggle = document.querySelector('#view-3d-toggle');
 const view3dContainer = document.querySelector('#view3d');
 const cameraPresetControl = document.querySelector('#camera-preset-control');
@@ -287,11 +288,21 @@ let panSession = null; // one-pointer pan of the zoomed board
 let view3d = null; // the 3D camera view, created on first use (js/view3d.js)
 let mode3d = false; // true while the 3D view is showing instead of the 2D board
 
+// The 2D view for a Frame choice ('whole', 'ours', 'theirs'), for the current orientation and board direction.
+function frameView(choice) {
+  if (choice === 'whole') return IDENTITY_VIEW;
+  const { width, height } = viewBoxSize(svg.getAttribute('viewBox'));
+  return halfView(choice, { portrait: svg.getAttribute('data-scene-orientation') === 'portrait', flipped: state.flipped === true }, width, height);
+}
+
 function applyView(next) {
   const { width, height } = viewBoxSize(svg.getAttribute('viewBox'));
   view = clampView(next, width, height);
   viewGroup.setAttribute('transform', viewTransform(view));
   if (mode3d) return; // the 3D camera owns the zoom buttons while it is showing
+  // The Frame menu names the view when it matches one of its choices, otherwise it reads Custom.
+  const same = (a, b) => Math.abs(a.scale - b.scale) + Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < 1e-6;
+  frameSelect.value = ['whole', 'ours', 'theirs'].find((choice) => same(view, frameView(choice))) ?? 'custom';
   zoomInButton.disabled = view.scale >= ZOOM_RANGE.max;
   zoomOutButton.disabled = view.scale <= ZOOM_RANGE.min;
   zoomFitButton.disabled = view === IDENTITY_VIEW || (view.scale === 1 && view.x === 0 && view.y === 0);
@@ -337,6 +348,13 @@ function pinchState() {
 
 zoomInButton.addEventListener('click', () => (mode3d ? view3d.zoom(ZOOM_STEP) : zoomBy(ZOOM_STEP)));
 zoomOutButton.addEventListener('click', () => (mode3d ? view3d.zoom(1 / ZOOM_STEP) : zoomBy(1 / ZOOM_STEP)));
+frameSelect.addEventListener('change', () => {
+  const choice = frameSelect.value;
+  if (!mode3d) { applyView(frameView(choice)); return; }
+  // In 3D the Frame menu moves the camera: a half uses that half's preset, the whole pitch the chosen angle.
+  cameraPresetSelect.value = choice === 'ours' ? 'ourHalf' : choice === 'theirs' ? 'theirHalf' : cameraPresetSelect.value === 'ourHalf' || cameraPresetSelect.value === 'theirHalf' ? DEFAULT_PRESET : cameraPresetSelect.value;
+  view3d.setPreset(cameraPresetSelect.value);
+});
 zoomFitButton.addEventListener('click', () => (mode3d ? view3d.reset() : applyView(IDENTITY_VIEW)));
 svg.addEventListener('wheel', (event) => {
   event.preventDefault();

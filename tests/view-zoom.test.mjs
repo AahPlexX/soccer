@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { IDENTITY_VIEW, ZOOM_RANGE, clampView, panBy, viewBoxSize, viewTransform, zoomAt } from '../js/view-zoom.js';
+import { HALF_ZOOM, IDENTITY_VIEW, ZOOM_RANGE, clampView, halfView, panBy, viewBoxSize, viewTransform, zoomAt } from '../js/view-zoom.js';
 
 const W = 1000;
 const H = 680;
@@ -45,6 +45,28 @@ test('zooming at the limit changes nothing and zooming back out returns to the f
 test('portrait boards clamp against their own viewport size', () => {
   const view = panBy(zoomAt(IDENTITY_VIEW, 2, 0, 0, 680, 1000), -9999, -9999, 680, 1000);
   assert.deepEqual([view.x, view.y], [-680, -1000]);
+});
+
+// The viewBox point shown at the middle of the screen for a view.
+const centerOf = (view, width, height) => ({ x: (width / 2 - view.x) / view.scale, y: (height / 2 - view.y) / view.scale });
+
+test('halfView frames our half on the left and their half on the right, and flipping swaps them', () => {
+  const ours = halfView('ours');
+  const theirs = halfView('theirs');
+  assert.equal(ours.scale, HALF_ZOOM);
+  assert.ok(centerOf(ours, W, H).x < W / 2 && centerOf(theirs, W, H).x > W / 2);
+  assert.deepEqual(halfView('ours', { flipped: true }), theirs);
+  assert.deepEqual(halfView('theirs', { flipped: true }), ours);
+});
+
+test('halfView respects the pitch rotation in portrait and always covers the viewport', () => {
+  const ours = halfView('ours', { portrait: true }, 680, 1000);
+  const theirs = halfView('theirs', { portrait: true }, 680, 1000);
+  // In portrait our half is at the top of the screen (the pitch is rotated a quarter turn).
+  assert.ok(centerOf(ours, 680, 1000).y < centerOf(theirs, 680, 1000).y);
+  for (const view of [ours, theirs, halfView('ours'), halfView('theirs')]) {
+    assert.deepEqual(clampView(view, view === ours || view === theirs ? 680 : W, view === ours || view === theirs ? 1000 : H), view);
+  }
 });
 
 test('the viewport size is read from the SVG viewBox attribute', () => {

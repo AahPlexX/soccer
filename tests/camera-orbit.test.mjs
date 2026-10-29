@@ -32,6 +32,13 @@ test('the sideline preset is the lowest preset', () => {
   assert.equal(orbitPosition(presetOrbit('sideline')).y, Math.min(...heights));
 });
 
+test('half-field presets center on their own half and share the pitch-fitting widening', () => {
+  assert.equal(presetOrbit('ourHalf').target.x, -PITCH_WORLD.length / 4);
+  assert.equal(presetOrbit('theirHalf').target.x, PITCH_WORLD.length / 4);
+  assert.equal(presetOrbit('broadcast').target.x, 0);
+  assert.ok(presetOrbit('ourHalf', 0.6).distance > presetOrbit('ourHalf', 4 / 3).distance);
+});
+
 test('narrow viewports back the camera off so the pitch still fits; wide ones keep the base distance', () => {
   const base = presetOrbit('broadcast', 4 / 3).distance;
   assert.ok(presetOrbit('broadcast', 0.6).distance > base);

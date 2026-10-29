@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.0.6**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.0.7**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Board workspace (1.0.6)
 
@@ -70,7 +70,7 @@ The repository is intentionally static. `index.html` loads native ES modules, an
 - Players are solid: the simulation, tackles, and coach drags or nudges never leave two players overlapping; a player you place stays put and others step aside.
 - Undo and redo (toolbar buttons, Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z) for up to 50 board edits; moving a player, drawing, placing a prop, loading a play, or resetting is one step each.
 - Zoom and pan the board (Zoom in, Zoom out, and Fit buttons, mouse wheel or trackpad pinch, two-finger pinch on iPad, one-finger pan when zoomed) from 1× to 4×.
-- 3D view: switch the board to a live 3D camera (Top-down, Broadcast, Behind our goal, Sideline low presets; drag to rotate, scroll or pinch to zoom, two fingers to pan). It shows the same players, ball, cones, goals, and zones, and the simulation plays in it; edit in the 2D board. Needs WebGL; without it the app stays in 2D. Uses a vendored copy of Three.js (`vendor/three/`).
+- 3D view: switch the board to a live 3D camera (Top-down, Broadcast, Behind our goal, Sideline low, Our half, Their half presets; drag to rotate, scroll or pinch to zoom, two fingers to pan). It shows the same players, ball, cones, goals, and zones, and the simulation plays in it; edit in the 2D board. Needs WebGL; without it the app stays in 2D. Uses a vendored copy of Three.js (`vendor/three/`).
 - CPU-vs-CPU passing (receivers with an opponent-blocked lane are skipped), deterministic close-range turnovers, an optional dashed pass-options overlay, dribbling movement, pressing, U9 build-out retreat, simplified offside support, and explicit automated throw-in, goal-kick, corner, and kickoff restart states, with players held in their own half until a post-goal kickoff is released.
 - Deterministic varied shooting with goalkeeper movement toward incoming shots and catch/parry/goal outcomes; the fixed aim sequence keeps teaching replays reproducible instead of introducing random results.
 - Four built-in teaching scenarios: goal-kick build-out, press the opponent build-out, U9 offside visualizer, and switching the field.
@@ -89,3 +89,5 @@ Keep these files synchronized with code changes. `PROJECT_STATE.md` is the hando
 Version 1.0.1 completes player separation at crowded pitch edges, including fixed restart takers.
 
 Version 1.0.2 keeps the 3D ball visible during possession and behind other players; its display sits beside the carrier without changing the tactical ball coordinates.
+
+Version 1.0.7 adds "Our half" and "Their half" 3D camera presets for half-field work (`targetX` in `CAMERA_PRESETS`, js/camera-orbit.js).

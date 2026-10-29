@@ -1,7 +1,7 @@
 # Project state — handoff entry point
 
 Last updated: 2026-10-28
-Branch: `main` · application version: **1.0.6** · persistence schema: `1`
+Branch: `main` · application version: **1.0.7** · persistence schema: `1`
 Status: 1.0.6 released; 228 tests, runtime syntax, responsive/interaction Chromium checks, CI and GitHub Pages deployment passed.
 
 ## Resume here
@@ -24,7 +24,7 @@ Previous release implementation `c1305db` passed [Validate main](https://github.
 - Four built-ins now include coaching briefs. User presets save all coaching fields, bench flags, starting snapshot and steps; update a loaded user preset or save a new copy. Built-ins are immutable. Backups include the complete content.
 - Print or browser Save as PDF for current diagram/brief, or a captured multi-page plan. Print is local and uses the full 2D diagram even when viewing 3D.
 - 2D zoom/pan; lazy vendored Three.js 3D scene with orbit, zoom, pan and four camera presets. 3D shows diagrams, run/pass/route arrows and optional pass-option lines as well as participants and props. Ball visibility is protected through occluders and a carried ball is displayed beside its carrier without changing physics. Ground-plane object editing is opt-in in 3D; drawing and unit selection stay in 2D.
-- Offline app shell, native manifest, versioned Update/Cancel prompt. Each Pages deployment has an isolated cache/build identity. The version begins at 1.0.0 and **each significant update increments patch by one**; `package.json` and `APP_VERSION` in `sw.js` must match. Current release is 1.0.6. No collaboration features.
+- Offline app shell, native manifest, versioned Update/Cancel prompt. Each Pages deployment has an isolated cache/build identity. The version begins at 1.0.0 and **each significant update increments patch by one**; `package.json` and `APP_VERSION` in `sw.js` must match. Current release is 1.0.7. No collaboration features.
 
 ## Workspace integration — 1.0.6
 
@@ -63,7 +63,7 @@ Earlier FND-001..039 evidence and original COACH/CAM decisions are archived in [
 - COACH-004 Teaching notes: done in 1.0.4; stored with the board/preset and captured steps.
 - COACH-005 Flip attack direction: deferred; the home team still attacks toward increasing x. 3D orbit offers alternate viewing angles but does not change tactical direction.
 - COACH-006 Reuse roster: done in 1.0.4 as opt-in names/numbers/colors retention when loading; no external team database.
-- COACH-007 Dedicated half-field preset: deferred; existing 2D zoom/pan and 3D camera can frame areas manually.
+- COACH-007 Half-field framing: done in 1.0.7 for the 3D view as "Our half" and "Their half" camera presets (home attacks toward +x, so its half is at -x); the 2D board still frames halves manually with zoom/pan.
 - COACH-008 Controlled stepping: done as exactly one simulated second; not one whole AI decision.
 - COACH-009 Duplicate/clear props: done in 1.0.4, protected main ball and reversible clear.
 - COACH-010 Drill timer: original rejection superseded by owner's broader real-world coaching integration request; done in 1.0.4.
@@ -80,7 +80,7 @@ Earlier FND-001..039 evidence and original COACH/CAM decisions are archived in [
 
 1. Physical iPad 2018 baseline: no verified 60 fps, outdoor readability, Safari/Home Screen offline/update lifecycle or touch ergonomics. Test on device before changing these statuses.
 2. CPU is a simplified teaching model, not full referee logic: no fouls, complete offside adjudication, detailed restart distances or mini-goal scoring. Written notes, cones, extra balls and arrows do not command the engine. Use snapshots for exact sequences.
-3. 3D can move objects, but drawing, placement and group selection use 2D. Dedicated half-field presets, view reversal and follow cameras are future work.
+3. 3D can move objects, but drawing, placement and group selection use 2D. View reversal and follow cameras are future work.
 4. Tapping selects a contextual action strip; details use a centered dialog. Team colors remain native selects rather than swatches. Some inherited token/control hit targets still need physical-device review.
 5. Captured sequences are limited to 12; time remaining is not restored after reload, and printing relies on the browser's print/PDF support. Local-only browser storage is not cross-device sync. Back up files before clearing site data.
 6. No accounts, invites, chat, remote database, concurrent editing or collaboration will be added within this request.

@@ -20,6 +20,9 @@ export const CAMERA_PRESETS = Object.freeze({
   broadcast: Object.freeze({ label: 'Broadcast', azimuth: 0, polar: 1.05, distance: 72 }),
   goal: Object.freeze({ label: 'Behind our goal', azimuth: -Math.PI / 2, polar: 1.2, distance: 58 }),
   sideline: Object.freeze({ label: 'Sideline low', azimuth: 0, polar: 1.38, distance: 50 }),
+  // Half-field framing (COACH-007): the home team attacks toward +x, so its own half is at -x.
+  ourHalf: Object.freeze({ label: 'Our half', azimuth: 0, polar: 0.9, distance: 44, targetX: -PITCH_WORLD.length / 4 }),
+  theirHalf: Object.freeze({ label: 'Their half', azimuth: 0, polar: 0.9, distance: 44, targetX: PITCH_WORLD.length / 4 }),
 });
 
 export const DEFAULT_PRESET = 'broadcast';
@@ -31,7 +34,7 @@ export function presetOrbit(name, aspect = 4 / 3) {
   const preset = CAMERA_PRESETS[name] ?? CAMERA_PRESETS[DEFAULT_PRESET];
   const widen = Math.max(1, (4 / 3) / (Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3));
   return clampOrbit({
-    target: { x: 0, z: 0 },
+    target: { x: preset.targetX ?? 0, z: 0 },
     azimuth: preset.azimuth,
     polar: preset.polar,
     distance: preset.distance * widen,

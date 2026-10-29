@@ -179,16 +179,32 @@ function drawingPath(points) {
   return points.map((point, index) => `${index ? 'L' : 'M'}${sx(point.x)} ${sy(point.y)}`).join(' ');
 }
 
-function buildDrawing(drawing) {
-  if (drawing.type === 'curve') return el('path', { d: drawingPath(drawing.points), class: 'drawing-arrow', 'marker-end': 'url(#arrowhead)' });
+const DRAW_WIDTH_PX = { thin: 4, medium: 8, thick: 13 };
+
+// Arrowheads take their line's color, so each custom color gets its own marker (an unstyled drawing keeps #arrowhead).
+function markerFor(defs, color) {
+  const id = `arrowhead-${color.slice(1)}`;
+  if (!defs.querySelector(`#${id}`)) {
+    const marker = el('marker', { id, markerWidth: 10, markerHeight: 10, refX: 8, refY: 3, orient: 'auto', markerUnits: 'strokeWidth' });
+    marker.append(el('path', { d: 'M0,0 L0,6 L9,3 z', fill: color }));
+    defs.append(marker);
+  }
+  return `url(#${id})`;
+}
+
+function buildDrawing(drawing, defs) {
+  const style = [drawing.color && `stroke:${drawing.color}`, drawing.width && `stroke-width:${DRAW_WIDTH_PX[drawing.width]}`].filter(Boolean).join(';');
+  const custom = style ? { style } : {};
+  const arrowhead = drawing.color ? markerFor(defs, drawing.color) : 'url(#arrowhead)';
+  if (drawing.type === 'curve') return el('path', { d: drawingPath(drawing.points), class: 'drawing-arrow', 'marker-end': arrowhead, ...custom });
   if (drawing.type !== 'freehand' && drawing.points.length >= 2) {
     const [start, end] = drawing.points;
     return el('line', {
       x1: sx(start.x), y1: sy(start.y), x2: sx(end.x), y2: sy(end.y),
-      class: drawing.type === 'run' ? 'drawing-arrow drawing-run' : 'drawing-arrow', 'marker-end': 'url(#arrowhead)',
+      class: drawing.type === 'run' ? 'drawing-arrow drawing-run' : 'drawing-arrow', 'marker-end': arrowhead, ...custom,
     });
   }
-  return el('path', { d: drawingPath(drawing.points), class: 'drawing-freehand' });
+  return el('path', { d: drawingPath(drawing.points), class: 'drawing-freehand', ...custom });
 }
 
 export function initializeScene(svg, state) {
@@ -224,7 +240,8 @@ export function rebuildObjects(svg, state) {
   playerLayer.replaceChildren(...state.players.map((player) => buildPlayer(player, state)));
   ballLayer.replaceChildren(...state.balls.map(buildBall));
   propLayer.replaceChildren(...state.cones.map(buildCone), ...state.miniGoals.map(buildMiniGoal));
-  drawingLayer.replaceChildren(...state.drawings.map(buildDrawing));
+  const defs = svg.querySelector('defs');
+  drawingLayer.replaceChildren(...state.drawings.map((drawing) => buildDrawing(drawing, defs)));
   orientObjectVisuals(svg, svg.getAttribute('data-scene-orientation') === 'portrait');
 }
 
@@ -257,6 +274,7 @@ export function renderScene(svg, state) {
     const active = state.selectedZones.includes(node.dataset.zoneId);
     node.classList.toggle('is-active', active);
     node.style.setProperty('--zone-opacity', String(state.zoneOpacity));
+    node.style.setProperty('--zone-color', state.zoneColor);
   });
   renderPassOptions(svg, state);
 

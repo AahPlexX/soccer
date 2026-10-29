@@ -28,6 +28,9 @@ const homeFormation = document.querySelector('#home-formation');
 const awayFormation = document.querySelector('#away-formation');
 const awayVisible = document.querySelector('#away-visible');
 const coneColorSelect = document.querySelector('#cone-color');
+const zoneColorSelect = document.querySelector('#zone-color');
+const drawColorSelect = document.querySelector('#draw-color');
+const drawWidthSelect = document.querySelector('#draw-width');
 const undoButton = document.querySelector('#undo');
 const redoButton = document.querySelector('#redo');
 const zoomInButton = document.querySelector('#zoom-in');
@@ -157,6 +160,9 @@ function syncControls() {
   awayVisible.textContent = state.awayVisible ? 'Hide opponents' : 'Show opponents';
   themeSelect.value = state.theme;
   coneColorSelect.value = state.coneColor;
+  zoneColorSelect.value = state.zoneColor;
+  drawColorSelect.value = state.drawColor;
+  drawWidthSelect.value = state.drawWidth;
   undoButton.disabled = !boardHistory.canUndo;
   redoButton.disabled = !boardHistory.canRedo;
   zoneOpacity.value = String(state.zoneOpacity);
@@ -523,7 +529,7 @@ function handleToolPointerDown(event) {
   svg.setPointerCapture(event.pointerId);
   drawSession = {
     pointerId: event.pointerId,
-    drawing: { id: `drawing-${Date.now().toString(36)}-${state.drawings.length}`, type: drawingType, points: [point] },
+    drawing: { id: `drawing-${Date.now().toString(36)}-${state.drawings.length}`, type: drawingType, points: [point], color: state.drawColor, width: state.drawWidth },
   };
   state.drawings.push(drawSession.drawing);
   render({ rebuild: true });
@@ -725,7 +731,10 @@ playerDialog.querySelectorAll('[data-nudge]').forEach((button) => {
 // Team colors.
 // ---------------------------------------------------------------------------------------------------------------------
 
-[...colorsForm.querySelectorAll('select'), coneColorSelect].forEach((select) => {
+zoneColorSelect.addEventListener('change', () => { state.zoneColor = zoneColorSelect.value; commitChange(); });
+drawColorSelect.addEventListener('change', () => { state.drawColor = drawColorSelect.value; commitChange(); });
+drawWidthSelect.addEventListener('change', () => { state.drawWidth = drawWidthSelect.value; commitChange(); });
+[...colorsForm.querySelectorAll('select'), coneColorSelect, zoneColorSelect, drawColorSelect].forEach((select) => {
   Object.entries(PALETTE).forEach(([name, value]) => {
     const option = document.createElement('option');
     option.value = value;

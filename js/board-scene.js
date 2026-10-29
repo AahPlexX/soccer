@@ -161,18 +161,19 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     line.renderOrder = 10; line.visible = false; passLines.add(line); return line;
   });
 
-  function pathGroup(points, dashed, arrow) {
+  // A drawing's own color wins; unstyled drawings keep the defaults (yellow dashed runs, white passes and marks).
+  function pathGroup(points, dashed, arrow, color = dashed ? '#ffd43b' : '#ffffff') {
     const group = new THREE.Group();
     if (points.length < 2) return group;
     const vectors = points.map((point) => { const p = toWorld(point.x, point.y); return new THREE.Vector3(p.x, 0.12, p.z); });
-    const material = dashed ? new THREE.LineDashedMaterial({ color: '#ffd43b', dashSize: 0.65, gapSize: 0.4, depthTest: false, transparent: true })
-      : new THREE.LineBasicMaterial({ color: '#ffffff', depthTest: false, transparent: true });
+    const material = dashed ? new THREE.LineDashedMaterial({ color, dashSize: 0.65, gapSize: 0.4, depthTest: false, transparent: true })
+      : new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true });
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(vectors), material);
     line.computeLineDistances(); line.renderOrder = 10; group.add(line);
     if (arrow) {
       const end = vectors.at(-1); const direction = end.clone().sub(vectors.at(-2));
       if (direction.lengthSq() > 1e-8) {
-        const head = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.9, 12), new THREE.MeshBasicMaterial({ color: dashed ? '#ffd43b' : '#ffffff', depthTest: false, transparent: true }));
+        const head = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.9, 12), new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true }));
         head.position.copy(end); head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()); head.renderOrder = 11; group.add(head);
       }
     }
@@ -262,7 +263,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
       if (entry.signature === signature) return;
       entry.signature = signature;
       [...entry.group.children].forEach((child) => { disposeObject(child); entry.group.remove(child); });
-      entry.group.add(pathGroup(['freehand', 'curve'].includes(drawing.type) ? drawing.points : drawing.points.slice(0, 2), drawing.type === 'run', drawing.type !== 'freehand'));
+      entry.group.add(pathGroup(['freehand', 'curve'].includes(drawing.type) ? drawing.points : drawing.points.slice(0, 2), drawing.type === 'run', drawing.type !== 'freehand', drawing.color));
     });
     const carrier = state.players.find((player) => player.id === state.simulation.carrierId && !player.benched);
     const receivers = showPassOptions ? availablePassOptions(state) : [];
@@ -277,6 +278,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     for (const [id, mesh] of zones) {
       mesh.visible = state.selectedZones.includes(id);
       mesh.material.opacity = state.zoneOpacity;
+      mesh.material.color.set(state.zoneColor);
     }
     reconcile(players, state.players, createPlayer, (entry, player) => updatePlayer(entry, player, state));
     reconcile(balls, state.balls, createBall, (entry, ball) => {

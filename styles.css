@@ -194,7 +194,7 @@ input[type="text"], input[type="number"] {
 .field-dot { fill: rgba(255,255,255,.95); }
 .build-out-line { stroke: #ffd43b; stroke-width: 4; stroke-dasharray: 14 12; vector-effect: non-scaling-stroke; }
 .goal-net { stroke-width: 4; }
-.zone-overlay { fill: #ffd43b; opacity: 0; pointer-events: none; }
+.zone-overlay { fill: var(--zone-color, #ffd43b); opacity: 0; pointer-events: none; }
 .zone-overlay.is-active { opacity: var(--zone-opacity, .2); }
 
 .player-token, .ball-token, .cone-token, .minigoal-token { cursor: grab; }

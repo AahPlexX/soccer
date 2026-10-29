@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
 import { ZONES, PALETTE } from '../js/constants.js';
 import { PITCH_WORLD } from '../js/camera-orbit.js';
-import { buildBoardScene, drawNumberLabel, drawPitchTexture, toWorld } from '../js/board-scene.js';
+import { THEME_COLORS, buildBoardScene, drawNumberLabel, drawPitchTexture, toWorld } from '../js/board-scene.js';
 import { createInitialState } from '../js/state.js';
 
 const near = (actual, expected, message = '') => assert.ok(Math.abs(actual - expected) < 1e-9, `${message} ${actual} != ${expected}`);
@@ -140,6 +140,33 @@ test('a textured pitch has a white base color so the grass texture is not darken
   const pitchColor = (board) => board.scene.children.find((child) => child.geometry?.type === 'PlaneGeometry' && child.material.type === 'MeshBasicMaterial' && !child.material.transparent && child.position.y === 0).material.color.getHexString();
   assert.equal(pitchColor(buildBoardScene(THREE)), '0d8251', 'flat green without a texture');
   assert.equal(pitchColor(buildBoardScene(THREE, { makeTexture: () => new THREE.Texture() })), 'ffffff');
+});
+
+test('the View theme restyles the 3D sky, surround and pitch, and a repaint reaches the texture', () => {
+  const { state, board } = setup();
+  const sky = () => board.scene.background.getHexString();
+  const pitch = () => board.scene.children.find((c) => c.geometry?.type === 'PlaneGeometry' && c.material.type === 'MeshBasicMaterial' && !c.material.transparent && c.position.y === 0).material.color.getHexString();
+  assert.equal(sky(), THEME_COLORS.turf.sky.slice(1));
+  state.theme = 'dark';
+  board.sync(state);
+  assert.equal(sky(), THEME_COLORS.dark.sky.slice(1));
+  assert.equal(pitch(), THEME_COLORS.dark.stripes[0].slice(1));
+  state.theme = 'field';
+  board.sync(state);
+  assert.equal(sky(), THEME_COLORS.field.sky.slice(1));
+  state.theme = 'bogus';
+  board.sync(state);
+  assert.equal(sky(), THEME_COLORS.turf.sky.slice(1));
+
+  const painted = [];
+  const textured = buildBoardScene(THREE, { makeTexture: (draw, w, h) => {
+    const canvas = { getContext: () => new Proxy({}, { get: () => () => {}, set: (_, k, v) => { if (k === 'fillStyle') painted.push(v); return true; } }) };
+    draw(canvas.getContext(), w, h);
+    return Object.assign(new THREE.Texture(), { image: canvas });
+  } });
+  painted.length = 0;
+  textured.sync({ ...createInitialState(), theme: 'dark' });
+  assert.ok(painted.includes(THEME_COLORS.dark.stripes[0]));
 });
 
 test('the texture painters draw using only the canvas calls they are given', () => {

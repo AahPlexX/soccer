@@ -9,7 +9,7 @@ const ROTATE_RADIANS_PER_PIXEL = 0.006;
 const WHEEL_ZOOM_PER_PIXEL = 0.0015;
 const PINCH_WHEEL_ZOOM_PER_PIXEL = 0.01; // a trackpad pinch arrives as a wheel event with ctrlKey
 
-export async function createView3D({ container, getState, onContextLost = () => {}, isEditing = () => false, onObjectSelect = () => {}, onObjectMove = () => {}, onObjectCommit = () => {} }) {
+export async function createView3D({ container, getState, onContextLost = () => {}, isEditing = () => false, onObjectSelect = () => {}, onObjectMove = () => {}, onObjectCommit = () => {}, onGroundTap = () => {} }) {
   const THREE = await import('../vendor/three/three.module.js');
   const renderer = new THREE.WebGLRenderer({ antialias: true }); // throws without WebGL
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -61,6 +61,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
   const pointers = new Map(); // active pointers: id -> { x, y, button }
   let pinch = null; // two-pointer gesture: last finger distance and midpoint
   let objectDrag = null;
+  let groundTap = null; // an editing press on empty ground: a tap (no camera drag) places the selected equipment tool
   const raycaster = new THREE.Raycaster();
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   function pointerRay(event) {
@@ -97,7 +98,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
       if (root && start) {
         objectDrag = { id: root.userData.objectId, pointerId: event.pointerId, start, x: root.position.x, z: root.position.z, moved: false };
         onObjectSelect(objectDrag.id);
-      }
+      } else if (start) groundTap = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, point: start };
     }
   });
   canvas.addEventListener('pointermove', (event) => {
@@ -116,6 +117,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
     }
     const dx = event.clientX - previous.x;
     const dy = event.clientY - previous.y;
+    if (groundTap?.pointerId === event.pointerId && Math.hypot(event.clientX - groundTap.x, event.clientY - groundTap.y) > 6) groundTap = null;
     pointers.set(event.pointerId, { ...previous, x: event.clientX, y: event.clientY });
     if (pinch && pointers.size === 2) {
       const next = pinchState();
@@ -129,6 +131,8 @@ export async function createView3D({ container, getState, onContextLost = () => 
   });
   const endPointer = (event) => {
     if (objectDrag?.pointerId === event.pointerId) finishObjectDrag();
+    if (groundTap?.pointerId === event.pointerId && event.type === 'pointerup' && pointers.size === 1) onGroundTap(fromWorld(groundTap.point.x, groundTap.point.z));
+    if (groundTap?.pointerId === event.pointerId) groundTap = null;
     pointers.delete(event.pointerId);
     pinch = pointers.size === 2 ? pinchState() : null;
   };

@@ -76,7 +76,7 @@
       <label class="opacity-control" for="zone-opacity">Zone opacity
         <input id="zone-opacity" type="range" min="0.1" max="0.45" step="0.05" value="0.2">
       </label>
-      <label class="zone-setting-control" for="zone-restriction-mode">Zone rule
+      <label class="zone-setting-control" for="zone-restriction-mode" title="Drill rule for the highlighted zones: Keep inside stops the chosen team leaving them, Keep out stops it entering them. Pick zones above first.">Zone rule
         <select id="zone-restriction-mode">
           <option value="off">Off</option>
           <option value="keep-in">Keep inside</option>
@@ -170,7 +170,7 @@
 <div class="view-group" role="group" aria-label="Zoom the board">
         <button id="zoom-out" class="tool-button" type="button" title="Zoom out (pinch, or mouse wheel)" aria-label="Zoom out">−</button>
         <button id="zoom-in" class="tool-button" type="button" title="Zoom in (pinch, or mouse wheel)" aria-label="Zoom in">+</button>
-        <button id="zoom-fit" class="tool-button" type="button" title="Show the whole pitch">Fit</button>
+        <button id="zoom-fit" class="tool-button" type="button" title="Reset the view: 2D shows the whole pitch again; 3D returns the camera to the selected angle">Reset view</button>
         <button id="view-3d-toggle" class="tool-button" type="button" aria-pressed="false" title="Switch between the 2D board and a 3D camera view">3D view</button>
         <label id="camera-preset-control" class="camera-preset-control" for="camera-preset" hidden="">Camera
           <select id="camera-preset" name="cameraPreset">
@@ -221,7 +221,7 @@
     <footer class="bottom-dock" aria-label="Coaching and simulation controls">
 <div class="simulation-group">
         <button id="play-toggle" class="primary-action" type="button">Play simulation</button>
-        <button id="simulation-step" type="button" title="Pause and advance one simulated second">Step +1s</button>
+        <button id="simulation-step" type="button" title="Play exactly one second of the simulation, then pause, so you can stop on a moment and discuss it">Step 1 sec</button>
         <button id="reset-board" type="button">Reset setup</button>
 
 

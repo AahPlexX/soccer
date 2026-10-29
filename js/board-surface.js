@@ -78,7 +78,10 @@ export function setupBoardSurface({ getState, getSelection, clearSelection, comm
     if (event.defaultPrevented) return;
     if (event.key === 'Escape' && !document.querySelector('dialog[open]') && !document.body.classList.contains('panel-open')) {
       if (document.body.classList.contains('presentation')) byId('presentation-toggle').click();
-      else clearSelection();
+      else {
+        clearSelection();
+        if (getState().tool !== 'move') { getState().tool = 'move'; commit(); } // Escape puts any tool down
+      }
     }
   });
   byId('quick-capture').addEventListener('click', capture);

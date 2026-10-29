@@ -17,12 +17,19 @@ export const toWorld = (x, y) => ({ x: (x - 0.5) * L, z: (y - 0.5) * W });
 /** Inverse world-to-board conversion, clamped to the pitch. */
 export const fromWorld = (x, z) => ({ x: Math.min(1, Math.max(0, x / L + 0.5)), y: Math.min(1, Math.max(0, z / W + 0.5)) });
 
+// The View menu (Turf, Dark, Field mode) also restyles the 3D scene; styles.css uses the same pitch stripes in 2D.
+export const THEME_COLORS = Object.freeze({
+  turf: Object.freeze({ sky: '#8fc9f2', surround: '#1f6b45', stripes: ['#0d8251', '#0b7448'] }),
+  dark: Object.freeze({ sky: '#08110d', surround: '#0a1a12', stripes: ['#0e4f34', '#0b432d'] }),
+  field: Object.freeze({ sky: '#ecf7e8', surround: '#b9dfae', stripes: ['#2e9e5f', '#27915a'] }),
+});
+
 // Pitch markings on a canvas whose pixel (px, py) is board point (px / width, py / height).
-export function drawPitchTexture(ctx, width, height) {
+export function drawPitchTexture(ctx, width, height, stripes = THEME_COLORS.turf.stripes) {
   const sx = (x) => x * width;
   const sy = (y) => y * height;
   for (let i = 0; i < 10; i += 1) {
-    ctx.fillStyle = i % 2 ? '#0b7448' : '#0d8251';
+    ctx.fillStyle = stripes[i % 2];
     ctx.fillRect(sx(i / 10), 0, sx(0.1) + 1, height);
   }
   ctx.strokeStyle = 'rgba(255,255,255,0.95)';
@@ -92,6 +99,18 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
   );
   pitch.rotation.x = -Math.PI / 2;
   scene.add(pitch);
+
+  let theme = 'turf';
+  function applyTheme(name) {
+    theme = THEME_COLORS[name] ? name : 'turf';
+    const colors = THEME_COLORS[theme];
+    scene.background.set(colors.sky);
+    surround.material.color.set(colors.surround);
+    if (pitchTexture) {
+      drawPitchTexture(pitchTexture.image.getContext('2d'), GRASS_TEXTURE.width, GRASS_TEXTURE.height, colors.stripes);
+      pitchTexture.needsUpdate = true;
+    } else pitch.material.color.set(colors.stripes[0]);
+  }
 
   const white = new THREE.MeshStandardMaterial({ color: '#ffffff' });
   const box = (w, h, d, x, y, z, material = white) => {
@@ -237,6 +256,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
   }
 
   function sync(state, { showPassOptions = false } = {}) {
+    if ((state.theme ?? 'turf') !== theme) applyTheme(state.theme);
     reconcile(drawings, state.drawings, () => ({ group: new THREE.Group(), signature: '' }), (entry, drawing) => {
       const signature = JSON.stringify(drawing);
       if (entry.signature === signature) return;

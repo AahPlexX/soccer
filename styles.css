@@ -18,6 +18,8 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --pitch-a: #0e4f34;
+  --pitch-b: #0b432d;
   --page: #08110d;
   --rail: #050b08;
   --rail-2: #101b16;
@@ -29,6 +31,8 @@
 
 :root[data-theme="field"] {
   color-scheme: light;
+  --pitch-a: #2e9e5f;
+  --pitch-b: #27915a;
   --page: #ecf7e8;
   --rail: #ffffff;
   --rail-2: #dff2d9;
@@ -154,6 +158,7 @@ input[type="text"], input[type="number"] {
 .check-row input { width: 24px; height: 24px; }
 .bench { position: absolute; top: 8px; left: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 16px); }
 .bench[hidden] { display: none; }
+.bench-label { align-self: center; padding: 8px 12px; border-radius: 12px; background: #12202b; color: #fff; font-weight: 700; }
 .bench button { min-height: 48px; padding: 0 14px; border-radius: 24px; border: 2px solid #fff; background: #12202b; color: #fff; font: inherit; font-weight: 700; }
 .pitch-stage {
   position: relative;
@@ -164,7 +169,7 @@ input[type="text"], input[type="number"] {
   place-items: center;
   overflow: hidden;
   border-radius: 18px;
-  background: repeating-linear-gradient(90deg, #0d8251 0 10%, #0b7448 10% 20%);
+  background: repeating-linear-gradient(90deg, var(--pitch-a, #0d8251) 0 10%, var(--pitch-b, #0b7448) 10% 20%);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), var(--shadow);
 }
 .pitch {

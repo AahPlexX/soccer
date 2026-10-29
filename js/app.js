@@ -83,6 +83,7 @@ const AUTOSAVE_DELAY_MS = 120;
 const TOAST_DURATION_MS = 2600;
 const DELETE_CONFIRM_MS = 4000;
 const DRAG_THRESHOLD_PX = 5;
+const PLACEMENT_TOOLS = ['cone', 'minigoal', 'ball']; // taps on the pitch place equipment, in 2D and 3D
 const PALETTE_LABELS = Object.freeze({
   blue: 'Blue', red: 'Red', yellow: 'Yellow', neonGreen: 'Neon green', orange: 'Orange', white: 'White', black: 'Black', purple: 'Purple',
 });
@@ -186,21 +187,34 @@ function render({ rebuild = false } = {}) {
   syncControls();
 }
 
-// Benched players are invisible on the pitch, so each gets a chip over the pitch that returns them.
+// Benched players are invisible on the pitch, so a labelled tray over it lists them and returns them.
+function returnFromBench(players) {
+  players.forEach((player) => updatePlayerDetails(state, player.id, { number: player.number, label: player.label, colorOverride: player.colorOverride, benched: false }));
+  state.selectedObjectId = players.at(-1).id;
+  commitChange();
+}
+
 function renderBench() {
   const benched = state.players.filter((player) => player.benched);
   benchStrip.hidden = benched.length === 0;
-  benchStrip.replaceChildren(...benched.map((player) => {
+  const label = document.createElement('span');
+  label.className = 'bench-label';
+  label.textContent = `On the bench (${benched.length}) · tap to return:`;
+  const chips = benched.map((player) => {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.textContent = `Return ${player.team === 'home' ? '' : 'opp. '}#${player.number} ${player.label}`;
-    chip.addEventListener('click', () => {
-      updatePlayerDetails(state, player.id, { number: player.number, label: player.label, colorOverride: player.colorOverride, benched: false });
-      state.selectedObjectId = player.id;
-      commitChange();
-    });
+    chip.addEventListener('click', () => returnFromBench([player]));
     return chip;
-  }));
+  });
+  if (benched.length > 1) {
+    const all = document.createElement('button');
+    all.type = 'button';
+    all.textContent = 'Return all';
+    all.addEventListener('click', () => returnFromBench(benched));
+    chips.push(all);
+  }
+  benchStrip.replaceChildren(label, ...chips);
 }
 
 function commitChange(options) {
@@ -374,6 +388,10 @@ async function setView3D(on) {
         container: view3dContainer,
         getState: () => state,
         isEditing: () => editing3D && !document.body.classList.contains('presentation'),
+        onGroundTap: (point) => {
+          const added = addProp(state, state.tool, point); // null unless a placement tool is active
+          if (added) { commitChange({ rebuild: true }); showToast(added.message); }
+        },
         onObjectSelect: (id) => { state.simulation.running = false; selectedUnit.clear(); state.selectedObjectId = id; objectDrag3D = id; render(); },
         onObjectMove: (id, point) => {
           const object = findObject(state, id); if (!object) return;
@@ -627,10 +645,12 @@ spacingSelect.addEventListener('change', () => { state.spacingMode = spacingSele
 
 document.querySelectorAll('.tool-button[data-tool]').forEach((button) => {
   button.addEventListener('click', () => {
-    state.tool = button.dataset.tool;
+    const tool = button.dataset.tool;
+    state.tool = state.tool === tool && tool !== 'move' ? 'move' : tool; // pressing the active tool again puts it down
     if (mode3d) {
-      if (state.tool === 'move') {
+      if (state.tool === 'move' || PLACEMENT_TOOLS.includes(state.tool)) {
         editing3D = true; view3d.setEditing(true); document.querySelector('#edit-3d').setAttribute('aria-pressed', 'true');
+        if (state.tool !== 'move') showToast('Tap the pitch to place it.');
       } else {
         setView3D(false); showToast('2D board ready for drawing, selection and equipment.');
       }

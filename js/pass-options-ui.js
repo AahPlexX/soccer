@@ -7,6 +7,7 @@ if (simulationGroup && !document.querySelector('#pass-options-toggle')) {
   button.id = 'pass-options-toggle';
   button.type = 'button';
   button.textContent = 'Pass options';
+  button.title = 'Show dashed yellow lines from the player with the ball to each teammate with a clear passing lane';
   button.setAttribute('aria-pressed', 'false');
   button.setAttribute('aria-controls', 'pitch');
   button.setAttribute('aria-describedby', 'pass-options-status');

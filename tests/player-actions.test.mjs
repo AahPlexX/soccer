@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PLAYER_ACTIONS, actionDrawings, applyPlayerAction } from '../js/player-actions.js';
+import { PLAYER_ACTIONS, SOLO_ACTIONS, actionDrawings, applyPlayerAction, applySoloAction, soloDrawing } from '../js/player-actions.js';
 import { spacingDistance } from '../js/geometry.js';
 import { createInitialState } from '../js/state.js';
 
@@ -39,6 +39,35 @@ test('players that are too close get no arrow, and arrows stay on the pitch', ()
   assert.deepEqual(actionDrawings('pass', A, { x: 0.21, y: 0.5 }), [null]);
   const [edge] = actionDrawings('run-to', { x: 0.9, y: 0.95 }, { x: 1, y: 1 });
   assert.ok(!edge || edge.points.every((p) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1));
+});
+
+test('solo actions point toward the goal each team attacks and stay on the pitch', () => {
+  const home = { team: 'home', x: 0.4, y: 0.3 };
+  const away = { team: 'away', x: 0.6, y: 0.3 };
+  const shot = soloDrawing('shoot', home);
+  assert.equal(shot.type, 'arrow');
+  assert.ok(shot.points[1].x === 1 && shot.points[1].y === 0.5);
+  assert.equal(soloDrawing('shoot', away).points[1].x, 0);
+  const forward = soloDrawing('run-forward', home);
+  assert.equal(forward.type, 'run');
+  assert.ok(forward.points[1].x > home.x);
+  assert.ok(soloDrawing('run-forward', away).points[1].x < away.x);
+  assert.ok(soloDrawing('track-back', home).points[1].x < home.x);
+  const cornered = soloDrawing('run-forward', { team: 'home', x: 1, y: 0.5 });
+  assert.equal(cornered, null, 'no room to run past the goal line');
+  assert.equal(soloDrawing('nope', home), null);
+  assert.equal(SOLO_ACTIONS.length, 3);
+});
+
+test('applySoloAction draws for an on-pitch player and refuses benched or unknown ones', () => {
+  const state = createInitialState();
+  state.drawColor = '#7b4dff';
+  assert.equal(applySoloAction(state, 'run-forward', 'home-6'), 1);
+  assert.equal(state.drawings.at(-1).color, '#7b4dff');
+  assert.equal(applySoloAction(state, 'run-forward', 'missing'), 0);
+  state.players.find((p) => p.id === 'home-6').benched = true;
+  assert.equal(applySoloAction(state, 'run-forward', 'home-6'), 0);
+  assert.equal(state.drawings.length, 1);
 });
 
 test('applyPlayerAction appends styled drawings for on-pitch players only', () => {

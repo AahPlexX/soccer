@@ -13,7 +13,7 @@ import { IDENTITY_VIEW, ZOOM_RANGE, clampView, panBy, viewBoxSize, viewTransform
 import { CAMERA_PRESETS, DEFAULT_PRESET } from './camera-orbit.js';
 import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
-import { PLAYER_ACTIONS, applyPlayerAction } from './player-actions.js';
+import { PLAYER_ACTIONS, SOLO_ACTIONS, applyPlayerAction, applySoloAction } from './player-actions.js';
 import { filterPresetsByCategory } from './library.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
@@ -967,26 +967,33 @@ const actionPair = document.querySelector('#action-pair');
 const actionList = document.querySelector('#action-list');
 let actionIds = [];
 const playerName = (id) => { const player = findObject(state, id); return `#${player.number} ${player.label || player.role}`; };
-const renderActionPair = () => { actionPair.textContent = `${playerName(actionIds[0])} → ${playerName(actionIds[1])}`; };
-PLAYER_ACTIONS.forEach((action) => {
-  const button = document.createElement('button');
-  const hint = document.createElement('small');
-  hint.textContent = action.hint;
-  button.type = 'button';
-  button.append(action.label, hint);
-  button.addEventListener('click', () => {
-    if (!applyPlayerAction(state, action.id, actionIds[0], actionIds[1])) { showToast('Those players are too close to draw an arrow between.'); return; }
-    actionDialog.close();
-    commitChange({ rebuild: true });
-    showToast(`${action.label} drawn. Undo removes it.`);
-  });
-  actionList.append(button);
-});
-document.querySelector('#action-flip').addEventListener('click', () => { actionIds.reverse(); renderActionPair(); });
+const actionFlip = document.querySelector('#action-flip');
+// One player gets solo actions (run, shoot); two players get pair actions (pass, receive, swap) in selection order.
+function renderActionDialog() {
+  const pair = actionIds.length === 2;
+  actionPair.textContent = pair ? `${playerName(actionIds[0])} → ${playerName(actionIds[1])}` : playerName(actionIds[0]);
+  actionFlip.hidden = !pair;
+  actionList.replaceChildren(...(pair ? PLAYER_ACTIONS : SOLO_ACTIONS).map((action) => {
+    const button = document.createElement('button');
+    const hint = document.createElement('small');
+    hint.textContent = action.hint;
+    button.type = 'button';
+    button.append(action.label, hint);
+    button.addEventListener('click', () => {
+      const drawn = pair ? applyPlayerAction(state, action.id, actionIds[0], actionIds[1]) : applySoloAction(state, action.id, actionIds[0]);
+      if (!drawn) { showToast(pair ? 'Those players are too close to draw an arrow between.' : 'No room to draw that from here.'); return; }
+      actionDialog.close();
+      commitChange({ rebuild: true });
+      showToast(`${action.label} drawn. Undo removes it.`);
+    });
+    return button;
+  }));
+}
+actionFlip.addEventListener('click', () => { actionIds.reverse(); renderActionDialog(); });
 function openActionDialog(ids) {
   actionIds = ids.filter((id) => state.players.some((player) => player.id === id && !player.benched)).slice(0, 2);
-  if (actionIds.length !== 2) return;
-  renderActionPair();
+  if (!actionIds.length) return;
+  renderActionDialog();
   actionDialog.showModal();
 }
 

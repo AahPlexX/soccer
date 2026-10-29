@@ -15,6 +15,14 @@ export const PLAYER_ACTIONS = Object.freeze([
   Object.freeze({ id: 'swap', label: 'Swap places', hint: 'Both players run to each other’s spot.' }),
 ]);
 
+// Actions for one selected player, relative to the goal they attack (the home team attacks toward +x).
+export const SOLO_ACTIONS = Object.freeze([
+  Object.freeze({ id: 'shoot', label: 'Shoot at goal', hint: 'A shot from the player toward the middle of the goal they attack.' }),
+  Object.freeze({ id: 'run-forward', label: 'Run forward', hint: 'The player runs toward the goal they attack.' }),
+  Object.freeze({ id: 'track-back', label: 'Track back', hint: 'The player runs back toward their own goal.' }),
+]);
+const RUN_LENGTH = 0.18;
+
 const clamp01 = (value) => Math.min(1, Math.max(0, value));
 const drawnDistance = (from, to) => Math.hypot(to.x - from.x, (to.y - from.y) * PITCH_ASPECT);
 
@@ -45,6 +53,29 @@ export function actionDrawings(actionId, a, b) {
     }
     default: return [];
   }
+}
+
+/** The drawing (type and points, or null when too short) for a one-player action by `player`. */
+export function soloDrawing(actionId, player) {
+  const dir = player.team === 'away' ? -1 : 1; // attacking direction along x
+  const goal = { x: dir > 0 ? 1 : 0, y: 0.5 };
+  const ahead = { x: clamp01(player.x + dir * RUN_LENGTH), y: player.y };
+  const back = { x: clamp01(player.x - dir * RUN_LENGTH), y: player.y };
+  switch (actionId) {
+    case 'shoot': return link('arrow', player, goal, 0);
+    case 'run-forward': return link('run', player, ahead, 0);
+    case 'track-back': return link('run', player, back, 0);
+    default: return null;
+  }
+}
+
+/** Adds the arrow for a one-player action. Returns 1 when drawn, 0 for an unknown action or player, or no room. */
+export function applySoloAction(state, actionId, id) {
+  const player = state.players.find((item) => item.id === id && !item.benched);
+  const drawing = player && soloDrawing(actionId, player);
+  if (!drawing) return 0;
+  state.drawings.push({ id: `drawing-${Date.now().toString(36)}-${state.drawings.length}`, ...drawing, color: state.drawColor, width: state.drawWidth });
+  return 1;
 }
 
 /**

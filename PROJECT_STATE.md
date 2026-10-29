@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-29
 Branch: `main` · application version: **1.0.18** · persistence schema: `1`
-Status: 1.0.15 released; 253 tests pass locally, and 1.0.12, 1.0.13 and the 1.0.14 fix were green on Validate main and Pages. Rendered-browser checks (desktop Chromium, 1280x800 down to 390x844) show no console errors. See the 1.0.7 to 1.0.15 entries under Current implemented behavior for what changed since 1.0.6.
+Status: 1.0.18 released; 263 tests pass locally. Validate main passed for 1.0.12 to 1.0.18 (the red 1.0.14 run was fixed by the next commit) and Pages deployed for 1.0.12 to 1.0.18. Rendered-browser checks (desktop Chromium, 1280x800 down to 390x844) show no console errors. See the 1.0.7 to 1.0.18 entries under Current implemented behavior for what changed since 1.0.6.
 
 ## Resume here
 

@@ -545,7 +545,8 @@ function handleToolPointerDown(event) {
 
 svg.addEventListener('pointerdown', (event) => {
   if (document.body.classList.contains('presentation')) return;
-  const target = event.target.closest('[data-object-id]');
+  const hit = event.target.closest('[data-hit-for]'); // an oversized player target stands in for its token
+  const target = event.target.closest('[data-object-id]') ?? (hit && svg.querySelector(`#object-${hit.dataset.hitFor}`));
   if (state.tool === 'move' || state.tool === 'select') {
     if (target) handleObjectPointerDown(event, target);
     return;

@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.13';
+const APP_VERSION = '1.0.14';
 const BUILD_ID = 'development'; // Replaced with the commit SHA, workflow run and attempt in the Pages artifact.
 const CACHE_NAME = `u9-tactical-board-${APP_VERSION}-${BUILD_ID}`;
 const APP_SHELL = [

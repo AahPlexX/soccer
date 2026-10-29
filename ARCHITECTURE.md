@@ -300,3 +300,7 @@ Progress is stored in the script, so `history.js` (`script` is an edit key), sav
 ## Color swatches and Center Channel (1.0.13)
 
 `js/color-swatches.js` (`addSwatches`) layers a radiogroup of eight 48px swatches over each palette `<select>`; the select stays the source of truth (hidden) so forms, saves and tests are unchanged, and `app.js` keeps one `refresh` per select (`swatchRefreshers`) that it calls after setting a value from code. `ZONES.center` (js/constants.js) is the PRD 4.2 optional Center Channel: the middle third, y 1/3 to 2/3 across the full length; every zone consumer iterates `ZONES`, so buttons, 2D and 3D overlays, validation and keep-in/keep-out rules include it without further changes.
+
+## Player hit areas (1.0.14)
+
+`js/render.js` adds a `#hit-layer` below `#prop-layer` and `#player-layer` holding one transparent `.player-hit` circle per player (`PLAYER_HIT_RADIUS`, 38 SVG units). Hit circles are positioned and hidden together with their token in `renderScene`, carry `data-hit-for` rather than `data-object-id` (so they are never focusable or counted as objects), and `app.js` resolves a press on one to the token via `#object-<id>`. Because they sit below props and tokens, a visible token or cone always wins a tap over a neighbour larger target.

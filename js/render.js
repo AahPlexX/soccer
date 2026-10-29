@@ -101,6 +101,8 @@ function renderPassOptions(svg, state) {
   });
 }
 
+const PLAYER_HIT_RADIUS = 38; // SVG units: 49 to 51px across at iPad widths (measured), larger than the 31-unit halo
+
 function buildPlayer(player, state) {
   const group = el('g', {
     id: `object-${player.id}`,
@@ -220,6 +222,9 @@ export function initializeScene(svg, state) {
   buildPitchMarkings(world);
   world.append(buildPassOptionLayer());
   world.append(el('g', { id: 'drawing-layer', 'aria-hidden': 'true' }));
+  // Invisible, oversized targets for players (PRD 9.2's 48px hit box). They sit below props and tokens, so a visible
+  // token or cone always wins a tap over a neighbour's larger hit area.
+  world.append(el('g', { id: 'hit-layer', 'aria-hidden': 'true' }));
   world.append(el('g', { id: 'prop-layer' }));
   world.append(el('g', { id: 'player-layer' }));
   world.append(el('g', { id: 'ball-layer' }));
@@ -237,6 +242,7 @@ export function rebuildObjects(svg, state) {
   const ballLayer = svg.querySelector('#ball-layer');
   const propLayer = svg.querySelector('#prop-layer');
   const drawingLayer = svg.querySelector('#drawing-layer');
+  svg.querySelector('#hit-layer').replaceChildren(...state.players.map((player) => el('circle', { class: 'player-hit', r: PLAYER_HIT_RADIUS, 'data-hit-for': player.id })));
   playerLayer.replaceChildren(...state.players.map((player) => buildPlayer(player, state)));
   ballLayer.replaceChildren(...state.balls.map(buildBall));
   propLayer.replaceChildren(...state.cones.map(buildCone), ...state.miniGoals.map(buildMiniGoal));
@@ -282,7 +288,13 @@ export function renderScene(svg, state) {
     const node = svg.querySelector(`#object-${player.id}`);
     if (!node) return;
     node.setAttribute('transform', `translate(${sx(player.x)} ${sy(player.y)})`);
-    node.toggleAttribute('hidden', (player.team === 'away' && !state.awayVisible) || player.benched === true);
+    const away = player.team === 'away' && !state.awayVisible;
+    node.toggleAttribute('hidden', away || player.benched === true);
+    const hit = svg.querySelector(`[data-hit-for="${player.id}"]`);
+    if (hit) {
+      hit.setAttribute('transform', `translate(${sx(player.x)} ${sy(player.y)})`);
+      hit.toggleAttribute('hidden', away || player.benched === true);
+    }
     node.classList.toggle('is-selected', state.selectedObjectId === player.id);
     const disc = node.querySelector('.player-disc');
     if (disc) disc.setAttribute('fill', playerColor(player, state));

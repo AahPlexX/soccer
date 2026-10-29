@@ -14,6 +14,7 @@ import { CAMERA_PRESETS, DEFAULT_PRESET } from './camera-orbit.js';
 import { recordPlayerPosition } from './formations.js';
 import { pitchPointFromClient } from './geometry.js';
 import { PLAYER_ACTIONS, SOLO_ACTIONS, applyPlayerAction, applySoloAction } from './player-actions.js';
+import { addSwatches } from './color-swatches.js';
 import { filterPresetsByCategory } from './library.js';
 import { initializeScene, rebuildObjects, renderScene, setSceneOrientation } from './render.js';
 import { releaseManuallyMovedObject, stepSimulation } from './simulation.js';
@@ -31,6 +32,7 @@ const awayVisible = document.querySelector('#away-visible');
 const coneColorSelect = document.querySelector('#cone-color');
 const zoneColorSelect = document.querySelector('#zone-color');
 const scriptClear = document.querySelector('#script-clear');
+const swatchRefreshers = []; // one per palette select; call them after setting a select's value from code
 const drawColorSelect = document.querySelector('#draw-color');
 const drawWidthSelect = document.querySelector('#draw-width');
 const undoButton = document.querySelector('#undo');
@@ -167,6 +169,7 @@ function syncControls() {
   zoneColorSelect.value = state.zoneColor;
   drawColorSelect.value = state.drawColor;
   drawWidthSelect.value = state.drawWidth;
+  swatchRefreshers.forEach((refresh) => refresh());
   undoButton.disabled = !boardHistory.canUndo;
   redoButton.disabled = !boardHistory.canRedo;
   zoneOpacity.value = String(state.zoneOpacity);
@@ -753,6 +756,7 @@ drawWidthSelect.addEventListener('change', () => { state.drawWidth = drawWidthSe
     option.textContent = PALETTE_LABELS[name];
     select.append(option);
   });
+  swatchRefreshers.push(addSwatches(select, PALETTE_LABELS));
 });
 // The cone color applies to new cones and recolors the selected cone.
 coneColorSelect.addEventListener('change', () => {
@@ -766,6 +770,7 @@ colorsOpen.addEventListener('click', () => {
   colorsForm.elements.homeGoalkeeper.value = state.colors.homeGoalkeeper;
   colorsForm.elements.away.value = state.colors.away;
   colorsForm.elements.awayGoalkeeper.value = state.colors.awayGoalkeeper;
+  swatchRefreshers.forEach((refresh) => refresh());
   colorsDialog.showModal();
 });
 colorsForm.addEventListener('submit', (event) => {

@@ -23,6 +23,8 @@ export const PITCH = Object.freeze({
 export const ZONES = Object.freeze({
   left: { label: 'Left zone', x1: 0, x2: 1, y1: 0, y2: 0.5 },
   right: { label: 'Right zone', x1: 0, x2: 1, y1: 0.5, y2: 1 },
+  // PRD 4.2's optional Center Channel: the middle third, the gap between the 0.33 and 0.67 wing channels.
+  center: { label: 'Center channel', x1: 0, x2: 1, y1: 1 / 3, y2: 2 / 3 },
   homeBox: { label: 'Our goalkeeper box', x1: 0, x2: 0.2, y1: 0.2, y2: 0.8 },
   homeBuild: { label: 'Our goal to build-out line', x1: 0, x2: 0.35, y1: 0, y2: 1 },
   homeMid: { label: 'Our build-out line to midfield', x1: 0.35, x2: 0.5, y1: 0, y2: 1 },

@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.0.12**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.0.13**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Board workspace (1.0.6)
 
@@ -101,3 +101,5 @@ Version 1.0.10 adds player action steps: select two players (Shift-click, or the
 Version 1.0.11 fixes legibility and spacing found in a multi-viewport audit (11px text floor, no accent side border, larger tap widths) and gives a single selected player run and shoot actions.
 
 Version 1.0.12 makes player actions run in the simulation: each action is queued in a play script that the players carry out when you press Play, in the order you added them; Reset replays it and Clear script removes it.
+
+Version 1.0.13 adds the optional Center Channel zone and quick-select color swatches for team, cone, zone and drawing colors.

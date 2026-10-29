@@ -158,6 +158,10 @@ input[type="text"], input[type="number"] {
 .check-row input { width: 24px; height: 24px; }
 .bench { position: absolute; top: 8px; left: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 16px); }
 .bench[hidden] { display: none; }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.swatch { width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55); }
+.swatch[aria-checked="true"] { border-color: var(--focus, #fff); box-shadow: 0 0 0 3px #000; }
+.swatch[aria-checked="true"]::after { content: "✓"; color: #fff; font-size: 22px; font-weight: 800; text-shadow: 0 0 3px #000, 0 0 3px #000; }
 .action-list { display: grid; gap: 8px; margin: 12px 0; }
 .action-list button { min-height: 48px; padding: 8px 16px; text-align: left; }
 .action-list small { display: block; opacity: 0.8; }

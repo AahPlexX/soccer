@@ -1,10 +1,10 @@
-const APP_VERSION = '1.0.22';
+const APP_VERSION = '1.0.23';
 const BUILD_ID = 'development'; // Replaced with the commit SHA, workflow run and attempt in the Pages artifact.
 const CACHE_NAME = `u9-tactical-board-${APP_VERSION}-${BUILD_ID}`;
 const APP_SHELL = [
   './', './index.html', './styles.css', './library.css', './pass-options.css', './board-ui.css', './manifest.webmanifest',
   './js/app.js', './js/board-interactions.js', './js/board-surface.js', './js/coaching.js', './js/coaching-ui.js', './js/board-actions.js', './js/update.js', './js/builtins.js', './js/constants.js', './js/formations.js', './js/geometry.js', './js/history.js', './js/view-zoom.js', './js/camera-orbit.js', './js/board-scene.js', './js/view3d.js', './vendor/three/three.module.js', './vendor/three/three.core.js',
-  './js/library.js', './js/library-ui.js', './js/pass-options.js', './js/ball-physics.js', './js/game/game-mode.js', './js/game/game.css', './js/board-rotation.js', './js/color-swatches.js', './js/play-script.js', './js/player-actions.js', './js/pass-options-ui.js', './js/render.js', './js/restarts.js', './js/simulation.js', './js/state.js', './js/storage.js', './js/zone-constraints.js',
+  './js/library.js', './js/library-ui.js', './js/pass-options.js', './js/ball-physics.js', './js/game/game-mode.js', './js/game/game.css', './js/game/rules.js', './js/game/player-physics.js', './js/game/ball-control.js', './js/game/match.js', './js/board-rotation.js', './js/color-swatches.js', './js/play-script.js', './js/player-actions.js', './js/pass-options-ui.js', './js/render.js', './js/restarts.js', './js/simulation.js', './js/state.js', './js/storage.js', './js/zone-constraints.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
 ];
 

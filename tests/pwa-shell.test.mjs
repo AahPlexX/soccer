@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -48,8 +48,9 @@ test('all static ES-module dependencies reachable from cached modules are precac
     visited.add(current);
 
     const source = read(current.slice(2));
-    for (const match of source.matchAll(/(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"](\.\/[^'"]+)['"]/g)) {
-      const dependency = `./js/${match[1].slice(2)}`;
+    // Relative imports resolve against the importing module's own folder (js/game/ modules import ./x.js and ../x.js).
+    for (const match of source.matchAll(/(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"](\.{1,2}\/[^'"]+)['"]/g)) {
+      const dependency = `./${posix.normalize(posix.join(posix.dirname(current.slice(2)), match[1]))}`;
       assert.ok(shell.has(dependency), `Static module dependency is missing from APP_SHELL: ${dependency}`);
       queue.push(dependency);
     }

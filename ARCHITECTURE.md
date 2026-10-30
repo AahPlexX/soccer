@@ -18,7 +18,8 @@ The main boundaries are:
 - `js/pass-options.js` and `js/pass-options-ui.js`: shared open-lane calculation and the optional pass-options toggle.
 - `js/state.js`: board state creation and schema normalization.
 - `js/storage.js`: 120 ms autosave to localStorage, IndexedDB saved-position library, localStorage fallback, and JSON backup import/export.
-- `js/simulation.js`: CPU-vs-CPU state updates, build-out retreat, positional tethering, pressure, passing, deterministic shooting/goalkeeper outcomes, simplified offside positioning, automated restarts, and optional zone constraints.
+- `js/ball-physics.js`: pure ball engine (3D position, gravity, drag, Magnus, bounce, friction, goalposts) and launch solvers; see Ball physics below.
+- `js/simulation.js`: CPU-vs-CPU state updates, build-out retreat, positional tethering, pressure, passing (ground, driven or lofted), deterministic shooting at an aimed height and goalkeeper outcomes (all driven by `js/ball-physics.js`), simplified offside positioning, automated restarts, and optional zone constraints.
 - `js/render.js`: SVG pitch construction, orientation transform, zone overlays, tokens, props, and drawings.
 - `js/app.js`: UI event wiring, Pointer Events, keyboard alternatives, dialogs, persisted zone controls, service-worker registration, and the requestAnimationFrame loop.
 - `sw.js`: app-shell precache, stale-cache cleanup, same-origin cache-first fetch handling with index fallback.
@@ -245,7 +246,7 @@ The validation gate runs:
 1. `npm test`, which executes the Node standard-library behavior and repository-integrity test suite.
 2. `node --check` against every `js/*.js` runtime module and `sw.js`.
 
-Automated evidence: GitHub Actions run `40565756748` at implementation commit `5da47a0f0117e43477ff1053f3724fda1309032c` completed with 81 tests, 81 pass, 0 fail, 0 skipped, followed by successful JavaScript syntax checks. Inspect the latest workflow run for later commits.
+Automated evidence: GitHub Actions run `40565756748` at implementation commit `5da47a0f0117e43477ff1053f3724fda1309032c` completed with 81 tests, 81 pass, 0 fail, 0 skipped (an early milestone; the suite is 292 tests now and CI also runs lint and typecheck). Inspect the latest workflow run for later commits.
 
 The Pages workflow runs the same tests and syntax checks before uploading only the static application files and deploying with environment-scoped Pages and OIDC permissions. Deployment requires a successful workflow run; adding the workflow alone does not establish hosted availability.
 

@@ -411,7 +411,8 @@ function advancePlayers(state, dt) {
     }
 
     // Build-out retreat is a mandatory U9 rule and therefore overrides an optional coach-created zone constraint.
-    movePlayer(state, player, target, SIMULATION.playerSpeed * dt, !retreat);
+    // The player sent to a loose ball is not held by a coach zone, or a ball resting beyond the zone edge would stall play forever.
+    movePlayer(state, player, target, SIMULATION.playerSpeed * dt, !retreat && player.id !== looseBallChaser?.id);
     // Kickoff placement takes precedence when a drill zone or support target crosses halfway.
     if (state.simulation.restart?.type === 'kickoff') keepInOwnHalf(player);
   });

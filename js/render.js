@@ -123,6 +123,22 @@ function buildPlayer(player, state) {
   return group;
 }
 
+const BALL_REST_HEIGHT = 0.105; // meters: the center of a ball lying on the grass (BALL.radius in ball-physics.js)
+
+/** How a ball at center height `z` (m) is drawn: lifted by `lift` SVG units, scaled up, with a grass shadow fading to `opacity`. */
+export function ballHeightLook(z = BALL_REST_HEIGHT) {
+  const height = Math.max(0, Number.isFinite(z) ? z - BALL_REST_HEIGHT : 0);
+  return { lift: Math.min(height * 7, 60), scale: 1 + Math.min(height, 10) * 0.04, opacity: 1 / (1 + height * 0.35) };
+}
+
+function applyBallHeight(node, z) {
+  const { lift, scale, opacity } = ballHeightLook(z);
+  node.querySelector('.ball-lift')?.setAttribute('transform', `translate(0 ${-lift}) scale(${scale})`);
+  const shadow = node.querySelector('.ball-shadow');
+  shadow?.setAttribute('transform', `scale(${scale})`);
+  shadow?.setAttribute('opacity', String(opacity));
+}
+
 function buildBall(ball) {
   const group = el('g', {
     id: `object-${ball.id}`,
@@ -133,11 +149,14 @@ function buildBall(ball) {
     'data-object-id': ball.id,
     'data-object-type': 'ball',
   });
+  group.append(el('ellipse', { rx: 11, ry: 4.5, cy: 9, class: 'ball-shadow' }));
   const visual = el('g', { class: 'object-visual ball-visual' });
   visual.append(el('circle', { r: 18, class: 'ball-hit' }));
   visual.append(el('circle', { r: 12, class: 'ball-core' }));
   visual.append(el('path', { d: 'M0-7 6-2 4 6-4 6-6-2Z', class: 'ball-patch' }));
-  group.append(visual);
+  const lift = el('g', { class: 'ball-lift' });
+  lift.append(visual);
+  group.append(lift);
   return group;
 }
 
@@ -314,6 +333,7 @@ export function renderScene(svg, state) {
     const node = svg.querySelector(`#object-${ball.id}`);
     if (node) {
       node.setAttribute('transform', `translate(${sx(ball.x)} ${sy(ball.y)})`);
+      applyBallHeight(node, ball.z);
       node.classList.toggle('is-selected', state.selectedObjectId === ball.id);
     }
   });

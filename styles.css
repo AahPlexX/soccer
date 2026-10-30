@@ -221,6 +221,7 @@ input[type="text"], input[type="number"] {
 .ball-hit, .cone-hit, .minigoal-hit { fill: transparent; }
 .ball-core { fill: #fff; stroke: #111; stroke-width: 2; }
 .ball-patch { fill: #111; }
+.ball-shadow { fill: rgba(0,0,0,.38); pointer-events: none; }
 .ball-token.is-selected .ball-hit, .cone-token.is-selected .cone-hit, .minigoal-token.is-selected .minigoal-hit { fill: rgba(255,212,59,.34); }
 .saved-filter { display: flex; align-items: center; gap: .6rem; margin: 0 0 .75rem; font-weight: 600; }
 .minigoal-net { fill: rgba(255,255,255,.28); }

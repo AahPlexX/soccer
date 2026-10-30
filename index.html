@@ -43,6 +43,7 @@
 <button id="save-as" type="button" aria-label="Save position">Save</button>
 <button id="coach-open" class="rail-button" type="button">Coach workspace</button>
 <button class="" id="presentation-toggle" aria-controls="workspace" type="button" aria-pressed="false">Present</button>
+<button id="game-mode-toggle" class="rail-button" type="button" aria-pressed="false" aria-controls="game-root" title="Play a match against the computer" hidden>Game mode</button>
 </div>
 </header>
 
@@ -518,6 +519,8 @@
 </div>
     </form>
   </dialog>
+
+  <div id="game-root" role="application" aria-label="Game Mode" hidden></div>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden="">
 </div>

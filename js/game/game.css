@@ -1,0 +1,18 @@
+/* Game Mode layer: a full-screen overlay above the Coach UI. Loaded on demand by game-mode.js. */
+#game-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: #0b2a1a;
+  color: #fff;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#game-root[hidden] { display: none; }
+.game-panel { display: grid; gap: 16px; max-width: min(92vw, 420px); padding: 24px; text-align: center; }
+.game-panel h2 { margin: 0; font-size: 28px; letter-spacing: .04em; }
+.game-panel p { margin: 0; opacity: .85; line-height: 1.4; }
+.game-panel button { min-height: 48px; padding-inline: 20px; border-radius: 12px; border: 0; font: inherit; font-weight: 700; background: #d9f56b; color: #10321f; cursor: pointer; }

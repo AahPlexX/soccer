@@ -274,7 +274,7 @@ undoButton.addEventListener('click', () => stepHistory('undo'));
 redoButton.addEventListener('click', () => stepHistory('redo'));
 // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z or Ctrl+Y redoes; text fields and open dialogs keep their own behavior.
 document.addEventListener('keydown', (event) => {
-  if (document.body.classList.contains('presentation')) return;
+  if (document.body.classList.contains('presentation') || document.body.classList.contains('game-active')) return;
   if (!(event.ctrlKey || event.metaKey) || event.altKey || event.target.closest?.('input, textarea, select, dialog[open]')) return;
   const key = event.key.toLowerCase();
   if (key !== 'z' && key !== 'y') return;
@@ -489,6 +489,48 @@ async function setView3D(on) {
 
 document.querySelector('#edit-3d').addEventListener('click', () => { editing3D = !editing3D; view3d?.setEditing(editing3D); document.querySelector('#edit-3d').setAttribute('aria-pressed', String(editing3D)); syncControls(); });
 view3dToggle.addEventListener('click', () => setView3D(!mode3d));
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Game Mode: a full-screen layer above the Coach UI, loaded on first use (js/game/, docs/GAME_MODE.md).
+// ---------------------------------------------------------------------------------------------------------------------
+
+const gameToggle = document.querySelector('#game-mode-toggle');
+const gameRoot = document.querySelector('#game-root');
+const coachRegions = document.querySelectorAll('header.top-rail, aside, #workspace, footer.bottom-dock');
+let game = null;
+// Until Game Mode is released (Tracker G5 in docs/GAME_MODE.md) the toggle appears only when the address has ?game.
+gameToggle.hidden = !new URLSearchParams(location.search).has('game');
+
+function exitGame() {
+  game?.stop();
+  game = null;
+  document.body.classList.remove('game-active');
+  coachRegions.forEach((region) => { region.inert = false; });
+  gameToggle.setAttribute('aria-pressed', 'false');
+  gameToggle.focus();
+}
+
+async function enterGame() {
+  if (game) return;
+  gameToggle.disabled = true;
+  showToast('Loading Game Mode…');
+  try {
+    const { startGame } = await import('./game/game-mode.js');
+    state.simulation.running = false; // the coach simulation never runs underneath the game
+    render();
+    game = startGame({ root: gameRoot, onExit: exitGame });
+    document.body.classList.add('game-active');
+    coachRegions.forEach((region) => { region.inert = true; });
+    gameToggle.setAttribute('aria-pressed', 'true');
+  } catch (error) {
+    game = null;
+    showToast('Game Mode could not load. Staying on the coach board.');
+  } finally {
+    gameToggle.disabled = false;
+  }
+}
+
+gameToggle.addEventListener('click', () => (game ? exitGame() : enterGame()));
 cameraPresetSelect.addEventListener('change', () => view3d?.setPreset(cameraPresetSelect.value));
 cameraFollow.addEventListener('change', () => view3d?.setFollow(cameraFollow.value));
 

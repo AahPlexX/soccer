@@ -284,8 +284,9 @@ dialog::backdrop { background: rgba(0,0,0,.58); backdrop-filter: blur(4px); }
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(80px + env(safe-area-inset-bottom));
+  top: calc(76px + env(safe-area-inset-top)); /* over the pitch, clear of the selection bar and dock at the bottom */
   translate: -50% 0;
+  pointer-events: none; /* a notice never blocks a tap */
   z-index: 20;
   max-width: min(88vw, 520px);
   padding: 12px 16px;

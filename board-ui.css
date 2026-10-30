@@ -260,3 +260,10 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
   .teaching-strip button { min-width: 44px; padding-inline: 6px; }
   .simulation-group, .teaching-strip { padding: 3px; }
 }
+
+/* Phone: Frame, Camera and Follow share one row with the label stacked over the select, so the 3D pitch keeps more height. */
+@media (max-width: 680px) {
+  .view-group .camera-preset-control { flex: 1 1 30%; min-width: 104px; flex-direction: column; align-items: stretch; gap: 2px; font-size: 11px; max-width: none; }
+  .view-group .camera-preset-control select { width: 100%; max-width: none; min-height: 40px; padding-inline: 8px 24px; text-overflow: ellipsis; }
+  .view-group #edit-3d { flex: 1 0 100%; }
+}

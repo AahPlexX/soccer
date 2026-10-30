@@ -30,7 +30,7 @@ export function rotateSpatial(state) {
   const { ballVelocity, ballSpin } = state.simulation;
   for (const vector of [ballVelocity, ballSpin]) if (vector) { vector.x = -vector.x; vector.y = -vector.y; }
   const restart = state.simulation.restart;
-  if (restart?.side) restart.side = restart.side === 'left' ? 'right' : 'left';
+  if (restart?.side === 'left' || restart?.side === 'right') restart.side = restart.side === 'left' ? 'right' : 'left'; // 'home'/'away' name a goal, not a flank
 }
 
 /** Swaps the left and right flank selections: the simulation sees them rotated along with the pitch. */

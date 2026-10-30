@@ -251,6 +251,7 @@ const ballSpeed = (state) => {
 function acquireLooseBall(state) {
   const ball = state.balls[0];
   if (ballSpeed(state) > SIMULATION.maxControlSpeed) return;
+  if (ball.z - BALL.radius > SIMULATION.controlHeight) return; // a ball in the air is only taken by acquireInFlight
   const receiver = state.simulation.receiverId ? state.players.find((p) => p.id === state.simulation.receiverId) : null;
   const candidate = receiver && distance(receiver, ball) < 0.055
     ? receiver
@@ -451,8 +452,10 @@ function decideAction(state) {
     if (target) {
       beginPass(state, carrier, target);
       state.simulation.restart = null;
+      return;
     }
-    return;
+    // Nobody to play it to (a drill with the rest of the team benched): the taker plays on rather than freezing the match.
+    state.simulation.restart = null;
   }
 
   const attackingX = carrier.team === 'home' ? carrier.x : 1 - carrier.x;

@@ -262,6 +262,8 @@ function stepHistory(direction) {
   state.selectedObjectId = null; selectedUnit.clear();
   Object.assign(state.simulation, {
     running: false, carrierId: null, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0,
+    // The old velocity belongs to the board that was undone (and a flip negates it), so the restored ball starts at rest.
+    ballVelocity: { x: 0, y: 0, z: 0 }, ballSpin: { x: 0, y: 0, z: 0 }, kickerId: null,
   });
   render({ rebuild: true });
   scheduleAutosave();

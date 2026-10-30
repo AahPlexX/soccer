@@ -161,3 +161,23 @@ test('the physics keeps a long match deterministic, on the pitch, and inside the
   assert.deepEqual(a.state.balls, b.state.balls);
   assert.ok(a.maxHeight < 20 && a.maxSpeed < 45, 'nothing leaves the physical envelope');
 });
+
+test('a restart taker with nobody to pass to plays on instead of freezing the match', () => {
+  const state = createInitialState();
+  for (const p of state.players) if (p.team === 'home' && p.id !== 'home-7') p.benched = true;
+  Object.assign(state.simulation, { running: true, carrierId: 'home-7', possessionTeam: 'home', lastTouchTeam: 'home', restart: { type: 'throw-in', team: 'home', side: 'left' } });
+  place(state, 'home-7', 0.5, 0.02);
+  Object.assign(state.balls[0], { x: 0.5, y: 0.02 });
+  for (let i = 0; i < 180 && state.simulation.restart; i += 1) stepSimulation(state, STEP);
+  assert.equal(state.simulation.restart, null);
+});
+
+test('flipping the board swaps flank sides but leaves goal sides alone', async () => {
+  const { rotateSpatial } = await import('../js/board-rotation.js');
+  for (const [side, expected] of [['left', 'right'], ['right', 'left'], ['home', 'home'], ['away', 'away']]) {
+    const state = createInitialState();
+    state.simulation.restart = { type: 'corner', team: 'home', side };
+    rotateSpatial(state);
+    assert.equal(state.simulation.restart.side, expected, side);
+  }
+});

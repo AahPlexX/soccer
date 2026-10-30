@@ -267,3 +267,6 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
   .view-group .camera-preset-control select { width: 100%; max-width: none; min-height: 40px; padding-inline: 8px 24px; text-overflow: ellipsis; }
   .view-group #edit-3d { flex: 1 0 100%; }
 }
+
+/* The selection halo is white with a dark edge: a yellow halo vanished against the yellow goalkeeper kit. */
+.player-token.is-selected .player-halo, .player-token.is-dragging .player-halo { stroke: #fff; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }

@@ -26,6 +26,9 @@ export function rotateSpatial(state) {
   state.drawings.forEach((drawing) => drawing.points.forEach(rotateInPlace));
   (state.script ?? []).forEach((stage) => stage.tasks.forEach((task) => { if (task.type === 'run') rotateInPlace(task.point); }));
   if (state.simulation.ballTarget) rotateInPlace(state.simulation.ballTarget);
+  // A half turn about the vertical axis negates the horizontal parts of velocity and spin and leaves the vertical part.
+  const { ballVelocity, ballSpin } = state.simulation;
+  for (const vector of [ballVelocity, ballSpin]) if (vector) { vector.x = -vector.x; vector.y = -vector.y; }
   const restart = state.simulation.restart;
   if (restart?.side) restart.side = restart.side === 'left' ? 'right' : 'left';
 }

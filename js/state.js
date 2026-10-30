@@ -2,6 +2,7 @@ import { emptyCoaching, normalizeCoaching } from './coaching.js';
 import { DEFAULT_COLORS, FORMATION_NAMES, PALETTE, SCHEMA_VERSION, TEAM_IDS, ZONES } from './constants.js';
 import { defaultPlayers } from './formations.js';
 import { normalizeScript } from './play-script.js';
+import { BALL } from './ball-physics.js';
 
 // Every persisted enumeration in one place. normalizeState() falls back to the createInitialState() value whenever a
 // stored value is not listed here, so a corrupted or hand-edited autosave, preset, or backup cannot break the board.
@@ -53,7 +54,7 @@ export function createInitialState() {
     // Color of newly placed cones, and of the selected cone when the coach picks one (PRD 7.2).
     coneColor: PALETTE.orange,
     players: defaultPlayers(),
-    balls: [{ id: 'ball-main', x: 0.5, y: 0.5, primary: true }],
+    balls: [{ id: 'ball-main', x: 0.5, y: 0.5, z: BALL.radius, primary: true }], // z: height of the ball's center in meters
     cones: [],
     miniGoals: [],
     drawings: [],
@@ -73,6 +74,12 @@ export function createInitialState() {
       // Shots taken so far; selects the next entry of SIMULATION.shotAimOffsets.
       shotCount: 0,
       restart: null,
+      // Ball motion (js/ball-physics.js): velocity in m/s and spin in rad/s along the pitch axes, seconds since the last
+      // kick, and who kicked (a kicker cannot take their own ball straight back).
+      ballVelocity: { x: 0, y: 0, z: 0 },
+      ballSpin: { x: 0, y: 0, z: 0 },
+      kickClock: 0,
+      kickerId: null,
     },
   };
 }
@@ -144,7 +151,7 @@ function normalizeBalls(balls, fallback) {
   const primaryIndex = Math.max(0, valid.findIndex((ball) => ball.primary === true));
   const primary = { ...valid[primaryIndex], primary: true };
   const extras = valid.filter((_, index) => index !== primaryIndex).map((ball) => ({ ...ball, primary: false }));
-  return [primary, ...extras];
+  return [primary, ...extras].map((ball) => ({ ...ball, z: Number.isFinite(ball.z) ? clampRange(ball.z, BALL.radius, MAX_BALL_HEIGHT) : BALL.radius }));
 }
 
 function normalizeDrawings(drawings) {
@@ -176,6 +183,16 @@ function normalizeSpeed(value, fallback) {
   return SPEEDS.includes(speed) ? speed : fallback;
 }
 
+const MAX_BALL_HEIGHT = 40; // meters; a stored ball above this is not a real game state
+const MAX_BALL_SPEED = 60; // m/s
+const MAX_BALL_SPIN = 400; // rad/s
+
+// A velocity or spin vector with finite, bounded components; anything else is a ball at rest.
+function normalizeVector(vector, limit) {
+  const part = (value) => (Number.isFinite(value) ? clampRange(value, -limit, limit) : 0);
+  return isRecord(vector) ? { x: part(vector.x), y: part(vector.y), z: part(vector.z) } : { x: 0, y: 0, z: 0 };
+}
+
 function normalizeRestart(restart) {
   if (!isRecord(restart) || !RESTART_TYPES.includes(restart.type) || !TEAM_IDS.includes(restart.team)) return null;
   return { ...restart };
@@ -199,6 +216,10 @@ function normalizeSimulation(simulation, fallback, players) {
     tackleCooldown: nonNegativeNumber(merged.tackleCooldown),
     shotCount: Number.isInteger(merged.shotCount) && merged.shotCount >= 0 ? merged.shotCount : 0,
     restart: normalizeRestart(merged.restart),
+    ballVelocity: normalizeVector(merged.ballVelocity, MAX_BALL_SPEED),
+    ballSpin: normalizeVector(merged.ballSpin, MAX_BALL_SPIN),
+    kickClock: nonNegativeNumber(merged.kickClock),
+    kickerId: typeof merged.kickerId === 'string' && merged.kickerId ? merged.kickerId : null,
   };
 }
 

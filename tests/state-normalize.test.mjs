@@ -123,7 +123,9 @@ test('exactly one primary ball is kept first, invalid balls are dropped, and an 
   assert.deepEqual(balls.map((ball) => [ball.id, ball.primary]), [['ball-main', true], ['extra', false]]);
 
   const promoted = normalizeState({ ...createInitialState(), balls: [{ id: 'a', x: 0.1, y: 0.1 }] }).balls;
-  assert.deepEqual(promoted, [{ id: 'a', x: 0.1, y: 0.1, primary: true }]);
+  assert.deepEqual(promoted, [{ id: 'a', x: 0.1, y: 0.1, z: 0.105, primary: true }], 'every ball gets a height (its center on the grass)');
+  const risen = normalizeState({ ...createInitialState(), balls: [{ id: 'a', x: 0.1, y: 0.1, z: 3 }, { id: 'b', x: 0.2, y: 0.2, z: 'high' }, { id: 'c', x: 0.3, y: 0.3, z: -5 }] }).balls;
+  assert.deepEqual(risen.map((ball) => ball.z), [3, 0.105, 0.105], 'a valid height is kept; a bad or underground one becomes a ball on the grass');
 
   assert.deepEqual(normalizeState({ ...createInitialState(), balls: [null] }).balls, createInitialState().balls);
 });

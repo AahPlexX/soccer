@@ -1,4 +1,5 @@
-import { PITCH, SIMULATION } from './constants.js';
+import { PITCH, PITCH_METERS, SIMULATION } from './constants.js';
+import { BALL, goalColliders, groundPassSpeed, isResting, launchVelocity, lobSpeed, shotElevation, stepBall } from './ball-physics.js';
 import { clamp, clampSupportForOffside, distance, moveToward, separatePlayers, spacingDistance } from './geometry.js';
 import { openPassReceivers } from './pass-options.js';
 import { activeStage, pendingBallPlayer, SCRIPT_LIMITS, scriptRunTargets } from './play-script.js';
@@ -15,6 +16,83 @@ function keepInOwnHalf(player) {
 
 function nearestPlayer(players, point, predicate) {
   return players.filter(predicate).sort((a, b) => distance(a, point) - distance(b, point))[0] ?? null;
+}
+
+// ---- Ball physics glue (js/ball-physics.js). The board stores the ball in normalized pitch units plus a height in meters;
+// the engine works in meters from the pitch center, so each step converts in and out. ----
+const GOAL_COLLIDERS = goalColliders({ halfLength: PITCH_METERS.length / 2, halfMouth: ((GOAL_MAX_Y - GOAL_MIN_Y) / 2) * PITCH_METERS.width });
+const metersBetween = (a, b) => Math.hypot((b.x - a.x) * PITCH_METERS.length, (b.y - a.y) * PITCH_METERS.width);
+const launchCache = new Map(); // launch solutions depend only on distance, so each is solved once and reused
+const memo = (key, solve) => {
+  if (!launchCache.has(key)) launchCache.set(key, solve());
+  return launchCache.get(key);
+};
+
+/** Puts the ball back on the grass, motionless (kickoffs, restarts, possession, a coach moving the ball). */
+export function resetBallMotion(state) {
+  state.balls[0].z = BALL.radius;
+  state.simulation.ballVelocity = { x: 0, y: 0, z: 0 };
+  state.simulation.ballSpin = { x: 0, y: 0, z: 0 };
+}
+
+function ballBody(state) {
+  const { ballVelocity: v, ballSpin: w } = state.simulation;
+  const ball = state.balls[0];
+  return {
+    x: (ball.x - 0.5) * PITCH_METERS.length, y: (ball.y - 0.5) * PITCH_METERS.width, z: ball.z ?? BALL.radius,
+    vx: v.x, vy: v.y, vz: v.z, wx: w.x, wy: w.y, wz: w.z,
+  };
+}
+
+function storeBody(state, body) {
+  const ball = state.balls[0];
+  ball.x = body.x / PITCH_METERS.length + 0.5;
+  ball.y = body.y / PITCH_METERS.width + 0.5;
+  ball.z = body.z;
+  state.simulation.ballVelocity = { x: body.vx, y: body.vy, z: body.vz };
+  state.simulation.ballSpin = { x: body.wx, y: body.wy, z: body.wz };
+}
+
+// The launch for a pass of `meters`: a ground pass that arrives still rolling, a low driven pass, or a lob.
+function passLaunch(kind, meters) {
+  const d = Math.max(0.5, Math.round(meters * 4) / 4);
+  if (kind === 'lofted') return memo(`lob-${d}`, () => ({ elevation: SIMULATION.lobElevation, speed: lobSpeed(d * 0.93, SIMULATION.lobElevation) }));
+  if (kind === 'driven') return memo(`drive-${d}`, () => ({ elevation: SIMULATION.drivenElevation, speed: lobSpeed(d * 0.97, SIMULATION.drivenElevation) }));
+  return memo(`ground-${d}`, () => ({ elevation: 0, speed: groundPassSpeed(d, SIMULATION.passArriveSpeed) }));
+}
+
+// A blocked lane long enough to clear a defender is lofted over them; a very long open pass is driven; the rest roll.
+function passKind(state, carrier, target, meters) {
+  const open = openPassReceivers(state, carrier).some((player) => player.id === target.id);
+  if (!open && meters >= SIMULATION.lobMinDistance) return 'lofted';
+  return meters >= SIMULATION.drivenMinDistance ? 'driven' : 'ground';
+}
+
+// Gives the ball a velocity from `from` toward `to` (board points). `from.id`, if any, is the kicker.
+function kick(state, from, to, { speed, elevation }) {
+  const sim = state.simulation;
+  const ball = state.balls[0];
+  const heading = Math.atan2((to.y - from.y) * PITCH_METERS.width, (to.x - from.x) * PITCH_METERS.length);
+  const v = launchVelocity(speed, heading, elevation);
+  ball.x = from.x;
+  ball.y = from.y;
+  ball.z = BALL.radius + (elevation > 0 ? 0.02 : 0);
+  sim.ballVelocity = { x: v.vx, y: v.vy, z: v.vz };
+  sim.ballSpin = { x: 0, y: 0, z: 0 };
+  sim.kickClock = 0;
+  sim.kickerId = from.id ?? null;
+}
+
+// A flight intent with no motion (a hand-built setup or an old save) is launched toward its target.
+function launchTowardTarget(state) {
+  const sim = state.simulation;
+  const ball = state.balls[0];
+  const meters = metersBetween(ball, sim.ballTarget);
+  if (meters < 0.05) return;
+  const launch = sim.receiverId
+    ? passLaunch('ground', meters)
+    : { speed: SIMULATION.shotSpeed, elevation: memo(`legacy-${Math.round(meters * 4)}`, () => shotElevation(SIMULATION.shotSpeed, meters, 1.0)) };
+  kick(state, { x: ball.x, y: ball.y }, sim.ballTarget, launch);
 }
 
 function isBuildOutSituation(state, carrier) {
@@ -90,6 +168,8 @@ function beginPass(state, carrier, target) {
   state.simulation.carrierId = null;
   state.simulation.receiverId = target.id;
   state.simulation.ballTarget = { x: target.x, y: target.y };
+  const meters = metersBetween(carrier, target);
+  kick(state, carrier, target, passLaunch(passKind(state, carrier, target, meters), meters));
 }
 
 function beginShot(state, carrier) {
@@ -97,18 +177,28 @@ function beginShot(state, carrier) {
   state.simulation.carrierId = null;
   state.simulation.receiverId = null;
   const offsets = SIMULATION.shotAimOffsets;
-  const offset = offsets[state.simulation.shotCount % offsets.length];
+  const aimIndex = state.simulation.shotCount % offsets.length;
+  const offset = offsets[aimIndex];
   state.simulation.shotCount += 1;
   // The target is the aim point extended 0.05 past the goal line along the shot's own line: the ball must cross the
   // line (so boundary classification decides the outcome) instead of being collected by the loose-ball pickup
   // radius just before it, and it crosses exactly at the aim y.
-  const aimY = 0.5 + offset + (carrier.y - 0.5) * SIMULATION.shotAimSpread;
+  // Offsets mirror with the shooter's side of the pitch so "far post" is always the post farther from the shooter.
+  const side = carrier.y < 0.5 ? -1 : 1;
+  const aimY = 0.5 + side * offset + (carrier.y - 0.5) * SIMULATION.shotAimSpread;
   const run = teamGoalX(carrier.team) - carrier.x;
   const stretch = 1 + 0.05 / Math.max(Math.abs(run), 0.01);
   state.simulation.ballTarget = {
     x: carrier.x + run * stretch,
     y: carrier.y + (aimY - carrier.y) * stretch,
   };
+  // The ball is struck at the aim point on the goal line, at that aim's height: elevation is solved so it crosses the
+  // line there, which is how a long shot can fly over the bar and a close one stays low enough for the keeper.
+  const aim = { x: teamGoalX(carrier.team), y: aimY };
+  const meters = metersBetween(carrier, aim);
+  const height = SIMULATION.shotHeights[aimIndex];
+  const elevation = memo(`shot-${Math.round(meters * 4)}-${height}`, () => shotElevation(SIMULATION.shotSpeed, meters, height));
+  kick(state, carrier, aim, { speed: SIMULATION.shotSpeed, elevation });
 }
 
 /**
@@ -116,7 +206,7 @@ function beginShot(state, carrier) {
  * SIMULATION.keeperCatchReach the keeper holds it (possession, so the build-out rule follows); within
  * keeperParryReach it is deflected behind for an attacking corner. Returns true when the keeper dealt with it.
  */
-function keeperResponse(state, goal, exitPoint) {
+function keeperResponse(state, goal, exitPoint, height = 0) {
   const defending = goal.team;
   const keeper = state.players.find((p) => p.team === defending && p.role === 'GK');
   if (!keeper || state.simulation.lastTouchTeam === defending) return false;
@@ -124,13 +214,15 @@ function keeperResponse(state, goal, exitPoint) {
   if (!inOwnArea || keeper.y < PITCH.penaltyMinY || keeper.y > PITCH.penaltyMaxY) return false;
   const miss = Math.abs(keeper.y - exitPoint.y);
   if (miss > SIMULATION.keeperParryReach) return false;
-  if (miss <= SIMULATION.keeperCatchReach) {
+  // A keeper holds a shot only if it is within catching reach sideways and not too high; a high one can only be pushed over.
+  if (miss <= SIMULATION.keeperCatchReach && height <= SIMULATION.keeperCatchHeight) {
     Object.assign(state.simulation, {
       possessionTeam: defending, lastTouchTeam: defending, carrierId: keeper.id,
       receiverId: null, ballTarget: null, actionClock: 0,
     });
     state.balls[0].x = keeper.x;
     state.balls[0].y = keeper.y;
+    resetBallMotion(state);
     return true;
   }
   state.simulation.lastTouchTeam = defending;
@@ -138,48 +230,104 @@ function keeperResponse(state, goal, exitPoint) {
   return true;
 }
 
+function takePossession(state, candidate) {
+  const sim = state.simulation;
+  sim.carrierId = candidate.id;
+  sim.possessionTeam = candidate.team;
+  sim.lastTouchTeam = candidate.team;
+  sim.tackleCooldown = Math.max(sim.tackleCooldown || 0, SIMULATION.receiveProtectionSeconds);
+  sim.receiverId = null;
+  sim.ballTarget = null;
+  state.balls[0].x = candidate.x;
+  state.balls[0].y = candidate.y;
+  resetBallMotion(state);
+}
+
+const ballSpeed = (state) => {
+  const v = state.simulation.ballVelocity ?? { x: 0, y: 0, z: 0 };
+  return Math.hypot(v.x, v.y, v.z);
+};
+
 function acquireLooseBall(state) {
   const ball = state.balls[0];
+  if (ballSpeed(state) > SIMULATION.maxControlSpeed) return;
   const receiver = state.simulation.receiverId ? state.players.find((p) => p.id === state.simulation.receiverId) : null;
   const candidate = receiver && distance(receiver, ball) < 0.055
     ? receiver
     : nearestPlayer(state.players, ball, () => true);
-  if (candidate && distance(candidate, ball) < 0.055) {
-    state.simulation.carrierId = candidate.id;
-    state.simulation.possessionTeam = candidate.team;
-    state.simulation.lastTouchTeam = candidate.team;
-    state.simulation.tackleCooldown = Math.max(state.simulation.tackleCooldown || 0, SIMULATION.receiveProtectionSeconds);
-    state.simulation.receiverId = null;
-    state.simulation.ballTarget = null;
-    ball.x = candidate.x;
-    ball.y = candidate.y;
-  }
+  if (candidate && distance(candidate, ball) < 0.055) takePossession(state, candidate);
+}
+
+// A player takes a ball in flight if it passes close enough, low enough and slowly enough to control. A lofted pass clears
+// defenders' heads and a hard shot is too fast to take; the kicker cannot take it straight back.
+function acquireInFlight(state) {
+  const sim = state.simulation;
+  const ball = state.balls[0];
+  if (ballSpeed(state) > SIMULATION.maxControlSpeed || ball.z - BALL.radius > SIMULATION.controlHeight) return false;
+  const reach = (player) => (player.id === sim.receiverId ? 0.055 : SIMULATION.pickupDistance);
+  const candidate = nearestPlayer(state.players, ball, (player) => distance(player, ball) < reach(player)
+    && !(player.id === sim.kickerId && sim.kickClock < SIMULATION.kickImmunitySeconds));
+  if (!candidate) return false;
+  takePossession(state, candidate);
+  return true;
+}
+
+// The point (and ball height) where the straight path from `prev` to `next` first leaves the pitch, or null if it stays in.
+function exitCrossing(prev, next, endHeight) {
+  const outX = next.x <= 0 || next.x >= 1;
+  const outY = next.y <= 0 || next.y >= 1;
+  if (!outX && !outY) return null;
+  const fraction = (edge, from, to) => (to === from ? 0 : (edge - from) / (to - from));
+  const edgeX = next.x <= 0 ? 0 : 1;
+  const edgeY = next.y <= 0 ? 0 : 1;
+  const fx = outX ? fraction(edgeX, prev.x, next.x) : Infinity;
+  const fy = outY ? fraction(edgeY, prev.y, next.y) : Infinity;
+  const f = Math.min(1, Math.max(0, Math.min(fx, fy)));
+  const z = prev.z + (endHeight - prev.z) * f;
+  return fx <= fy
+    ? { x: edgeX, y: prev.y + (next.y - prev.y) * f, z }
+    : { x: prev.x + (next.x - prev.x) * f, y: edgeY, z };
 }
 
 function advanceBall(state, dt) {
+  const sim = state.simulation;
   const ball = state.balls[0];
-  const carrier = state.players.find((p) => p.id === state.simulation.carrierId);
+  const carrier = state.players.find((p) => p.id === sim.carrierId);
   if (carrier) {
     ball.x = carrier.x;
     ball.y = carrier.y;
+    resetBallMotion(state);
     return;
   }
-  if (!state.simulation.ballTarget) {
+  if (!sim.ballVelocity || !sim.ballSpin) resetBallMotion(state);
+  if (sim.ballTarget && ballSpeed(state) < 0.01 && (ball.z ?? BALL.radius) <= BALL.radius + 0.02) launchTowardTarget(state);
+  const body = ballBody(state);
+  if (isResting(body)) {
     acquireLooseBall(state);
+    // A ball that has stopped is no longer a pass in flight, whether or not anyone took it.
+    if (!sim.carrierId && sim.ballTarget) { sim.ballTarget = null; sim.receiverId = null; }
     return;
   }
-  const next = moveToward(ball, state.simulation.ballTarget, SIMULATION.ballSpeed * dt);
-  const restart = classifyBoundaryRestart(next, state.simulation.lastTouchTeam);
+  const before = { x: ball.x, y: ball.y, z: body.z };
+  stepBall(body, dt, GOAL_COLLIDERS);
+  sim.kickClock = (sim.kickClock || 0) + dt;
+  const next = { x: body.x / PITCH_METERS.length + 0.5, y: body.y / PITCH_METERS.width + 0.5 };
+  // Judge the ball where it actually left the pitch, not where this frame happened to end: the goal mouth, the crossbar
+  // and the keeper's reach all depend on the line crossing, and a frame at 2x speed can end well past it.
+  const exit = exitCrossing(before, next, body.z);
+  const restart = exit ? classifyBoundaryRestart(exit, sim.lastTouchTeam, exit.z) : null;
+  storeBody(state, body);
   if (restart) {
-    if (restart.type === 'kickoff' && keeperResponse(state, restart, next)) return;
-    beginRestart(state, restart, next);
+    if (restart.type === 'kickoff' && keeperResponse(state, restart, exit, exit.z)) return;
+    beginRestart(state, restart, exit);
     return;
   }
-  ball.x = clamp(next.x);
-  ball.y = clamp(next.y);
-  if (distance(ball, state.simulation.ballTarget) < 0.015) {
-    acquireLooseBall(state);
-    if (!state.simulation.carrierId) { state.simulation.ballTarget = null; state.simulation.receiverId = null; }
+  if (exit) { ball.x = clamp(ball.x); ball.y = clamp(ball.y); }
+  if (acquireInFlight(state)) return;
+  // A ball that has slowed to a roll is no longer a pass in flight: it is loose, and the nearest player goes for it.
+  if (sim.ballTarget && body.z <= BALL.radius + 0.02 && Math.hypot(body.vx, body.vy) < SIMULATION.looseSpeed) {
+    sim.ballTarget = null;
+    sim.receiverId = null;
   }
 }
 
@@ -196,6 +344,8 @@ function beginRestart(state, restart, exitPoint) {
   const ball = state.balls[0];
   ball.x = point.x;
   ball.y = point.y;
+  resetBallMotion(state);
+  state.simulation.kickerId = null;
   state.simulation.possessionTeam = restart.team;
   state.simulation.lastTouchTeam = restart.team;
   state.simulation.restart = restart;
@@ -231,11 +381,17 @@ function advancePlayers(state, dt) {
       movePlayer(state, player, scriptedTarget, SIMULATION.playerSpeed * (player.id === state.simulation.carrierId ? 0.78 : 1) * dt, false);
       return;
     }
+    // The intended receiver of a pass in flight runs onto the ball.
+    if (player.id === state.simulation.receiverId && state.simulation.ballTarget && player.id !== state.simulation.carrierId) {
+      movePlayer(state, player, state.simulation.ballTarget, SIMULATION.playerSpeed * dt);
+      return;
+    }
     if (player.id === state.simulation.carrierId) {
       // Legal restart placement and the mandatory U9 goalkeeper build-out hold take precedence over drill constraints.
       if (state.simulation.restart || (buildOut && player.role === 'GK')) return;
       const direction = attackingDirection(player.team);
-      const target = { x: clamp(player.x + direction * 0.08), y: clamp(player.y + (0.5 - player.y) * 0.06) };
+      // A dribbler stops short of the goal line: running onto the endline would put the shot outside the posts.
+      const target = { x: clamp(player.x + direction * 0.08, 0.04, 0.96), y: clamp(player.y + (0.5 - player.y) * 0.06) };
       movePlayer(state, player, target, SIMULATION.playerSpeed * 0.78 * dt);
       return;
     }
@@ -300,7 +456,7 @@ function decideAction(state) {
   }
 
   const attackingX = carrier.team === 'home' ? carrier.x : 1 - carrier.x;
-  if (attackingX > 0.82 && Math.abs(carrier.y - 0.5) < 0.28) {
+  if (attackingX > 0.82 && attackingX < 0.97 && Math.abs(carrier.y - 0.5) < 0.28) {
     beginShot(state, carrier);
     return;
   }
@@ -322,6 +478,7 @@ function advanceScript(state, dt) {
       if (!player || sim.carrierId === player.id) return;
       Object.assign(sim, { carrierId: player.id, possessionTeam: player.team, lastTouchTeam: player.team, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0 });
       Object.assign(state.balls[0], { x: player.x, y: player.y });
+      resetBallMotion(state);
     });
   }
   stage.age += dt;
@@ -352,6 +509,7 @@ export function releaseManuallyMovedObject(state, objectId) {
   Object.assign(state.simulation, {
     carrierId: null, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0,
   });
+  resetBallMotion(state); // wherever the coach put the ball, it sits there on the grass
 }
 
 // Reapplying a formation moves that team's players. If its carrier is moved,

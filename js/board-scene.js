@@ -6,6 +6,9 @@ import { availablePassOptions } from './pass-options.js';
 import { PITCH, ZONES } from './constants.js';
 import { GOAL_MAX_Y, GOAL_MIN_Y } from './restarts.js';
 import { zoneRect } from './board-rotation.js';
+import { BALL } from './ball-physics.js';
+
+const YARD = 0.9144; // meters per world unit
 import { PITCH_WORLD } from './camera-orbit.js';
 import { playerColor } from './formations.js';
 
@@ -254,7 +257,7 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = -0.69; // on the grass: the ball center sits one radius up
     mesh.add(outline, shadow);
-    return { group: mesh };
+    return { group: mesh, shadow, shadowOpacity: shadow.material.opacity };
   }
 
   function createCone() {
@@ -330,7 +333,14 @@ export function buildBoardScene(THREE, { makeTexture = () => null } = {}) {
         const ahead = position.x + direction * offset;
         position.x = Math.abs(ahead) <= L / 2 - 0.45 ? ahead : position.x - direction * offset;
       }
-      entry.group.position.set(position.x, 0.72, position.z);
+      // The ball's height above the grass (meters, from js/ball-physics.js) lifts it off the ground; its shadow stays on the
+      // grass and shrinks and fades as the ball rises, which is what makes a lofted pass readable from any camera.
+      const lift = Math.max(0, ((ball.z ?? BALL.radius) - BALL.radius) / YARD);
+      entry.group.position.set(position.x, 0.72 + lift, position.z);
+      entry.shadow.position.y = 0.03 - (0.72 + lift);
+      const spread = 1 / (1 + lift * 0.18);
+      entry.shadow.scale.set(spread, spread, 1);
+      entry.shadow.material.opacity = entry.shadowOpacity * Math.max(0.35, 1 - lift * 0.1);
     });
     reconcile(cones, state.cones, createCone, (entry, cone) => {
       const { x, z } = toWorld(cone.x, cone.y);

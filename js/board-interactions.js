@@ -1,6 +1,6 @@
 import { clamp } from './geometry.js';
 import { findObject, isPlayerId } from './board-actions.js';
-import { releaseManuallyMovedObject } from './simulation.js';
+import { releaseManuallyMovedObject, resetBallMotion } from './simulation.js';
 import { recordPlayerPosition } from './formations.js';
 
 /** Moves a selected unit rigidly, limiting the shared delta at the touchlines. */
@@ -23,6 +23,7 @@ export function giveBallToPlayer(state, id) {
   const player = state.players.find((p) => p.id === id && !p.benched);
   if (!player) return false;
   Object.assign(state.balls[0], { x: player.x, y: player.y });
+  resetBallMotion(state);
   Object.assign(state.simulation, { running: false, carrierId: id, possessionTeam: player.team,
     lastTouchTeam: player.team, receiverId: null, ballTarget: null, restart: null, actionClock: 0, tackleCooldown: 0 });
   return true;

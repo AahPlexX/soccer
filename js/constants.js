@@ -7,6 +7,9 @@ export const DB_VERSION = 1;
 export const FORMATION_NAMES = Object.freeze(['1-3-2-1', '1-2-3-1']);
 export const TEAM_IDS = Object.freeze(['home', 'away']);
 
+// The 7v7 pitch is 60 x 40.8 yards (the 3D scene's world units); ball physics works in meters.
+export const PITCH_METERS = Object.freeze({ length: 60 * 0.9144, width: 40.8 * 0.9144 });
+
 export const PITCH = Object.freeze({
   homeGoalLineX: 0,
   awayGoalLineX: 1,
@@ -79,16 +82,31 @@ export const SIMULATION = Object.freeze({
   receiveProtectionSeconds: 0.3,
   // A pass lane is blocked when an opponent stands within this distance of the carrier→receiver line (just under the 0.055 pickup radius).
   passLaneClearance: 0.05,
-  // A shot aims at 0.5 + shotAimOffsets[shotCount % length] + (shooter.y - 0.5) * shotAimSpread. The offsets repeat
+  // A shot aims at 0.5 + side * shotAimOffsets[shotCount % length] (side is -1 for a shooter below the center line, else 1) + (shooter.y - 0.5) * shotAimSpread. The offsets repeat
   // in a fixed order (no RNG, so teaching replays are repeatable): central, near post, far post, and wide.
   // In the centered reference setup these produce a catch, parry, goal, and goal kick respectively; player positions
   // and the shooter's angle can change those results.
   shotAimOffsets: Object.freeze([0, 0.04, -0.07, 0.12]),
-  shotAimSpread: 0.15,
+  shotAimSpread: 0.05,
   // A keeper tracks an incoming shot more slowly than an outfield player moves, leaving limited reaction time.
   keeperTrackingSpeed: 0.03,
   // Goalkeeper vs. a shot crossing the line inside the goal mouth, by |keeper.y - shot.y|:
   // <= keeperCatchReach holds it, <= keeperParryReach deflects it behind for a corner, otherwise it is a goal.
   keeperCatchReach: 0.02,
   keeperParryReach: 0.05,
+  // Ball physics (js/ball-physics.js). Speeds are m/s, heights are the ball center's height in meters, elevations radians.
+  shotSpeed: 27,
+  // Height a shot aims at on the goal line, on the same cycle as shotAimOffsets: low, mid, high corner, and mid but wide.
+  shotHeights: Object.freeze([0.85, 1.2, 1.5, 1.0]),
+  passArriveSpeed: 6, // a ground pass reaches its receiver still rolling at about this speed
+  drivenElevation: 0.12, // open passes longer than drivenMinDistance are driven: low, fast and flat
+  drivenMinDistance: 28,
+  lobElevation: 0.75, // a pass whose lane is blocked, at least lobMinDistance long, is lofted over the defender
+  lobMinDistance: 8,
+  controlHeight: 1.9, // a ball whose bottom is higher than this passes over players' heads
+  maxControlSpeed: 20, // a faster ball cannot be taken under control (a shot zips past a defender)
+  pickupDistance: 0.04, // on-screen distance within which a player takes a ball in flight (the intended receiver: 0.055)
+  keeperCatchHeight: 1.7, // a keeper holds a shot only if it crosses the line at or below this height
+  looseSpeed: 3, // below this speed on the ground a passed ball is a loose ball again
+  kickImmunitySeconds: 0.4, // a kicker cannot take their own ball straight back
 });

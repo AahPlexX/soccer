@@ -57,6 +57,7 @@ export function createMatch({ seed = 1, halfSeconds = 120, humanTeam = 'home', h
     kickoffTeam,
     firstKickoffTeam: kickoffTeam,
     passTarget: null, // the intended receiver of the pass in flight, for the active-player switch
+    switching: { lockUntil: 0, rank: 0, lastManual: -99, order: [] }, // see switching.js
     stats: { shots: { home: 0, away: 0 }, possession: { home: 0, away: 0 }, saves: { home: 0, away: 0 } },
     events: [],
   };
@@ -169,7 +170,7 @@ function applyOwnerActions(match, player, control) {
   if (control.shoot) {
     const aim = assistedAim(player, direction);
     const power = control.shoot.power ?? 0.5;
-    kickShot(match.ball, power, aim, control.shoot.curl ?? 0);
+    kickShot(match.ball, power, aim, control.shoot.curl ?? 0, control.shoot.elevation ?? null);
     if (aim.x * attackDirection(player.team) > 0) match.stats.shots[player.team] += 1;
     player.action = { type: 'kick', t: 0, duration: 0.25 };
     kickImmunity(match, player);
@@ -180,10 +181,21 @@ function applyOwnerActions(match, player, control) {
   }
   if (control.pass) {
     const lob = control.pass === 'lob';
-    const mate = bestPassTarget(player, teamOf(match, player.team), direction, teamOf(match, opponentOf(player.team)));
+    // `passTo` names the receiver (the AI's choice); otherwise the held direction and the open lanes decide.
+    const named = control.passTo ? playerById(match, control.passTo) : null;
+    const mate = named && named.team === player.team && named.id !== player.id
+      ? named
+      : bestPassTarget(player, teamOf(match, player.team), direction, teamOf(match, opponentOf(player.team)));
     const aimPoint = mate
       ? leadTarget(match.ball, mate, lob)
       : { x: player.x + Math.cos(player.heading) * 10, y: player.y + Math.sin(player.heading) * 10 };
+    const miss = control.passError ?? 0; // the AI's inaccuracy: the aim point is turned about the ball by this angle
+    if (miss) {
+      const dx = aimPoint.x - match.ball.x;
+      const dy = aimPoint.y - match.ball.y;
+      aimPoint.x = match.ball.x + dx * Math.cos(miss) - dy * Math.sin(miss);
+      aimPoint.y = match.ball.y + dx * Math.sin(miss) + dy * Math.cos(miss);
+    }
     kickPass(match.ball, aimPoint, { lob });
     player.action = { type: 'kick', t: 0, duration: 0.25 };
     kickImmunity(match, player);
@@ -257,6 +269,7 @@ function resolveBallContacts(match, dt) {
   for (const player of eligible) {
     if (headerContact(player, ball)) {
       match.lastTouch = { team: player.team, id: player.id };
+      kickImmunity(match, player); // one touch at a time, or a ball hanging at head height would be headed every step
       emit(match, { type: 'header', team: player.team, id: player.id });
       return;
     }
@@ -266,6 +279,7 @@ function resolveBallContacts(match, dt) {
       ball.vx = -ball.vx * 0.3 + player.vx * 0.5;
       ball.vy = -ball.vy * 0.3 + player.vy * 0.5;
       match.lastTouch = { team: player.team, id: player.id };
+      kickImmunity(match, player);
       emit(match, { type: 'block', team: player.team, id: player.id });
       return;
     }
@@ -281,7 +295,7 @@ function movePlayers(match, controls, dt, frozen) {
     const control = controls[player.id] ?? defaultControl(match, player);
     if (match.owner === player.id) applyOwnerActions(match, player, control);
     else if (control.tackle) startTackle(player, { slide: control.tackle === 'slide' });
-    stepPlayer(player, { x: control.move?.x ?? 0, y: control.move?.y ?? 0, sprint: control.sprint }, dt, { hasBall: match.owner === player.id });
+    stepPlayer(player, { x: control.move?.x ?? 0, y: control.move?.y ?? 0, sprint: control.sprint }, dt, { hasBall: match.owner === player.id, speedScale: control.speedScale ?? 1 });
   }
   separatePlayers(match.players);
 }
@@ -325,7 +339,9 @@ function tickPlay(match, controls, dt) {
   if (match.clock <= 0) endOfHalf(match);
 }
 
-/** Advances the match by one fixed step. `controls` maps player id to { move, sprint, pass, shoot, tackle }. */
+/**
+ * Advances the match by one fixed step. `controls` maps player id to { move, sprint, pass, passTo, passError, shoot, tackle, speedScale }.
+ */
 export function stepMatch(match, controls, dt = MATCH.step) {
   match.time += dt;
   match.phaseTime += dt;

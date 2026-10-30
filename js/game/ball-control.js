@@ -148,12 +148,13 @@ export function bestPassTarget(passer, teammates, direction, opponents = []) {
 
 /**
  * Strikes the ball for a shot. `power` is 0..1 (the charge), `aim` a unit { x, y }, `curl` -1..1 sideways bend. A bigger
- * charge is both faster and higher, so a full-power shot can go over the bar.
+ * charge is both faster and higher, so a full-power shot can go over the bar. `solvedElevation` (radians) overrides the height.
  */
-export function kickShot(ball, power, aim, curl = 0) {
+export function kickShot(ball, power, aim, curl = 0, solvedElevation = null) {
   const charge = clamp(power, 0, 1);
   const speed = CONTROL.shotMinSpeed + (CONTROL.shotMaxSpeed - CONTROL.shotMinSpeed) * charge;
-  const elevation = 0.03 + 0.42 * charge * charge;
+  // A human's charge also sets the height; the AI passes an elevation it solved to cross the goal line at a chosen height.
+  const elevation = solvedElevation ?? 0.03 + 0.42 * charge * charge;
   const v = launchVelocity(speed, Math.atan2(aim.y, aim.x), elevation);
   Object.assign(ball, { vx: v.vx, vy: v.vy, vz: v.vz, wx: 0, wy: 0, wz: clamp(curl, -1, 1) * 60 });
   ball.z = Math.max(ball.z, BALL.radius + 0.02);

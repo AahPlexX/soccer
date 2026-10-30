@@ -21,7 +21,7 @@ const STRIPE = 5; // meters per mown stripe
 const GOAL_DEPTH = 2.2;
 const PLAYER_HEIGHT_METERS = 1.9; // how tall a sprite's full 26 rows are drawn
 
-export function createRenderer(canvas) {
+export function createRenderer(canvas, { colors = null } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const cache = new Map();
   let ballPhase = 0;
@@ -43,7 +43,7 @@ export function createRenderer(canvas) {
     const keeper = player.role === 'GK';
     const variant = variantFor(player.id);
     const key = `${player.team}|${variant}|${keeper ? 'k' : 'p'}|${animation.action}|${animation.frame}|${facing}`;
-    return cache.get(key) ?? bitmap(key, drawPlayerFrame({ palette: playerPalette(player.team, variant, keeper), action: animation.action, frame: animation.frame, facing, keeper }));
+    return cache.get(key) ?? bitmap(key, drawPlayerFrame({ palette: playerPalette(player.team, variant, keeper, colors), action: animation.action, frame: animation.frame, facing, keeper }));
   }
 
   function ballImage(frame) {

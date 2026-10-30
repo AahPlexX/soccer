@@ -498,8 +498,6 @@ const gameToggle = document.querySelector('#game-mode-toggle');
 const gameRoot = document.querySelector('#game-root');
 const coachRegions = document.querySelectorAll('header.top-rail, aside, #workspace, footer.bottom-dock');
 let game = null;
-// Until Game Mode is released (Tracker G5 in docs/GAME_MODE.md) the toggle appears only when the address has ?game.
-gameToggle.hidden = !new URLSearchParams(location.search).has('game');
 
 function exitGame() {
   game?.stop();
@@ -518,7 +516,8 @@ async function enterGame() {
     const { startGame } = await import('./game/game-mode.js');
     state.simulation.running = false; // the coach simulation never runs underneath the game
     render();
-    game = startGame({ root: gameRoot, onExit: exitGame });
+    // The match starts from the coach's own formations and team colors.
+    game = startGame({ root: gameRoot, onExit: exitGame, board: { homeFormation: state.homeFormation, awayFormation: state.awayFormation, colors: state.colors } });
     document.body.classList.add('game-active');
     coachRegions.forEach((region) => { region.inert = true; });
     gameToggle.setAttribute('aria-pressed', 'true');

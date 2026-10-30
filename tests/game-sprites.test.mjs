@@ -100,3 +100,20 @@ test('the animation follows what the player is doing', () => {
     }
   }
 });
+
+test("the coach's team colors become kits, bad colors are ignored, and keepers use their own color", async () => {
+  const { kitFromHex } = await import('../js/game/sprites.js');
+  assert.equal(kitFromHex('red'), null);
+  assert.equal(kitFromHex('#12345'), null);
+  assert.equal(kitFromHex(5), null);
+  const blue = kitFromHex('#1769ff');
+  assert.equal(blue.shirt, 0x1769ff);
+  assert.ok(blue.shirtShade < blue.shirt && blue.shorts < blue.shirtShade, 'shade and shorts are darker');
+  assert.equal(blue.trim, 0xffffff, 'a dark shirt gets white trim');
+  assert.equal(kitFromHex('#ffffff').trim, 0x222222, 'a light shirt gets dark trim');
+  const colors = { home: '#00ff00', away: '#ff00ff', homeGoalkeeper: '#ffd43b', awayGoalkeeper: 'nope' };
+  assert.deepEqual(playerPalette('home', 0, false, colors).shirt, [0, 255, 0]);
+  assert.deepEqual(playerPalette('away', 0, false, colors).shirt, [255, 0, 255]);
+  assert.deepEqual(playerPalette('away', 0, true, colors), playerPalette('away', 0, true), 'an invalid keeper color falls back to the default kit');
+  assert.deepEqual(playerPalette('home', 0, false, null), playerPalette('home', 0));
+});

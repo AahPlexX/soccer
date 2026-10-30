@@ -40,9 +40,9 @@ test('settings load from and save to storage, and every failure falls back to th
 
 test('wide screens show more pitch than portrait ones, within limits, and the scale follows', () => {
   assert.ok(visibleWidthFor(2) > visibleWidthFor(1) && visibleWidthFor(1) > visibleWidthFor(0.5));
-  assert.equal(visibleWidthFor(100), 30);
-  assert.equal(visibleWidthFor(0), 16);
-  assert.equal(visibleWidthFor(Number.NaN), 22);
+  assert.equal(visibleWidthFor(100), 42);
+  assert.equal(visibleWidthFor(0), 22);
+  assert.equal(visibleWidthFor(Number.NaN), 32);
   assert.ok(Math.abs(scaleFor({ width: 1280, height: 720 }) * visibleWidthFor(1280 / 720) - 1280) < 1e-9);
 });
 

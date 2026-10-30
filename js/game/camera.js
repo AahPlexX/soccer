@@ -20,7 +20,7 @@ const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
 /** How many meters of pitch width to show for a viewport aspect ratio (wide screens show more, portrait phones less). */
 export function visibleWidthFor(aspect) {
-  return clamp(14 + 8 * (Number.isFinite(aspect) ? aspect : 1), 16, 30);
+  return clamp(22 + 10 * (Number.isFinite(aspect) ? aspect : 1), 22, 42);
 }
 
 /** Pixels per meter for a viewport. */

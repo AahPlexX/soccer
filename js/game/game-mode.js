@@ -38,7 +38,7 @@ function loadStyles() {
  * Mounts Game Mode into `root` and returns { stop }. `onExit` is called when the player leaves from inside the game;
  * `stop()` removes everything the game added.
  */
-export function startGame({ root, onExit, storage = safeStorage() }) {
+export function startGame({ root, onExit, board = null, storage = safeStorage() }) {
   loadStyles();
   root.replaceChildren();
   root.hidden = false;
@@ -56,7 +56,7 @@ export function startGame({ root, onExit, storage = safeStorage() }) {
   rotate.hidden = true;
   root.append(stage, rotate);
 
-  const renderer = createRenderer(canvas);
+  const renderer = createRenderer(canvas, { colors: board?.colors ?? null });
   const audio = createAudio({ muted: !settings.sound });
   const input = createInput(effectiveBindings(DEFAULT_BINDINGS, settings));
   const effects = createEffects(7);
@@ -80,7 +80,7 @@ export function startGame({ root, onExit, storage = safeStorage() }) {
 
   function beginMatch() {
     saveSettings(storage, settings, ACTIONS);
-    session.match = createMatch({ seed: (Date.now() & 0xffff) || 1, halfSeconds: settings.halfMinutes * 60, humanTeam: 'home' });
+    session.match = createMatch({ seed: (Date.now() & 0xffff) || 1, halfSeconds: settings.halfMinutes * 60, humanTeam: 'home', homeFormation: board?.homeFormation, awayFormation: board?.awayFormation });
     session.ai = createAi(settings.difficulty);
     session.mode = 'playing';
     session.steps = 0;

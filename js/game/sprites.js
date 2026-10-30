@@ -28,9 +28,23 @@ const KEEPER_KITS = {
   away: { shirt: 0x7cff00, shirtShade: 0x56b000, shorts: 0x3a3a3a, socks: 0x7cff00, trim: 0x222222 },
 };
 
-/** The palette for a player of `team` ('home' | 'away'), skin/hair `variant` (0..VARIANTS-1), as RGB triples. */
-export function playerPalette(team, variant = 0, keeper = false) {
-  const kit = (keeper ? KEEPER_KITS : TEAM_KITS)[team === 'away' ? 'away' : 'home'];
+/** A kit from one '#rrggbb' shirt color (the coach board's team color): shade and shorts are darker tones of it. Null if invalid. */
+export function kitFromHex(text) {
+  if (typeof text !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(text)) return null;
+  const value = parseInt(text.slice(1), 16);
+  const scale = (factor) => ((Math.round(((value >> 16) & 255) * factor) << 16) | (Math.round(((value >> 8) & 255) * factor) << 8) | Math.round((value & 255) * factor));
+  const light = ((((value >> 16) & 255) * 299 + ((value >> 8) & 255) * 587 + (value & 255) * 114) / 1000) > 150;
+  return { shirt: value, shirtShade: scale(0.72), shorts: scale(0.45), socks: value, trim: light ? 0x222222 : 0xffffff };
+}
+
+/**
+ * The palette for a player of `team` ('home' | 'away'), skin/hair `variant` (0..VARIANTS-1), as RGB triples. `colors` optionally
+ * carries the coach's team colors ({ home, away, homeGoalkeeper, awayGoalkeeper } as '#rrggbb'); invalid entries are ignored.
+ */
+export function playerPalette(team, variant = 0, keeper = false, colors = null) {
+  const side = team === 'away' ? 'away' : 'home';
+  const custom = colors ? kitFromHex(colors[keeper ? `${side}Goalkeeper` : side]) : null;
+  const kit = custom ?? (keeper ? KEEPER_KITS : TEAM_KITS)[side];
   const v = ((Math.trunc(variant) % VARIANTS) + VARIANTS) % VARIANTS;
   return {
     skin: hex(SKIN_TONES[v]), hair: hex(HAIR_COLORS[(v + 1) % HAIR_COLORS.length]),

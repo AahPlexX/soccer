@@ -59,3 +59,7 @@ Player actions run in the simulation. Add actions in the order you want them to 
 ## Flip direction (1.0.18)
 
 Flip direction (Teams and formations) turns the whole board a half turn so our team attacks the other way: players, the ball, cones, mini goals, arrows and the play script all turn together, our zones follow our team, and the camera presets follow our goal. Left, Right and Center Channel zones stay where you selected them on screen. Undo reverses a flip. Use it when your next drill runs the other direction or to match the field you are standing on.
+
+## Game Mode (1.1.0)
+
+Press **Game mode** in the header to let the players try the formation you set up: pick Easy, Normal or Hard and a half length, then Kick off. One child controls one player at a time on a phone, tablet or laptop; the others, and the opposing team, are played by the computer. Pause (II or Esc) offers Resume, Restart, Controls and Exit to coach. Leaving Game Mode returns the coach board exactly as it was; nothing from a match is saved to a board or its history.

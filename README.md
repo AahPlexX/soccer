@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.0.27**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.1.0**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Board workspace (1.0.6)
 
@@ -22,6 +22,22 @@ Open **Coach workspace** to prepare a drill brief, choose participants (includin
 Use **Route arrow** for an authored path, **Erase drawing** for one annotation, and Undo for corrections. Cones, mini goals and extra balls can be duplicated or cleared without deleting the match ball. 3D shows annotations and optional pass lanes and supports opt-in object dragging; drawing and unit selection remain in 2D. Written instructions, arrows and mini goals are teaching aids; the CPU uses simplified U9 rules and the main goals.
 
 Read [COACH_WORKFLOWS.md](./COACH_WORKFLOWS.md) for preparation, rehearsal, field use, saving and PDF workflows. Everything remains on one coach's device; no collaboration features or accounts are included.
+
+## Game Mode (1.1.0)
+
+The header **Game mode** button switches from the coach board to a playable 7v7 match against the computer, built from your board's formations and team colors. You control one player at a time (a ring and arrow mark them) and the game switches to the right player automatically; you can also switch by hand. The ball obeys the same physics as the coach simulation (height, spin, bounce, posts). Works on computers, phones and tablets (landscape).
+
+| Action | Keyboard | Gamepad | Touch |
+| --- | --- | --- | --- |
+| Move | Arrows or WASD | Left stick | Floating joystick (left half) |
+| Pass (tap) / lob (hold) | J or Space | A | PASS |
+| Shoot (hold to charge) | K or Enter | B | SHOOT |
+| Sprint | L or Shift | Right trigger | RUN |
+| Tackle / slide (with a direction) | I or E | X | TACKLE |
+| Switch player | Tab or Q (U + direction picks one) | Y or right stick | SWITCH or swipe |
+| Pause | Esc or P | Start | II |
+
+Difficulty (Easy, Normal, Hard) and half length (1 to 3 minutes) are chosen on the title screen and remembered. The design, module map and tracker are in [docs/GAME_MODE.md](./docs/GAME_MODE.md); all game code lives in `js/game/` and never touches the coach board's saved state.
 
 ## Run locally
 
@@ -115,6 +131,8 @@ Version 1.0.17 adds a Frame menu (Whole pitch, Our half, Their half) that zooms 
 Version 1.0.18 adds Flip direction, which turns the whole board a half turn so our team attacks the other way; the simulation, zones, formations, actions and cameras all follow.
 
 Version 1.0.20 adds a real ball-physics engine (js/ball-physics.js): the ball has height, gravity, air drag, spin (Magnus), bounces, rolling friction and solid goalposts. Passes are ground, driven or lofted depending on the lane; shots are aimed at a height, so a high shot can fly over the bar and a keeper cannot hold one above reach. 2D and 3D show the ball in the air with a shadow on the grass.
+Version 1.0.21 fixes a restart freeze with benched teammates, stale ball velocity after Undo, flipped restart sides and airborne loose-ball pickups, and adds property tests, a toast that never covers controls, a compact phone toolbar and a visible selected goalkeeper.
+Version 1.1.0 adds Game Mode: a playable human-versus-computer match with procedural pixel-art sprites, a follow camera, synthesized sound, keyboard, gamepad and touch controls, goal replays and difficulty levels (see Game Mode above).
 
 ## Development tooling
 

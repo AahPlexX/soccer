@@ -88,7 +88,7 @@ test('every animation the game can pick has frames, including the throw-in pose'
     pickAnimation(base, { celebrating: true }),
   ];
   for (const { action, frame } of picks) assert.ok(frame >= 0 && frame < ACTION_FRAMES[action], `${action} ${frame}`);
-  assert.deepEqual(pickAnimation(base, { throwIn: true }), { action: 'header', frame: 1 });
+  assert.deepEqual(pickAnimation(base, { throwIn: true }), { action: 'throw', frame: 1 });
 });
 
 test('a ball dropped on the grass announces its bounces, and a ball hitting the frame announces the post', () => {

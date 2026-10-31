@@ -1,7 +1,7 @@
 import { GOAL_HEIGHT } from '../ball-physics.js';
 import { CAMERA, edgeIndicator, project, snapToPixels, wholePixels } from './camera.js';
 import { HALF_LENGTH, HALF_MOUTH, HALF_WIDTH, PENALTY_DEPTH, PENALTY_HALF_WIDTH } from './rules.js';
-import { BALL_SPRITE, SPRITE, drawBallFrame, drawPlayerFrame, facingFor, pickAnimation, playerPalette, variantFor } from './sprites.js';
+import { BALL_SPRITE, drawBallFrame, spriteSize, drawPlayerFrame, facingFor, pickAnimation, playerPalette, variantFor } from './sprites.js';
 
 // Draws a Game Mode frame on a 2D canvas: the striped pitch with its markings and goals, soft shadows, depth-sorted pixel-art
 // players, the ball lifted by its height, the active-player marker and effects. It only reads the view model it is handed and
@@ -19,11 +19,14 @@ const COLORS = {
 };
 const STRIPE = 5; // meters per mown stripe
 const GOAL_DEPTH = 2.2;
-const PLAYER_HEIGHT_METERS = 1.9; // how tall a sprite's full 26 rows are drawn
+const SPRITE_PPM = Object.freeze({ min: 14, max: 56, hysteresis: 0.08 }); // sprites are drawn at the screen scale; see spritePpm()
+const SPRITE_CACHE_LIMIT = 3000;
+const PLAYER_SCALE = 1.3; // players are drawn this much larger than life so faces, limbs and kit stay readable on a phone (as in most soccer games)
 
 export function createRenderer(canvas, { colors = null } = {}) {
   const ctx = canvas.getContext('2d', { alpha: false });
   const cache = new Map();
+  let currentPpm = 0;
   let ballPhase = 0;
   let lastTime = 0;
   const pixelRatio = () => Math.min(2, globalThis.devicePixelRatio || 1);
@@ -40,11 +43,24 @@ export function createRenderer(canvas, { colors = null } = {}) {
     return image;
   }
 
-  function playerImage(player, animation, facing) {
+  /**
+   * The resolution to draw sprites at: the camera's pixels per meter (in device pixels), so the picture is shown about 1:1 and keeps its
+   * detail. It only changes when the zoom moves more than the hysteresis, so zooming does not re-render every player each step.
+   */
+  function spritePpm(wanted) {
+    const target = Math.max(SPRITE_PPM.min, Math.min(SPRITE_PPM.max, wanted));
+    if (!currentPpm || Math.abs(target - currentPpm) / currentPpm > SPRITE_PPM.hysteresis) {
+      currentPpm = Math.round(target);
+      if (cache.size > SPRITE_CACHE_LIMIT) cache.clear();
+    }
+    return currentPpm;
+  }
+
+  function playerImage(player, animation, facing, ppm) {
     const keeper = player.role === 'GK';
     const variant = variantFor(player.id);
-    const key = `${player.team}|${variant}|${keeper ? 'k' : 'p'}|${animation.action}|${animation.frame}|${facing}`;
-    return cache.get(key) ?? bitmap(key, drawPlayerFrame({ palette: playerPalette(player.team, variant, keeper, colors), action: animation.action, frame: animation.frame, facing, keeper }));
+    const key = `${player.team}|${variant}|${keeper ? 'k' : 'p'}|${animation.action}|${animation.frame}|${facing}|${ppm}`;
+    return cache.get(key) ?? bitmap(key, drawPlayerFrame({ palette: playerPalette(player.team, variant, keeper, colors), action: animation.action, frame: animation.frame, facing, keeper, ppm }));
   }
 
   function ballImage(frame) {
@@ -157,24 +173,20 @@ export function createRenderer(canvas, { colors = null } = {}) {
 
   function drawPlayer(camera, view, player, model, isActive) {
     const animation = pickAnimation(player, { time: model.time, celebrating: model.celebrating === player.team, throwIn: model.match.phase === 'restart' && model.match.restart?.type === 'throw-in' && model.match.restart.takerId === player.id });
-    const { facing, mirror } = facingFor(player.heading);
-    const image = playerImage(player, animation, facing);
+    const { facing } = facingFor(player.heading);
     const ratio = pixelRatio();
-    // Whole device pixels for every sprite pixel and for the feet, so pixel art stays crisp and even while the camera moves.
-    const pixel = wholePixels((camera.scale * PLAYER_HEIGHT_METERS) / SPRITE.height, ratio);
+    const wanted = camera.scale * ratio * PLAYER_SCALE; // device pixels per (enlarged) meter on screen
+    const ppm = spritePpm(wanted);
+    const image = playerImage(player, animation, facing, ppm);
+    const size = spriteSize(ppm);
+    const fit = wanted / ppm; // within the hysteresis of 1: the sprite is drawn at its exact on-screen size
     const projected = project(camera, view, player.x, player.y, 0);
+    // Whole device pixels for the feet, so the figure does not shimmer while the camera moves.
     const feet = { x: Math.round(projected.x * ratio) / ratio, y: Math.round(projected.y * ratio) / ratio };
-    const top = feet.y - SPRITE.footY * pixel;
+    const top = feet.y - (size.footY * fit) / ratio;
+    ctx.imageSmoothingEnabled = Math.abs(fit - 1) > 0.002;
+    ctx.drawImage(image, feet.x - (size.anchorX * fit) / ratio, top, (size.width * fit) / ratio, (size.height * fit) / ratio);
     ctx.imageSmoothingEnabled = false;
-    if (mirror) {
-      ctx.save();
-      ctx.translate(feet.x, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(image, -SPRITE.anchorX * pixel, top, SPRITE.width * pixel, SPRITE.height * pixel);
-      ctx.restore();
-    } else {
-      ctx.drawImage(image, feet.x - SPRITE.anchorX * pixel, top, SPRITE.width * pixel, SPRITE.height * pixel);
-    }
     if (isActive) {
       const bob = Math.sin(model.time * 6) * camera.scale * 0.12;
       ctx.fillStyle = COLORS.active;

@@ -15,7 +15,7 @@
   "include": [
     "js/simulation.js", "js/geometry.js", "js/state.js", "js/formations.js", "js/restarts.js", "js/zone-constraints.js",
     "js/pass-options.js", "js/play-script.js", "js/player-actions.js", "js/board-actions.js", "js/board-rotation.js",
-    "js/coaching.js", "js/history.js", "js/view-zoom.js", "js/camera-orbit.js", "js/board-interactions.js", "js/library.js", "js/game/rules.js", "js/game/player-physics.js", "js/game/ball-control.js", "js/game/match.js", "js/game/switching.js", "js/game/ai.js", "js/game/input-map.js", "js/game/settings.js", "js/game/camera.js", "js/game/sprites.js", "js/game/effects.js", "js/game/replay.js"
+    "js/coaching.js", "js/history.js", "js/view-zoom.js", "js/camera-orbit.js", "js/board-interactions.js", "js/library.js", "js/game/rules.js", "js/game/player-physics.js", "js/game/ball-control.js", "js/game/match.js", "js/game/switching.js", "js/game/ai.js", "js/game/ai-steering.js", "js/game/ai-space.js", "js/game/ai-utility.js", "js/game/ai-keeper.js", "js/game/ai-team.js", "js/game/input-map.js", "js/game/settings.js", "js/game/camera.js", "js/game/sprites.js", "js/game/effects.js", "js/game/replay.js"
   ],
   "exclude": ["node_modules", "vendor", "coverage"]
 }

@@ -1,200 +1,142 @@
-import { shotElevation } from '../ball-physics.js';
-import { bestPassTarget } from './ball-control.js';
-import { nextRandom, playerById, teamOf } from './match.js';
-import { HALF_LENGTH, HALF_MOUTH, HALF_WIDTH, attackDirection, opponentOf } from './rules.js';
+import { keeperControl } from './ai-keeper.js';
+import { makeContext } from './ai-space.js';
+import { arrive, blend, distance, separation, shadowPoint } from './ai-steering.js';
+import { ROLE_PRIORITY, planTeam, shapeTarget } from './ai-team.js';
+import { chooseCarrierAction } from './ai-utility.js';
+import { nextRandom } from './match.js';
+import { HALF_LENGTH, attackDirection } from './rules.js';
 
-// The computer's brain for Game Mode: positioning from the formation, support runs, pressing, passing, shooting and a goalkeeper.
-// Pure and deterministic (it draws from the match's own seeded generator). `aiControls` fills a controls map for every player
-// the human is not controlling, in the shape `stepMatch` takes. Difficulty changes reaction time, speed, accuracy and pressing.
+// The computer's brain for Game Mode, in layers (the standard game-AI stack):
+//   perception   each team sees the ball as it was a reaction time ago, so easy teams react late;
+//   team plan    ai-team.js reads the phase of play and gives every outfield player a role with a target;
+//   role FSM     each player holds a role with a minimum dwell time (hysteresis) so they do not flicker between jobs;
+//   utility      ai-utility.js scores every option for the ball carrier (shoot, passes, dribbles, hold, clear);
+//   steering     arrive, pursue, separate and interception turn targets into movement; the keeper has its own states.
+// Pure and deterministic (it draws from the match's seeded generator). `aiControls` fills a controls map for every player the
+// human is not controlling, in the shape `stepMatch` takes. Call it at about 20 Hz.
 
 export const DIFFICULTIES = Object.freeze({
-  easy: { speed: 0.82, think: 0.45, passNoise: 0.3, shotError: 3, pressRadius: 9, keeperSkill: 0.45, tackleChance: 0.3, shootRange: 11, label: 'Easy' },
-  normal: { speed: 0.92, think: 0.25, passNoise: 0.14, shotError: 1.6, pressRadius: 13, keeperSkill: 0.75, tackleChance: 0.55, shootRange: 15, label: 'Normal' },
-  hard: { speed: 1, think: 0.12, passNoise: 0.05, shotError: 0.8, pressRadius: 18, keeperSkill: 0.95, tackleChance: 0.8, shootRange: 18, label: 'Hard' },
+  easy: { speed: 0.82, think: 0.45, reaction: 0.35, passNoise: 0.3, shotError: 3, shotPower: 0.62, decisionNoise: 0.35, pressRadius: 9, keeperSkill: 0.45, tackleChance: 0.3, shootRange: 11, runners: 1, markers: 1, aggression: 0.3, label: 'Easy' },
+  normal: { speed: 0.92, think: 0.25, reaction: 0.2, passNoise: 0.14, shotError: 1.6, shotPower: 0.76, decisionNoise: 0.2, pressRadius: 13, keeperSkill: 0.65, tackleChance: 0.55, shootRange: 17, runners: 2, markers: 2, aggression: 0.55, label: 'Normal' },
+  hard: { speed: 1, think: 0.12, reaction: 0.08, passNoise: 0.05, shotError: 0.8, shotPower: 0.86, decisionNoise: 0.08, pressRadius: 18, keeperSkill: 0.95, tackleChance: 0.8, shootRange: 18, runners: 3, markers: 3, aggression: 0.85, label: 'Hard' },
 });
 
-const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
-const unit = (dx, dy) => { const length = Math.hypot(dx, dy); return length < 1e-9 ? { x: 0, y: 0 } : { x: dx / length, y: dy / length }; };
+const HISTORY_SECONDS = 1.2;
+const MIN_DWELL = 0.3; // seconds a role is kept against a lower-priority change
 
-/** Fresh AI state for a match; `difficulty` is a key of DIFFICULTIES (anything else falls back to normal). */
-export function createAi(difficulty = 'normal') {
-  const key = Object.hasOwn(DIFFICULTIES, difficulty) ? difficulty : 'normal';
-  return { difficulty: key, profile: DIFFICULTIES[key], brains: {} };
-}
-
-const brainOf = (ai, id) => (ai.brains[id] ??= { next: 0, cool: 0, heldSince: null, hold: 0, wish: { x: 0, y: 0 }, sprint: false });
-
-const goalPoint = (team) => ({ x: attackDirection(team) * HALF_LENGTH, y: 0 });
-
-/** Where a player stands for the shape of the game: the formation slot, drifting with the ball and pushing up when attacking. */
-function shapeTarget(match, player, attacking) {
-  const dir = attackDirection(player.team);
-  const ball = match.ball;
-  let x = player.home.x + ball.x * (attacking ? 0.55 : 0.3);
-  const lineLimit = attacking ? HALF_LENGTH - 4 : HALF_LENGTH - 8;
-  if (player.role === 'ST' && attacking) x += dir * 6;
-  // Defenders stay goal side of the ball by a margin.
-  if (['LD', 'RD', 'CD'].includes(player.role)) {
-    const limit = ball.x - dir * (attacking ? -8 : 4);
-    x = dir > 0 ? Math.min(x, limit) : Math.max(x, limit);
-  }
-  x = clamp(x, -lineLimit, lineLimit);
-  const y = clamp(player.home.y + (ball.y - player.home.y) * 0.28, -HALF_WIDTH + 2, HALF_WIDTH - 2);
-  return { x, y };
-}
-
-function toward(player, target, speed = 1, sprint = false, slow = 3) {
-  const dx = target.x - player.x;
-  const dy = target.y - player.y;
-  const gap = Math.hypot(dx, dy);
-  if (gap < 0.4) return { move: { x: 0, y: 0 }, sprint: false };
-  const ease = Math.min(1, gap / slow) * speed;
-  return { move: { x: (dx / gap) * ease, y: (dy / gap) * ease }, sprint };
-}
-
-/** A shot at the goal from `player`: aimed at a corner away from the keeper, with a solved elevation, noise by difficulty. */
-function planShot(match, ai, player) {
-  const goal = goalPoint(player.team);
-  const keeper = teamOf(match, opponentOf(player.team)).find((p) => p.role === 'GK');
-  const corner = keeper && keeper.y > 0 ? -1 : 1;
-  const error = (nextRandom(match) - 0.5) * 2 * ai.profile.shotError;
-  const aimY = clamp(corner * HALF_MOUTH * 0.62 + error, -HALF_MOUTH - 1.5, HALF_MOUTH + 1.5);
-  const meters = Math.max(3, Math.hypot(goal.x - player.x, aimY - player.y));
-  const power = 0.72;
-  const speed = 11 + 17 * power;
-  const height = 0.35 + nextRandom(match) * 0.9;
-  return { move: unit(goal.x - player.x, aimY - player.y), shoot: { power, curl: 0, elevation: shotElevation(speed, meters, height) } };
-}
-
-function laneBlocked(from, to, foes, clearance = 1.1) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.hypot(dx, dy) || 1;
-  return foes.some((foe) => {
-    const t = clamp(((foe.x - from.x) * dx + (foe.y - from.y) * dy) / (length * length), 0, 1);
-    return Math.hypot(foe.x - (from.x + dx * t), foe.y - (from.y + dy * t)) < clearance;
-  });
-}
-
-/** The decision for the player with the ball. */
-function withBall(match, ai, player, brain) {
-  const profile = ai.profile;
-  const dir = attackDirection(player.team);
-  const goal = goalPoint(player.team);
-  const mates = teamOf(match, player.team);
-  const foes = teamOf(match, opponentOf(player.team));
-  const toGoal = distance(player, goal);
-  const nearestFoe = foes.reduce((best, foe) => Math.min(best, distance(player, foe)), Infinity);
-
-  // Shoot from range with a reasonably clear line.
-  if (player.role !== 'GK' && toGoal <= profile.shootRange && !laneBlocked(player, goal, foes.filter((f) => f.role !== 'GK'), 1.0) && nextRandom(match) < 0.7) {
-    return planShot(match, ai, player);
-  }
-  // Pass when pressed, when a teammate is clearly better placed, or from the back by the goalkeeper.
-  const pressed = nearestFoe < 2.4;
-  const progressive = mates.some((m) => m.id !== player.id && (m.x - player.x) * dir > 8 && !laneBlocked(player, m, foes));
-  // Nobody passes the instant they receive: a carrier holds the ball a moment first (longer for the keeper).
-  const minHold = player.role === 'GK' ? 1.2 : 0.55;
-  const wantPass = brain.hold > minHold && (player.role === 'GK' || pressed || (progressive && nextRandom(match) < 0.35));
-  if (wantPass) {
-    const mate = bestPassTarget(player, mates, pressed ? { x: 0, y: 0 } : { x: dir, y: 0 }, foes);
-    if (mate) {
-      const blocked = laneBlocked(player, mate, foes, 0.9);
-      const lob = blocked && distance(player, mate) > 8;
-      if (!blocked || lob) {
-        const error = (nextRandom(match) - 0.5) * 2 * profile.passNoise;
-        return { move: unit(mate.x - player.x, mate.y - player.y), pass: lob ? 'lob' : 'tap', passTo: mate.id, passError: error };
-      }
-    }
-  }
-  if (player.role === 'GK') return { move: { x: 0, y: 0 }, sprint: false };
-  // Dribble toward goal, steering around defenders ahead.
-  const heading = unit(goal.x - player.x, goal.y - player.y);
-  let steerX = heading.x;
-  let steerY = heading.y;
-  for (const foe of foes) {
-    const gap = distance(player, foe);
-    if (gap < 4 && (foe.x - player.x) * dir > -1) {
-      const away = unit(player.x - foe.x, player.y - foe.y);
-      const weight = ((4 - gap) / 4) * 1.6;
-      steerX += away.x * weight;
-      steerY += away.y * weight;
-    }
-  }
-  return { move: unit(steerX, steerY), sprint: nearestFoe > 4 };
-}
-
-function goalkeeper(match, ai, keeper) {
-  const dir = attackDirection(keeper.team);
-  const ball = match.ball;
-  const goalX = -dir * HALF_LENGTH;
-  const incoming = ball.vx * -dir > 5 && match.lastTouch.team !== keeper.team;
-  if (incoming) {
-    const time = (goalX - ball.x) / ball.vx;
-    const predicted = ball.y + ball.vy * Math.max(0, time);
-    const aimY = clamp(predicted, -HALF_MOUTH - 0.5, HALF_MOUTH + 0.5);
-    const targetY = keeper.y + (aimY - keeper.y) * ai.profile.keeperSkill;
-    return toward(keeper, { x: goalX + dir * 1.4, y: targetY }, 1, true, 1.2);
-  }
-  const loose = !match.owner && Math.abs(ball.x - goalX) < 7 && Math.abs(ball.y) < 9 && Math.hypot(ball.vx, ball.vy) < 6;
-  if (loose && match.lastTouch.team !== keeper.team) return toward(keeper, ball, 1, true, 1);
-  return toward(keeper, { x: goalX + dir * 1.5, y: clamp(ball.y * 0.35, -HALF_MOUTH * 0.8, HALF_MOUTH * 0.8) }, 0.8, false, 2);
-}
+const resolve = (key) => (typeof key === 'string' && Object.hasOwn(DIFFICULTIES, key) ? key : 'normal');
 
 /**
- * Fills `controls` (and returns it) for every player except the human's active one. The AI re-decides the ball carrier at most
- * every `profile.think` seconds (its reaction time); in between they keep doing what they last decided. Call it at about 20 Hz.
+ * Fresh AI state. `spec` is a difficulty key (both teams) or { home, away } to give each team its own level (used to measure
+ * that a harder AI really beats an easier one). Anything else falls back to normal.
+ * @param {string | { home?: string, away?: string }} [spec]
  */
-export function aiControls(match, ai, controls = {}) {
-  const profile = ai.profile;
-  const holder = match.owner ? playerById(match, match.owner) : null;
-  const ball = match.ball;
-  const predicted = { x: ball.x + ball.vx * 0.3, y: ball.y + ball.vy * 0.3 };
+export function createAi(spec = 'normal') {
+  const home = resolve(typeof spec === 'object' && spec ? spec.home : spec);
+  const away = resolve(typeof spec === 'object' && spec ? spec.away : spec);
+  return { difficulty: home, profile: DIFFICULTIES[home], profiles: { home: DIFFICULTIES[home], away: DIFFICULTIES[away] }, brains: {}, history: [] };
+}
 
-  // The two players of the defending team nearest the ball press; with a loose ball the nearest player of each team collects.
-  const chasers = new Set();
-  for (const team of ['home', 'away']) {
-    const outfield = teamOf(match, team).filter((p) => p.role !== 'GK' && p.id !== match.activeId && p.down <= 0);
-    outfield.sort((a, b) => distance(a, ball) - distance(b, ball) || (a.id < b.id ? -1 : 1));
-    if (holder?.team !== team) outfield.slice(0, 2).forEach((p) => { if (distance(p, ball) < profile.pressRadius) chasers.add(p.id); });
-    if (!holder && outfield[0]) chasers.add(outfield[0].id);
+const brainOf = (ai, id) => (ai.brains[id] ??= { next: 0, coolUntil: 0, heldSince: null, hold: 0, cached: { move: { x: 0, y: 0 }, sprint: false }, last: null, role: null, since: 0, assignment: null });
+
+/** The ball as it was at `time` (falls back to the current ball when the history does not reach back that far). */
+function laggedBall(history, time, current) {
+  let found = null;
+  for (const entry of history) { if (entry.t <= time) found = entry; else break; }
+  return found ?? { x: current.x, y: current.y, z: current.z, vx: current.vx, vy: current.vy };
+}
+
+/** Turns a role and its target into a movement control with steering. */
+function execute(ctx, profile, player, assignment, brain) {
+  const { match } = ctx;
+  const goal = { x: -attackDirection(player.team) * HALF_LENGTH, y: 0 };
+  const mates = ctx.byTeam[player.team].filter((m) => m.id !== player.id);
+  const push = separation(player, mates, 2.2);
+  const gap = distance(player, assignment.target);
+  const go = (speed, sprint, slow = 3, spread = 0.5) => ({ move: blend([{ v: arrive(player, assignment.target, speed, slow), w: 1 }, { v: push, w: spread }]), sprint });
+
+  switch (assignment.role) {
+    case 'press': {
+      const carrier = ctx.byId.get(assignment.carrierId);
+      if (!carrier) return go(1, false);
+      const d = distance(player, carrier);
+      // Far away: run at where they are going. Close: jockey, staying goal side and shepherding instead of diving in.
+      const control = d > 4
+        ? { move: arrive(player, { x: carrier.fx, y: carrier.fy }, 1, 1), sprint: d > 6 }
+        : { move: arrive(player, shadowPoint(carrier, goal, 1.4), 0.9, 1.5), sprint: false };
+      if (d < 1.15 && match.time >= brain.coolUntil) {
+        const loose = distance(carrier, match.ball) > 0.7; // the ball has run away from their feet: a good moment to go in
+        if (nextRandom(match) < profile.tackleChance * (loose ? 1.6 : 0.6) * 0.25) { control.tackle = 'stand'; brain.coolUntil = match.time + 1; }
+      } else if (d >= 1.4 && d <= 2.1 && profile.aggression > 0.6 && Math.hypot(carrier.vx, carrier.vy) > 4 && match.time >= brain.coolUntil && nextRandom(match) < 0.08) {
+        control.tackle = 'slide';
+        brain.coolUntil = match.time + 1.5;
+      }
+      return control;
+    }
+    case 'chase':
+    case 'receive':
+    case 'intercept':
+      return go(1, gap > 2.5, 1, 0.2);
+    case 'run':
+      return go(1, gap > 5, 3, 0.3);
+    case 'mark':
+    case 'cover':
+    case 'recover':
+      return go(1, gap > 8, 3, 0.4);
+    case 'support':
+      return go(0.9, gap > 9, 3, 0.4);
+    default:
+      return go(0.85, false, 3, 0.5);
   }
+}
+
+/** Fills `controls` (and returns it) for every player except the human's active one. Call at about 20 Hz. */
+export function aiControls(match, ai, controls = {}) {
+  const ctx = makeContext(match);
+  ai.history.push({ t: match.time, x: match.ball.x, y: match.ball.y, z: match.ball.z, vx: match.ball.vx, vy: match.ball.vy });
+  while (ai.history.length > 1 && ai.history[0].t < match.time - HISTORY_SECONDS) ai.history.shift();
+  const seen = { home: laggedBall(ai.history, match.time - ai.profiles.home.reaction, match.ball), away: laggedBall(ai.history, match.time - ai.profiles.away.reaction, match.ball) };
+  const plans = { home: planTeam(ctx, ai.profiles.home, 'home', seen.home, match.activeId), away: planTeam(ctx, ai.profiles.away, 'away', seen.away, match.activeId) };
 
   for (const player of match.players) {
     if (player.id === match.activeId) continue;
     const brain = brainOf(ai, player.id);
-    brain.cool = Math.max(0, brain.cool - 0.05);
-    const ours = holder?.team === player.team;
+    const profile = ai.profiles[player.team];
+    const mine = ctx.byId.get(player.id);
     let control;
+
     if (player.id === match.owner) {
       brain.heldSince ??= match.time;
       brain.hold = match.time - brain.heldSince;
+      brain.role = 'carry';
       if (match.time >= brain.next) {
         brain.next = match.time + profile.think;
-        control = withBall(match, ai, player, brain);
-        brain.wish = control.move ?? brain.wish;
-        brain.sprint = Boolean(control.sprint);
+        control = chooseCarrierAction(ctx, profile, mine, brain, brain.hold).control;
+        brain.cached = { move: control.move ?? { x: 0, y: 0 }, sprint: Boolean(control.sprint) };
       } else {
-        control = { move: brain.wish, sprint: brain.sprint };
+        control = { ...brain.cached }; // between decisions keep doing what was decided (one-shot actions are not repeated)
       }
     } else {
       brain.heldSince = null;
       brain.hold = 0;
-      if (player.role === 'GK') control = goalkeeper(match, ai, player);
-      else if (match.passTarget === player.id) control = toward(player, predicted, 1, true, 1);
-      else if (chasers.has(player.id)) {
-        const target = holder && holder.team !== player.team ? { x: holder.x + holder.vx * 0.3, y: holder.y + holder.vy * 0.3 } : predicted;
-        control = toward(player, target, 1, distance(player, target) > 3, 1.2);
-        if (holder && holder.team !== player.team && distance(player, holder) < 1.1 && brain.cool <= 0 && nextRandom(match) < profile.tackleChance) {
-          control.tackle = 'stand';
-          brain.cool = 1.2;
-        }
+      if (player.role === 'GK') {
+        control = keeperControl(ctx, profile, mine, seen[player.team]);
+        brain.role = 'keeper';
       } else {
-        control = toward(player, shapeTarget(match, player, ours), 0.85, false, 3);
+        const planned = plans[player.team].assignments.get(player.id) ?? { role: 'hold', target: shapeTarget({ ...mine, home: player.home }, seen[player.team], player.team, false) };
+        let assignment = planned;
+        // Hysteresis: a recent, more important role is kept for a moment against a less important change.
+        if (brain.role && brain.assignment && brain.role !== planned.role && match.time - brain.since < MIN_DWELL && (ROLE_PRIORITY[brain.role] ?? 0) > (ROLE_PRIORITY[planned.role] ?? 0)) {
+          assignment = brain.assignment;
+        } else if (brain.role !== planned.role) {
+          brain.role = planned.role;
+          brain.since = match.time;
+        }
+        brain.assignment = assignment;
+        control = execute(ctx, profile, mine, assignment, brain);
       }
     }
-    control.speedScale = profile.speed;
+    control.speedScale = profile.speed * (player.role === 'GK' ? 1 + 0.12 * profile.keeperSkill : 1);
     controls[player.id] = control;
   }
   return controls;

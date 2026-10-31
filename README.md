@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.1.0**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.1.1**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Board workspace (1.0.6)
 
@@ -132,6 +132,7 @@ Version 1.0.18 adds Flip direction, which turns the whole board a half turn so o
 
 Version 1.0.20 adds a real ball-physics engine (js/ball-physics.js): the ball has height, gravity, air drag, spin (Magnus), bounces, rolling friction and solid goalposts. Passes are ground, driven or lofted depending on the lane; shots are aimed at a height, so a high shot can fly over the bar and a keeper cannot hold one above reach. 2D and 3D show the ball in the air with a shadow on the grass.
 Version 1.0.21 fixes a restart freeze with benched teammates, stale ball velocity after Undo, flipped restart sides and airborne loose-ball pickups, and adds property tests, a toast that never covers controls, a compact phone toolbar and a visible selected goalkeeper.
+Version 1.1.1 rebuilds the Game Mode computer players as a full game-AI stack (team roles, utility scoring, space model, steering, goalkeeper states, reaction-time perception) with measurably different Easy, Normal and Hard levels.
 Version 1.1.0 adds Game Mode: a playable human-versus-computer match with procedural pixel-art sprites, a follow camera, synthesized sound, keyboard, gamepad and touch controls, goal replays and difficulty levels (see Game Mode above).
 
 ## Development tooling

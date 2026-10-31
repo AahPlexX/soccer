@@ -27,7 +27,9 @@ test('every player except the human active one gets a control, scaled by the dif
   const controls = aiControls(match, ai);
   assert.equal(Object.keys(controls).length, 13);
   assert.ok(!(match.activeId in controls));
-  assert.ok(Object.values(controls).every((control) => finite(control) && control.speedScale === DIFFICULTIES.easy.speed));
+  const speeds = Object.entries(controls).map(([id, control]) => [id, control.speedScale]);
+  assert.ok(Object.values(controls).every(finite));
+  assert.ok(speeds.every(([id, scale]) => (id.endsWith('-1') ? scale > DIFFICULTIES.easy.speed && scale <= DIFFICULTIES.easy.speed * 1.12 + 1e-9 : scale === DIFFICULTIES.easy.speed)), 'outfield players use the difficulty speed, keepers a little more');
   const passed = { 'home-3': { move: { x: 1, y: 0 } } };
   assert.strictEqual(aiControls(match, ai, passed), passed, 'fills and returns the map it is given');
 });

@@ -4,7 +4,7 @@ AahPlexX/soccer is an offline-capable 7v7 tactical board and teaching simulator 
 
 ## Version and updates
 
-The official app version is **1.1.1**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
+The official app version is **1.1.2**. Increment the patch version by one for every significant update, keeping `package.json` and `APP_VERSION` in `sw.js` in sync. Each Pages deployment produces a separately cached build. When a new build is ready, the app displays its version and lets the coach choose Update or Cancel; no release description is required. The previous pre-1.0 app cannot show this first prompt, so close all its tabs or standalone windows and reopen it to receive 1.0.0.
 
 ## Board workspace (1.0.6)
 
@@ -33,9 +33,11 @@ The header **Game mode** button switches from the coach board to a playable 7v7 
 | Pass (tap) / lob (hold) | J or Space | A | PASS |
 | Shoot (hold to charge) | K or Enter | B | SHOOT |
 | Sprint | L or Shift | Right trigger | RUN |
-| Tackle / slide (with a direction) | I or E | X | TACKLE |
+| Tackle / slide (with a direction); goalkeeper: dive left/right | I or E | X | TACKLE |
 | Switch player | Tab or Q (U + direction picks one) | Y or right stick | SWITCH or swipe |
 | Pause | Esc or P | Start | II |
+
+Keys can be changed under **Settings, Change keys** (title and pause menus), which also holds sound, vibration, radar and touch button size. Settings are stored on the device only.
 
 Difficulty (Easy, Normal, Hard) and half length (1 to 3 minutes) are chosen on the title screen and remembered. The design, module map and tracker are in [docs/GAME_MODE.md](./docs/GAME_MODE.md); all game code lives in `js/game/` and never touches the coach board's saved state.
 

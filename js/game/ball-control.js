@@ -23,6 +23,9 @@ export const CONTROL = Object.freeze({
   shotMaxSpeed: 28,
   chargeSeconds: 0.8,
   keeperCatchReach: 1.1,
+  keeperDiveReach: 2.3, // a diving keeper reaches this far sideways, but can only push the ball away
+  keeperDiveSpeed: 4.8, // m/s of the sideways launch
+  keeperDiveSeconds: 0.7,
   keeperCatchSpeed: 13,
   keeperCatchHeight: 1.6,
   keeperParrySpeed: 26,
@@ -233,9 +236,10 @@ export function headerContact(player, ball) {
  */
 export function keeperContact(keeper, ball) {
   const height = ball.z - BALL.radius;
-  if (keeper.down > 0 || height > CONTROL.keeperHeight || distance2d(keeper, ball) > CONTROL.keeperCatchReach) return null;
+  const diving = keeper.action?.type === 'dive';
+  if (keeper.down > 0 || height > CONTROL.keeperHeight || distance2d(keeper, ball) > (diving ? CONTROL.keeperDiveReach : CONTROL.keeperCatchReach)) return null;
   const speed = ballSpeed3d(ball);
-  if (speed <= CONTROL.keeperCatchSpeed && height <= CONTROL.keeperCatchHeight) return 'catch';
+  if (!diving && speed <= CONTROL.keeperCatchSpeed && height <= CONTROL.keeperCatchHeight) return 'catch';
   if (speed <= CONTROL.keeperParrySpeed) {
     const out = attackDirection(keeper.team);
     const side = ball.y >= keeper.y ? 1 : -1;
@@ -247,3 +251,13 @@ export function keeperContact(keeper, ball) {
 
 /** True if a ball at `z` crossing a goal line is below the crossbar (a shot that is still a goal chance). */
 export const underBar = (z) => z <= GOAL_HEIGHT;
+
+/** Launches a goalkeeper sideways (`side` is -1 or 1 along y) into a dive. Returns false if they are busy or down. */
+export function startDive(keeper, side) {
+  if (keeper.action || keeper.down > 0) return false;
+  keeper.action = { type: 'dive', t: 0, duration: CONTROL.keeperDiveSeconds };
+  keeper.vx *= 0.3;
+  keeper.vy = Math.sign(side || 1) * CONTROL.keeperDiveSpeed;
+  keeper.heading = side >= 0 ? Math.PI / 2 : -Math.PI / 2;
+  return true;
+}

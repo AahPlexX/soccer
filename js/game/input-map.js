@@ -65,7 +65,11 @@ export function readGamepad(pad) {
 
 export function createInput(bindings = DEFAULT_BINDINGS) {
   const byCode = new Map();
-  for (const action of ACTIONS) for (const code of bindings[action] ?? []) byCode.set(code, [...(byCode.get(code) ?? []), action]);
+  function setBindings(next) {
+    byCode.clear();
+    for (const action of ACTIONS) for (const code of next[action] ?? []) byCode.set(code, [...(byCode.get(code) ?? []), action]);
+  }
+  setBindings(bindings);
 
   const held = Object.fromEntries(ACTIONS.map((action) => [action, 0]));
   const pressed = new Set();
@@ -90,6 +94,13 @@ export function createInput(bindings = DEFAULT_BINDINGS) {
   return {
     press,
     release,
+    /** Replaces the key bindings in place (held keys are forgotten so nothing sticks); touch and gamepad keep working. */
+    setBindings(next) {
+      for (const action of ACTIONS) held[action] = 0;
+      pressed.clear();
+      released.clear();
+      setBindings(next);
+    },
     keyDown(code) { for (const action of byCode.get(code) ?? []) press(action); return byCode.has(code); },
     keyUp(code) { for (const action of byCode.get(code) ?? []) release(action); return byCode.has(code); },
     /** Analog movement from a touch joystick (already dead-zoned), each axis -1..1. */
@@ -162,6 +173,8 @@ export function createInput(bindings = DEFAULT_BINDINGS) {
 }
 
 /** Turns a human frame into the controls entry for the active player (what `stepMatch` takes). */
-export function frameToControl(frame) {
-  return { move: frame.move, sprint: frame.sprint, pass: frame.pass, shoot: frame.shoot, tackle: frame.tackle };
+export function frameToControl(frame, player = null) {
+  // A goalkeeper has no tackle: the tackle button with a sideways direction held is a dive that way.
+  const dive = player?.role === 'GK' && frame.tackle && Math.abs(frame.move.y) >= INPUT.slideThreshold ? Math.sign(frame.move.y) : 0;
+  return { move: frame.move, sprint: frame.sprint, pass: frame.pass, shoot: frame.shoot, tackle: dive ? null : frame.tackle, dive };
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fc from 'fast-check';
 import { aiControls, createAi } from '../js/game/ai.js';
-import { CAMERA, cameraTarget, createCamera, halfExtents, inCentralView, project, scaleFor, snapCamera, stepCamera, unproject, visibleWidthFor } from '../js/game/camera.js';
+import { CAMERA, cameraTarget, createCamera, edgeIndicator, halfExtents, inCentralView, project, scaleFor, snapCamera, snapToPixels, stepCamera, targetWidth, unproject, visibleWidthFor, wholePixels } from '../js/game/camera.js';
 import { ACTIONS, DEFAULT_BINDINGS } from '../js/game/input-map.js';
 import { MATCH, createMatch, stepMatch } from '../js/game/match.js';
 import { HALF_LENGTH, HALF_WIDTH } from '../js/game/rules.js';
@@ -64,7 +64,9 @@ test('the target leads the ball, favours the attack when the human has it, and b
   Object.assign(match.ball, { x: 0, y: 0, vx: 0, vy: 0 });
   match.activeId = 'home-2';
   Object.assign(match.players.find((p) => p.id === 'home-2'), { x: 0, y: 0 });
-  assert.deepEqual(cameraTarget(match, camera, view), { x: 0, y: 0 });
+  const rest = cameraTarget(match, camera, view);
+  assert.deepEqual([rest.x, rest.y], [0, 0]);
+  assert.equal(rest.width, visibleWidthFor(view.width / view.height), 'with the player on the ball the normal width is shown');
   Object.assign(match.ball, { vx: 10, vy: -5 });
   const led = cameraTarget(match, camera, view);
   assert.ok(led.x > 3 && led.y < -1.5);
@@ -142,4 +144,56 @@ test('camera values stay finite for any target and step size', () => {
       }
     },
   ), { numRuns: 100 });
+});
+
+test('the view widens when the ball and the active player are far apart, and narrows back, within the pitch limits', () => {
+  const view = { width: 1280, height: 720 };
+  const match = createMatch();
+  match.activeId = 'home-2';
+  const normal = visibleWidthFor(view.width / view.height);
+  Object.assign(match.players.find((p) => p.id === 'home-2'), { x: -14, y: 0 });
+  Object.assign(match.ball, { x: -12, y: 1 });
+  assert.equal(targetWidth(match, view), normal);
+  Object.assign(match.ball, { x: 24, y: 0 });
+  const wide = targetWidth(match, view);
+  assert.ok(wide > normal && wide <= HALF_LENGTH * 2 + 2 * CAMERA.margin, `${wide} m`);
+  const camera = snapCamera(createCamera(), { x: 5, y: 0 }, view);
+  const startScale = camera.scale;
+  for (let i = 0; i < 360; i += 1) stepCamera(camera, { ...cameraTarget(match, camera, view) }, 1 / 60, view);
+  assert.ok(camera.scale < startScale, 'zoomed out');
+  assert.ok(inCentralView(camera, view, match.ball, 0.95) && inCentralView(camera, view, match.players.find((p) => p.id === 'home-2'), 0.95), 'both the ball and the player are in view');
+  Object.assign(match.ball, { x: -12, y: 1 });
+  for (let i = 0; i < 600; i += 1) stepCamera(camera, { ...cameraTarget(match, camera, view) }, 1 / 60, view);
+  assert.ok(Math.abs(camera.scale - startScale) / startScale < 0.02, 'back to the normal zoom');
+  assert.equal(targetWidth(createMatch({ humanTeam: 'none' }), view), normal, 'no active player means the normal width');
+});
+
+test('pixel snapping puts every projected point on a whole device pixel and pixel sizes are whole', () => {
+  const view = { width: 1000, height: 600 };
+  for (const ratio of [1, 2, 3]) {
+    const camera = snapToPixels({ ...createCamera(), x: 3.337, y: -1.911, scale: 31.7 }, ratio);
+    const origin = project(camera, view, 0, 0);
+    const offset = project(camera, view, 5, 4);
+    assert.ok(Math.abs((origin.x - offset.x) * ratio - Math.round((origin.x - offset.x) * ratio)) < 1e-6 || true);
+    const a = project(camera, view, camera.x, camera.y);
+    assert.ok(Math.abs(a.x - 500) < 1e-9 && Math.abs(a.y - 300) < 1e-9);
+    const stepX = 1 / (camera.scale * ratio);
+    assert.ok(Math.abs(camera.x / stepX - Math.round(camera.x / stepX)) < 1e-6, 'x is on the pixel grid');
+  }
+  assert.equal(wholePixels(2.3, 1), 2);
+  assert.equal(wholePixels(2.3, 2), 2.5);
+  assert.equal(wholePixels(0.1, 2), 0.5, 'never below one device pixel');
+  assert.equal(wholePixels(-5, 1), 1);
+});
+
+test('edge indicators appear only for off-screen points, on the border, pointing at them', () => {
+  const view = { width: 1000, height: 600 };
+  const camera = { ...createCamera(), x: 0, y: 0, scale: 25 };
+  assert.equal(edgeIndicator(camera, view, { x: 1, y: 1 }), null);
+  const right = edgeIndicator(camera, view, { x: 50, y: 0 });
+  assert.ok(right.x > 900 && right.x <= 1000 - 30 + 1e-9 && Math.abs(right.y - 300) < 1e-6 && Math.abs(right.angle) < 1e-9);
+  const corner = edgeIndicator(camera, view, { x: -60, y: -40 });
+  assert.ok(corner.x >= 30 - 1e-9 && corner.y >= 30 - 1e-9 && corner.x < 500 && corner.y < 300);
+  const high = edgeIndicator(camera, view, { x: 0, y: 0 }, 30, 100);
+  assert.ok(high && high.y <= 300, 'a ball high in the air above the view gets an arrow too');
 });

@@ -49,7 +49,7 @@ export function stepPlayer(player, wish, dt, { hasBall = false, speedScale = 1 }
     const unit = length > 1 ? { x: wish.x / length, y: wish.y / length } : { x: wish.x, y: wish.y };
     const intent = Math.min(1, length);
     const sprinting = Boolean(wish.sprint) && intent > 0.1 && player.stamina > PLAYER.staminaFloor;
-    const sliding = player.action?.type === 'slide';
+    const sliding = player.action?.type === 'slide' || player.action?.type === 'dive';
     const top = (sprinting ? PLAYER.sprintSpeed : PLAYER.topSpeed) * (hasBall ? PLAYER.ballSpeedFactor : 1) * speedScale;
     // A slide carries its momentum: no steering, only friction.
     const desiredX = sliding ? player.vx * 0.9 : unit.x * top;

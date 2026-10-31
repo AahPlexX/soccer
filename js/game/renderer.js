@@ -1,5 +1,5 @@
 import { GOAL_HEIGHT } from '../ball-physics.js';
-import { CAMERA, project } from './camera.js';
+import { CAMERA, edgeIndicator, project, snapToPixels, wholePixels } from './camera.js';
 import { HALF_LENGTH, HALF_MOUTH, HALF_WIDTH, PENALTY_DEPTH, PENALTY_HALF_WIDTH } from './rules.js';
 import { BALL_SPRITE, SPRITE, drawBallFrame, drawPlayerFrame, facingFor, pickAnimation, playerPalette, variantFor } from './sprites.js';
 
@@ -26,6 +26,7 @@ export function createRenderer(canvas, { colors = null } = {}) {
   const cache = new Map();
   let ballPhase = 0;
   let lastTime = 0;
+  const pixelRatio = () => Math.min(2, globalThis.devicePixelRatio || 1);
 
   function bitmap(key, buffer) {
     let image = cache.get(key);
@@ -155,11 +156,14 @@ export function createRenderer(canvas, { colors = null } = {}) {
   }
 
   function drawPlayer(camera, view, player, model, isActive) {
-    const animation = pickAnimation(player, { time: model.time, celebrating: model.celebrating === player.team });
+    const animation = pickAnimation(player, { time: model.time, celebrating: model.celebrating === player.team, throwIn: model.match.phase === 'restart' && model.match.restart?.type === 'throw-in' && model.match.restart.takerId === player.id });
     const { facing, mirror } = facingFor(player.heading);
     const image = playerImage(player, animation, facing);
-    const pixel = (camera.scale * PLAYER_HEIGHT_METERS) / SPRITE.height;
-    const feet = project(camera, view, player.x, player.y, 0);
+    const ratio = pixelRatio();
+    // Whole device pixels for every sprite pixel and for the feet, so pixel art stays crisp and even while the camera moves.
+    const pixel = wholePixels((camera.scale * PLAYER_HEIGHT_METERS) / SPRITE.height, ratio);
+    const projected = project(camera, view, player.x, player.y, 0);
+    const feet = { x: Math.round(projected.x * ratio) / ratio, y: Math.round(projected.y * ratio) / ratio };
     const top = feet.y - SPRITE.footY * pixel;
     ctx.imageSmoothingEnabled = false;
     if (mirror) {
@@ -189,7 +193,8 @@ export function createRenderer(canvas, { colors = null } = {}) {
 
   /** Draws one frame. `model` = { match (or replay snapshot), camera, view, effects, time, celebrating, aim }. */
   function draw(model) {
-    const { match, camera, view, effects } = model;
+    const { match, view, effects } = model;
+    const camera = snapToPixels(model.camera, pixelRatio());
     const dt = Math.min(0.1, Math.max(0, model.time - lastTime));
     lastTime = model.time;
     ballPhase += Math.hypot(match.ball.vx, match.ball.vy) * dt * 0.8;
@@ -236,7 +241,7 @@ export function createRenderer(canvas, { colors = null } = {}) {
         drawPlayer(camera, view, item.p, model, item.p.id === match.activeId);
       } else {
         const at = project(camera, view, ball.x, ball.y, height);
-        const size = Math.max(7, Math.min(28, camera.scale * 0.42));
+        const size = wholePixels(Math.max(7, Math.min(28, camera.scale * 0.42)), pixelRatio());
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(ballImage(Math.floor(ballPhase * 3) % BALL_SPRITE.frames), at.x - size / 2, at.y - size / 2, size, size);
       }
@@ -258,6 +263,28 @@ export function createRenderer(canvas, { colors = null } = {}) {
         ctx.fillStyle = `rgba(255,255,255,${effects.flash * 0.28})`;
         ctx.fillRect(0, 0, view.width, view.height);
       }
+    }
+
+    // Arrows at the edge of the screen for the active player and the ball when either is out of view.
+    const markers = [];
+    if (active) markers.push({ at: edgeIndicator(camera, view, active, 34), color: COLORS.active });
+    markers.push({ at: edgeIndicator(camera, view, ball, 34, height), color: '#ffffff' });
+    for (const { at, color } of markers) {
+      if (!at) continue;
+      ctx.save();
+      ctx.translate(at.x, at.y);
+      ctx.rotate(at.angle);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#0d0d0d';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-8, -10);
+      ctx.lineTo(-8, 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
   }
 

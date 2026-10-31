@@ -1,4 +1,5 @@
 import { DIFFICULTIES } from './ai.js';
+import { rebind } from './settings.js';
 
 // Game Mode menus as plain DOM: the title screen (difficulty, half length, kick off), the pause menu, the controls help and the
 // full-time summary. Each screen is built fresh when shown, takes focus on its first button and is keyboard and touch friendly.
@@ -34,20 +35,27 @@ function choice(title, options, current, onPick) {
   return group;
 }
 
-const CONTROLS_HELP = [
-  ['Move', 'Arrow keys or WASD · left stick · touch joystick'],
-  ['Pass (tap) / Lob (hold)', 'J or Space · A · Pass button'],
-  ['Shoot (hold to charge)', 'K or Enter · B · Shoot button'],
-  ['Sprint (hold)', 'L or Shift · right trigger · Sprint button'],
-  ['Tackle / Slide (with a direction)', 'I or E · X · Tackle button'],
-  ['Switch player', 'Tab or Q · Y · Switch button · U + direction, right stick or a swipe picks one'],
-  ['Pause', 'Esc or P · Start · the II button'],
+/** A key code as a person reads it: KeyJ -> J, ArrowUp -> Up, ShiftLeft -> Shift Left. */
+export function keyLabel(code) {
+  return code.replace(/^(Key|Digit|Arrow)/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+const keysText = (codes) => codes.map(keyLabel).join(' or ');
+
+const BINDABLE = [
+  ['up', 'Move up'], ['down', 'Move down'], ['left', 'Move left'], ['right', 'Move right'],
+  ['pass', 'Pass (tap) / Lob (hold)'], ['shoot', 'Shoot (hold to charge)'], ['sprint', 'Sprint (hold)'],
+  ['tackle', 'Tackle / Slide / Keeper dive'], ['switch', 'Switch player'], ['switchDir', 'Switch direction modifier'], ['pause', 'Pause'],
 ];
 
-export function createMenus(root, { settings, onStart, onResume, onRestart, onExit, onSettings }) {
+const TOUCH_SIZES = [[0.8, 'Small'], [1, 'Normal'], [1.25, 'Large']];
+const onOff = [[true, 'On'], [false, 'Off']];
+
+export function createMenus(root, { settings, onStart, onResume, onRestart, onExit, onSettings, bindings, defaultBindings, onBindings }) {
   const layer = element('div', 'g-menu-layer');
   layer.hidden = true;
   root.append(layer);
+  let capturing = null; // { action, done } while the next key press is being taken as a new binding
 
   function show(...nodes) {
     layer.replaceChildren(...nodes);
@@ -58,7 +66,19 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
   const api = {
     layer,
     get visible() { return !layer.hidden; },
-    hide() { layer.hidden = true; layer.replaceChildren(); },
+    hide() { capturing = null; layer.hidden = true; layer.replaceChildren(); },
+
+    /** Offers a key press to the menus; true when it was consumed (while a new key is being picked for an action). */
+    handleKey(event) {
+      if (!capturing) return false;
+      const { action, done } = capturing;
+      if (event.code === 'Escape' && action !== 'pause') { capturing = null; done('Cancelled.'); return true; }
+      const result = rebind(bindings(), action, event.code);
+      capturing = null;
+      if (result.ok) onBindings(result.bindings);
+      done(result.ok ? '' : result.reason);
+      return true;
+    },
 
     showTitle() {
       const panel = element('div', 'g-menu');
@@ -69,6 +89,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
         choice('Half length', [[1, '1 min'], [2, '2 min'], [3, '3 min']], settings.halfMinutes, (value) => { settings.halfMinutes = value; onSettings?.(settings); }),
         button('Kick off', () => onStart(settings), { primary: true }),
         button('Controls', () => api.showControls(() => api.showTitle())),
+        button('Settings', () => api.showSettings(() => api.showTitle())),
         button('Back to coach', () => onExit()),
       );
       show(panel);
@@ -81,6 +102,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
         button('Resume', () => onResume(), { primary: true }),
         button('Restart match', () => onRestart()),
         button('Controls', () => api.showControls(() => api.showPause())),
+        button('Settings', () => api.showSettings(() => api.showPause())),
         button('Exit to coach', () => onExit()),
       );
       show(panel);
@@ -90,8 +112,56 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
       const panel = element('div', 'g-menu g-menu-wide');
       panel.append(element('h2', 'g-title', 'CONTROLS'));
       const list = element('dl', 'g-controls');
-      for (const [action, keys] of CONTROLS_HELP) list.append(element('dt', '', action), element('dd', '', keys));
-      panel.append(list, button('Back', back, { primary: true }));
+      const keys = bindings();
+      const rows = [
+        ['Move', `${keysText(keys.up)} / ${keysText(keys.left)} / ${keysText(keys.down)} / ${keysText(keys.right)} · left stick · touch joystick`],
+        ['Pass (tap) / Lob (hold)', `${keysText(keys.pass)} · A · Pass button`],
+        ['Shoot (hold to charge)', `${keysText(keys.shoot)} · B · Shoot button`],
+        ['Sprint (hold)', `${keysText(keys.sprint)} · right trigger · Sprint button`],
+        ['Tackle / Slide (with a direction)', `${keysText(keys.tackle)} · X · Tackle button`],
+        ['Goalkeeper: dive', 'Tackle with left or right held'],
+        ['Switch player', `${keysText(keys.switch)} · Y · Switch button · ${keysText(keys.switchDir)} + direction, right stick or a swipe picks one`],
+        ['Pause', `${keysText(keys.pause)} · Start · the II button`],
+      ];
+      for (const [action, text] of rows) list.append(element('dt', '', action), element('dd', '', text));
+      panel.append(list, button('Change keys', () => api.showKeys(back)), button('Back', back, { primary: true }));
+      show(panel);
+    },
+
+    showSettings(back) {
+      const panel = element('div', 'g-menu');
+      const set = (key) => (value) => { settings[key] = value; onSettings?.(settings); };
+      panel.append(
+        element('h2', 'g-title', 'SETTINGS'),
+        choice('Sound', onOff, settings.sound, set('sound')),
+        choice('Vibration', onOff, settings.haptics, set('haptics')),
+        choice('Radar', onOff, settings.radar, set('radar')),
+        choice('Touch buttons', TOUCH_SIZES, settings.touchScale, set('touchScale')),
+        button('Change keys', () => api.showKeys(() => api.showSettings(back))),
+        button('Back', back, { primary: true }),
+      );
+      show(panel);
+    },
+
+    /** Lists every action with its keys; picking one waits for the next key press (Esc cancels) and rebinds it. */
+    showKeys(back, message = '') {
+      const panel = element('div', 'g-menu g-menu-wide');
+      const status = element('p', 'g-subtitle', message || 'Pick an action, then press the key you want.');
+      status.setAttribute('role', 'status');
+      const list = element('div', 'g-keys');
+      const current = bindings();
+      for (const [action, label] of BINDABLE) {
+        const row = button(`${label}: ${keysText(current[action])}`, () => {
+          row.textContent = `${label}: press a key…`;
+          capturing = { action, done: (note) => api.showKeys(back, note) };
+        });
+        list.append(row);
+      }
+      panel.append(
+        element('h2', 'g-title', 'CHANGE KEYS'), status, list,
+        button('Reset to defaults', () => { onBindings(defaultBindings); api.showKeys(back, 'Keys reset.'); }),
+        button('Back', back, { primary: true }),
+      );
       show(panel);
     },
 

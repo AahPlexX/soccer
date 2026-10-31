@@ -50,6 +50,38 @@ export function effectiveBindings(defaults, settings) {
   return Object.fromEntries(Object.entries(defaults).map(([action, codes]) => [action, settings.bindings?.[action] ?? codes]));
 }
 
+const RESERVED = Object.freeze({ Escape: 'pause' }); // Escape always pauses, so nothing else may take it, and pause keeps it
+
+/**
+ * Binds `code` to `action` (replacing that action's keys) given the bindings in force. A key can serve only one action, so taking
+ * one that another action uses is refused when it would leave that action with no key at all; otherwise it is taken from it.
+ * Returns { ok: true, bindings } with the new full action->codes map, or { ok: false, reason }. Pure.
+ */
+export function rebind(current, action, code) {
+  if (!(action in current)) return { ok: false, reason: 'Unknown action.' };
+  if (typeof code !== 'string' || code.length === 0 || code.length > 32) return { ok: false, reason: 'That key cannot be used.' };
+  if (RESERVED[code] && RESERVED[code] !== action) return { ok: false, reason: 'Esc always pauses the game.' };
+  const next = {};
+  for (const [name, codes] of Object.entries(current)) {
+    if (name === action) continue;
+    const kept = codes.filter((existing) => existing !== code);
+    if (kept.length === 0) return { ok: false, reason: `That key is the only one for ${name}.` };
+    next[name] = kept;
+  }
+  next[action] = action === 'pause' && code !== 'Escape' ? ['Escape', code] : [code];
+  return { ok: true, bindings: next };
+}
+
+/** Settings with `bindings` (a full action->codes map) stored as only the actions that differ from `defaults`. */
+export function withBindings(settings, defaults, bindings) {
+  const changed = {};
+  for (const [action, codes] of Object.entries(bindings)) {
+    const base = defaults[action] ?? [];
+    if (codes.length !== base.length || codes.some((code, i) => code !== base[i])) changed[action] = codes;
+  }
+  return { ...settings, bindings: changed };
+}
+
 /** Loads settings from a Storage-like object; any failure (missing, blocked, corrupt) gives the defaults. */
 export function loadSettings(storage, knownActions = []) {
   try {

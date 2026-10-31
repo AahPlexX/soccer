@@ -1,7 +1,7 @@
 import { BALL, goalColliders, restingBall, stepBall } from '../ball-physics.js';
 import {
   CONTROL, assistedAim, bestPassTarget, canControl, carryBall, headerContact, keeperContact, kickPass, kickShot, leadTarget,
-  startTackle, tackleContact, trapBall,
+  startDive, startTackle, tackleContact, trapBall,
 } from './ball-control.js';
 import { createPlayer, separatePlayers, stepPlayer } from './player-physics.js';
 import {
@@ -238,11 +238,13 @@ function resolveBallContacts(match, dt) {
     if (!inPenaltyArea(keeper.team, ball) || match.lastTouch.team === keeper.team) continue;
     const result = keeperContact(keeper, ball);
     if (result === 'catch') {
+      keeper.action = { type: 'catch', t: 0, duration: 0.5 };
       resetBall(match, keeper.x, keeper.y); // the keeper gathers it into their hands
       setOwner(match, keeper);
       match.stats.saves[keeper.team] += 1;
       emit(match, { type: 'save', team: keeper.team, id: keeper.id, held: true });
     } else if (result === 'parry') {
+      if (!keeper.action) keeper.action = { type: 'dive', t: 0, duration: CONTROL.keeperDiveSeconds };
       match.lastTouch = { team: keeper.team, id: keeper.id };
       releaseBall(match);
       match.stats.saves[keeper.team] += 1;
@@ -268,6 +270,7 @@ function resolveBallContacts(match, dt) {
   }
   for (const player of eligible) {
     if (headerContact(player, ball)) {
+      player.action = { type: 'header', t: 0, duration: 0.4 };
       match.lastTouch = { team: player.team, id: player.id };
       kickImmunity(match, player); // one touch at a time, or a ball hanging at head height would be headed every step
       emit(match, { type: 'header', team: player.team, id: player.id });
@@ -295,6 +298,7 @@ function movePlayers(match, controls, dt, frozen) {
     const control = controls[player.id] ?? defaultControl(match, player);
     if (match.owner === player.id) applyOwnerActions(match, player, control);
     else if (control.tackle) startTackle(player, { slide: control.tackle === 'slide' });
+    if (control.dive && player.role === 'GK') startDive(player, control.dive);
     stepPlayer(player, { x: control.move?.x ?? 0, y: control.move?.y ?? 0, sprint: control.sprint }, dt, { hasBall: match.owner === player.id, speedScale: control.speedScale ?? 1 });
   }
   separatePlayers(match.players);
@@ -311,6 +315,19 @@ function endOfHalf(match) {
   }
 }
 
+// A bounce (the ball turning upward off the grass) and a hit on the goal frame (a sudden velocity change right at a post or the
+// crossbar) are announced so the game can play a sound for them.
+function detectBallSounds(match, before) {
+  const ball = match.ball;
+  if (before.vz < -1.5 && ball.vz > 0) emit(match, { type: 'bounce', speed: -before.vz });
+  const change = Math.hypot(ball.vx - before.vx, ball.vy - before.vy, ball.vz - before.vz);
+  if (change > 5 && Math.abs(ball.x) > HALF_LENGTH - 0.6 && ball.z - BALL.radius > -0.01) {
+    const atPost = Math.abs(Math.abs(ball.y) - HALF_MOUTH) < 0.45 && ball.z < 2.3;
+    const atBar = Math.abs(ball.z - 2) < 0.45 && Math.abs(ball.y) <= HALF_MOUTH + 0.1;
+    if (atPost || atBar) emit(match, { type: 'post', speed: change });
+  }
+}
+
 function tickPlay(match, controls, dt) {
   match.clock = Math.max(0, match.clock - dt);
   const holder = currentOwner(match);
@@ -319,7 +336,9 @@ function tickPlay(match, controls, dt) {
   const before = { x: match.ball.x, y: match.ball.y, z: match.ball.z };
   resolveBallContacts(match, dt);
   if (match.phase !== 'play') return; // a foul may already have started a restart
+  const velocityBefore = { vx: match.ball.vx, vy: match.ball.vy, vz: match.ball.vz };
   stepBall(match.ball, dt, COLLIDERS);
+  detectBallSounds(match, velocityBefore);
   const exit = exitCrossing(before, match.ball);
   if (exit) {
     const restart = boundaryRestart(exit, match.lastTouch.team ?? match.kickoffTeam);

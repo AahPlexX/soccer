@@ -29,7 +29,7 @@ export function scaleFor(view) {
 }
 
 export function createCamera() {
-  return { x: 0, y: 0, vx: 0, vy: 0, scale: 20 };
+  return { x: 0, y: 0, vx: 0, vy: 0, scale: 20, vs: 0 };
 }
 
 /** The visible half-extents in meters: { hx, hy }. */
@@ -71,7 +71,23 @@ export function cameraTarget(match, camera, view) {
     target.x += Math.sign(active.x - target.x) * pullX;
     target.y += Math.sign(active.y - target.y) * pullY;
   }
+  target.width = targetWidth(match, view);
   return target;
+}
+
+/**
+ * How many meters of pitch width to show: the normal width for the screen, widened when the ball and the active player are far
+ * apart so both stay in view (up to the whole pitch plus margins), never narrower than normal.
+ */
+export function targetWidth(match, view) {
+  const normal = visibleWidthFor(view.width / Math.max(1, view.height));
+  const active = match.players.find((p) => p.id === match.activeId);
+  if (!active) return normal;
+  const spanX = Math.abs(match.ball.x - active.x) + 8;
+  const spanY = Math.abs(match.ball.y - active.y) + 6;
+  // Convert the vertical span into the width that would show it (the view is wider than tall by view.width / (view.height / tilt)).
+  const widthForY = (spanY / 0.8) * (view.width / (view.height / CAMERA.tilt));
+  return clamp(Math.max(normal, spanX / 0.8, widthForY), normal, Math.max(normal, HALF_LENGTH * 2 + 2 * CAMERA.margin));
 }
 
 function smoothDamp(current, target, velocity, smoothTime, dt) {
@@ -94,7 +110,11 @@ function clampToPitch(camera, view) {
 
 /** Moves the camera toward `target` by `dt` seconds. The ball speed shortens the smoothing so a fast ball cannot outrun it. */
 export function stepCamera(camera, target, dt, view, ballSpeed = 0) {
-  camera.scale = scaleFor(view);
+  // Zoom eases to the wanted width (slower than panning, so a pass does not make the view pump in and out).
+  const wantedScale = view.width / (target.width ?? visibleWidthFor(view.width / Math.max(1, view.height)));
+  const zoom = smoothDamp(camera.scale, wantedScale, camera.vs ?? 0, 0.6, dt);
+  camera.scale = zoom.value;
+  camera.vs = zoom.velocity;
   const { hx, hy } = halfExtents(camera, view);
   // Dead zone: only the part of the offset beyond the zone is followed.
   const follow = (current, goal, half) => {
@@ -121,4 +141,34 @@ export function snapCamera(camera, point, view) {
 export function inCentralView(camera, view, point, fraction = 0.8) {
   const { hx, hy } = halfExtents(camera, view);
   return Math.abs(point.x - camera.x) <= hx * fraction && Math.abs(point.y - camera.y) <= hy * fraction;
+}
+
+/**
+ * A copy of the camera whose position sits on the device-pixel grid, so everything drawn through it lands on whole pixels
+ * (a smoothly moving camera would otherwise make pixel art shimmer). `ratio` is the device pixel ratio.
+ */
+export function snapToPixels(camera, ratio = 1) {
+  const stepX = 1 / (camera.scale * ratio);
+  const stepY = 1 / (camera.scale * CAMERA.tilt * ratio);
+  return { ...camera, x: Math.round(camera.x / stepX) * stepX, y: Math.round(camera.y / stepY) * stepY };
+}
+
+/** A pixel size rounded to a whole number of device pixels (never below one), so scaled pixel art keeps even pixels. */
+export function wholePixels(size, ratio = 1) {
+  return Math.max(1, Math.round(size * ratio)) / ratio;
+}
+
+/**
+ * Where to draw an edge marker for a world point that is off screen: { x, y, angle } on the border of the view (inset by
+ * `inset` pixels) pointing toward the point, or null while the point is on screen. `z` lifts a ball in the air.
+ */
+export function edgeIndicator(camera, view, point, inset = 30, z = 0) {
+  const screen = project(camera, view, point.x, point.y, z);
+  if (screen.x >= 0 && screen.x <= view.width && screen.y >= 0 && screen.y <= view.height) return null;
+  const cx = view.width / 2;
+  const cy = view.height / 2;
+  const dx = screen.x - cx;
+  const dy = screen.y - cy;
+  const scale = Math.min((cx - inset) / Math.max(1e-9, Math.abs(dx)), (cy - inset) / Math.max(1e-9, Math.abs(dy)));
+  return { x: cx + dx * scale, y: cy + dy * scale, angle: Math.atan2(dy, dx) };
 }

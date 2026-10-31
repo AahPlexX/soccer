@@ -168,7 +168,7 @@ test('gamepad buttons are edge-detected, sticks dead-zoned and right-stick flick
 test('frameToControl keeps only what the match needs', () => {
   const input = createInput();
   const control = frameToControl(input.sample(STEP));
-  assert.deepEqual(Object.keys(control).sort(), ['move', 'pass', 'shoot', 'sprint', 'tackle']);
+  assert.deepEqual(Object.keys(control).sort(), ['dive', 'move', 'pass', 'shoot', 'sprint', 'tackle']);
 });
 
 test('random input streams never produce NaN, an oversized move, or a power outside the range', () => {

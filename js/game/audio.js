@@ -103,6 +103,8 @@ export function soundFor(event) {
     case 'foul': return 'foul';
     case 'save': return 'save';
     case 'goal': return 'goal';
+    case 'bounce': return event.speed > 3 ? 'bounce' : null;
+    case 'post': return 'post';
     case 'whistle': return 'whistle';
     case 'fulltime': return 'fulltime';
     default: return null;

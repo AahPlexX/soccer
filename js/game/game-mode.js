@@ -8,7 +8,7 @@ import { MATCH, createMatch, drainEvents, playerById, stepMatch } from './match.
 import { createMenus } from './menus.js';
 import { clearReplay, createReplay, recordReplay, replayFrameAt, replayFrames } from './replay.js';
 import { createRenderer } from './renderer.js';
-import { effectiveBindings, loadSettings, saveSettings } from './settings.js';
+import { effectiveBindings, loadSettings, saveSettings, withBindings } from './settings.js';
 import { autoSwitch, cycleSwitch, directionSwitch } from './switching.js';
 import { isTouchDevice, mountTouchControls } from './touch-controls.js';
 
@@ -75,7 +75,18 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     onResume: () => resume(),
     onRestart: () => beginMatch(),
     onExit: () => onExit(),
-    onSettings: () => saveSettings(storage, settings, ACTIONS),
+    onSettings: () => {
+      audio.setMuted(!settings.sound);
+      saveSettings(storage, settings, ACTIONS);
+      if (touch) { touch.destroy(); touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics }); } // size and vibration apply at once
+    },
+    bindings: () => effectiveBindings(DEFAULT_BINDINGS, settings),
+    defaultBindings: DEFAULT_BINDINGS,
+    onBindings: (bindings) => {
+      Object.assign(settings, withBindings(settings, DEFAULT_BINDINGS, bindings));
+      saveSettings(storage, settings, ACTIONS);
+      input.setBindings(effectiveBindings(DEFAULT_BINDINGS, settings));
+    },
   });
 
   function beginMatch() {
@@ -129,7 +140,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     const { match, ai } = session;
     if (session.steps % AI_EVERY === 0) session.aiMap = aiControls(match, ai, {});
     const controls = { ...session.aiMap };
-    if (match.activeId) controls[match.activeId] = first ? frameToControl(frame) : { move: frame.move, sprint: frame.sprint };
+    if (match.activeId) controls[match.activeId] = first ? frameToControl(frame, playerById(match, match.activeId)) : { move: frame.move, sprint: frame.sprint };
     stepMatch(match, controls);
     autoSwitch(match);
     handleEvents(match, drainEvents(match));
@@ -221,6 +232,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   function onKeyDown(event) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     audio.resume();
+    if (menus.handleKey(event)) { event.preventDefault(); return; }
     if (session.mode === 'menu' || session.mode === 'over' || menus.visible) {
       if (event.code === 'Escape' && session.mode === 'paused') { resume(); event.preventDefault(); }
       else if (event.code === 'Escape' && session.mode === 'menu') onExit();

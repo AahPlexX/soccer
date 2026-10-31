@@ -8,19 +8,25 @@ import { ZONES } from './constants.js';
 /** Zones drawn on the screen (a flank or the middle), not relative to a team's goal; a flip leaves them where they are. */
 export const SCREEN_ZONES = Object.freeze(['left', 'right', 'center']);
 
-export const rotateXY = (point) => ({ x: 1 - point.x, y: 1 - point.y });
+// A half turn is 1 - v, but `1 - (1 - v)` is not always v in floating point, so a board that is rotated and rotated back every
+// simulation step would drift by an ulp each time. Coordinates are snapped to a binary grid (2^-30, under a nanometer of
+// pitch) first: scaling by a power of two is exact, so after the first rotation every later half turn is an exact involution.
+const GRID = 2 ** 30;
+const flip = (v) => (GRID - Math.round(v * GRID)) / GRID;
+
+export const rotateXY = (point) => ({ x: flip(point.x), y: flip(point.y) });
 
 function rotateInPlace(point) {
-  point.x = 1 - point.x;
-  point.y = 1 - point.y;
+  point.x = flip(point.x);
+  point.y = flip(point.y);
 }
 
 /** Rotates every spatial field of the board 180 degrees in place: players, anchors, balls, props, drawings, script runs. */
 export function rotateSpatial(state) {
   state.players.forEach((player) => {
     rotateInPlace(player);
-    player.anchorX = 1 - player.anchorX;
-    player.anchorY = 1 - player.anchorY;
+    player.anchorX = flip(player.anchorX);
+    player.anchorY = flip(player.anchorY);
   });
   [...state.balls, ...state.cones, ...state.miniGoals].forEach(rotateInPlace);
   state.drawings.forEach((drawing) => drawing.points.forEach(rotateInPlace));

@@ -108,3 +108,8 @@
   .g-sprint { right: calc(14px * var(--g-touch-scale)); bottom: calc(104px * var(--g-touch-scale)); }
   .g-player { top: calc(max(10px, env(safe-area-inset-top)) + 50px); }
 }
+
+/* Key rebinding list: two columns where there is room, one on narrow screens. */
+#game-root .g-keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+#game-root .g-keys .g-menu-button { margin: 0; text-align: left; }
+@media (max-width: 520px) { #game-root .g-keys { grid-template-columns: 1fr; } }

@@ -51,7 +51,11 @@ test('a half turn applied twice returns every position (to float precision) and 
     state.simulation.ballVelocity = { x: v, y: -v, z: 2 };
     rotateSpatial(state);
     rotateSpatial(state);
-    assert.ok(Math.abs(state.balls[0].x - x) < 1e-12 && Math.abs(state.balls[0].y - y) < 1e-12);
+    assert.ok(Math.abs(state.balls[0].x - x) < 1e-9 && Math.abs(state.balls[0].y - y) < 1e-9, 'within the 2^-30 grid');
+    const once = structuredClone(state);
+    rotateSpatial(once); rotateSpatial(once);
+    assert.deepEqual(once.balls[0], state.balls[0], 'after the first turn a half turn is an exact involution');
+    assert.deepEqual(once.players.map((p) => [p.x, p.y, p.anchorX, p.anchorY]), state.players.map((p) => [p.x, p.y, p.anchorX, p.anchorY]));
     assert.deepEqual(state.simulation.ballVelocity, { x: v, y: -v, z: 2 });
   }), { numRuns: 200 });
 });

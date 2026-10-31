@@ -250,7 +250,7 @@ export function facingFor(heading) {
  * Chooses an animation for a player from their state. `time` (seconds) drives frame progression; running speeds the cycle up.
  * Returns { action, frame }.
  */
-export function pickAnimation(player, { time = 0, celebrating = false, keeperDive = false } = {}) {
+export function pickAnimation(player, { time = 0, celebrating = false, keeperDive = false, throwIn = false } = {}) {
   const keeper = player.role === 'GK';
   const speed = Math.hypot(player.vx ?? 0, player.vy ?? 0);
   if (player.down > 0) return { action: 'down', frame: Math.min(2, Math.floor((0.6 - Math.min(0.6, player.down)) * 6)) };
@@ -258,6 +258,10 @@ export function pickAnimation(player, { time = 0, celebrating = false, keeperDiv
   if (act?.type === 'slide') return { action: 'slide', frame: Math.min(2, Math.floor((act.t / act.duration) * 3)) };
   if (act?.type === 'kick') return { action: 'kick', frame: Math.min(2, Math.floor((act.t / act.duration) * 3)) };
   if (act?.type === 'tackle') return { action: 'kick', frame: 1 };
+  if (act?.type === 'header') return { action: 'header', frame: Math.min(1, Math.floor((act.t / act.duration) * 2)) };
+  if (act?.type === 'catch') return { action: 'gk-catch', frame: Math.min(1, Math.floor((act.t / act.duration) * 2)) };
+  if (act?.type === 'dive') return { action: 'gk-dive', frame: Math.min(2, Math.floor((act.t / act.duration) * 3)) };
+  if (throwIn) return { action: 'header', frame: 1 }; // both arms up, ball overhead
   if (celebrating) return { action: 'celebrate', frame: Math.floor(time * 6) % 4 };
   if (keeper && keeperDive) return { action: 'gk-dive', frame: 1 };
   if (speed > 6.2) return { action: 'sprint', frame: Math.floor(time * (6 + speed)) % 6 };

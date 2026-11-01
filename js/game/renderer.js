@@ -259,7 +259,9 @@ export function createRenderer(canvas, { colors = null } = {}) {
     }
 
     // Players and the ball, far to near.
-    const order = [...match.players.map((p) => ({ kind: 'player', y: p.y, p })), { kind: 'ball', y: ball.y }].sort((a, b) => a.y - b.y);
+    // The ball of a player who has it is drawn in front of him, so running away from the camera never hides the ball behind his legs.
+    const holder = match.owner ? match.players.find((p) => p.id === match.owner) : null;
+    const order = [...match.players.map((p) => ({ kind: 'player', y: p.y, p })), { kind: 'ball', y: holder ? Math.max(ball.y, holder.y + 0.02) : ball.y }].sort((a, b) => a.y - b.y);
     for (const item of order) {
       if (item.kind === 'player') {
         drawPlayer(camera, view, item.p, model, item.p.id === match.activeId);

@@ -8,9 +8,13 @@ export const CONTROL = Object.freeze({
   reach: 0.55, // a player controls a ball this close to their feet
   maxHeight: 1.1, // and no higher than this (center height above the grass)
   maxRelativeSpeed: 7, // and moving no faster than this relative to the player
-  holdRadius: 0.95, // an owner keeps the ball while it stays this close
-  touchInterval: 0.35, // seconds between dribbling touches
-  touchLead: 0.6, // how far in front of the feet a dribbled ball is aimed to be at the next touch
+  holdRadius: 1.4, // an owner keeps the ball while it stays this close (a sharp turn swings it wide for a moment, never this far)
+  touchInterval: 0.35, // seconds per stride of the dribbling bob
+  dribbleLead: 0.30, // how far in front of the feet the ball is held when standing
+  dribbleLeadPerSpeed: 0.03, // and how much further ahead per m/s of running
+  sprintSpeedRef: 6.8, // the speed that scale stops at
+  dribbleBob: 0.06, // meters the ball moves in and out with each stride
+  dribbleStiffness: 16, // 1/s: how hard the ball is pulled to its spot (about 70 ms to settle)
   trapKeep: 0.25, // fraction of the ball's relative speed left after a first touch
   tackleReach: 0.9,
   slideReach: 1.6,
@@ -54,36 +58,24 @@ export function trapBall(player, ball) {
 }
 
 /**
- * One step of the owner carrying the ball. Standing still the ball is held just ahead of their feet; running, they push it
- * ahead every `touchInterval` seconds and it rolls in between, so a defender can get a foot in. Mutates `ball` and `touch`
- * ({ clock }); returns true if the ball is still owned (it ran too far away otherwise).
+ * One step of the owner carrying the ball. The ball is *stuck* to a spot in front of the feet by a stiff, damped spring, so it
+ * stays under the player's control whatever they do (turn, stop, cut, sprint): the spot follows the player's heading, so when they
+ * turn the ball sweeps around to the new front instead of rolling on the old way. A small stride bob moves the ball in and out as
+ * they run, so it still looks like dribbling, and a faster run pushes it a little further ahead. Only a tackle, a pass or a shot
+ * takes it away. Mutates `ball` and `touch` ({ clock }); returns true while the ball is owned (false if it somehow got too far).
  */
 export function carryBall(player, ball, touch, dt) {
   const gap = distance2d(player, ball);
   if (gap > CONTROL.holdRadius || ball.z - BALL.radius > CONTROL.maxHeight) return false;
   const facing = heading(player);
   const speed = Math.hypot(player.vx, player.vy);
-  touch.clock += dt;
-  if (speed < 0.6) {
-    // Standing: a soft spring toward a spot in front of the feet.
-    const aimX = player.x + facing.x * 0.4;
-    const aimY = player.y + facing.y * 0.4;
-    ball.vx = player.vx + (aimX - ball.x) * 9;
-    ball.vy = player.vy + (aimY - ball.y) * 9;
-    touch.clock = 0;
-  } else if (touch.clock >= CONTROL.touchInterval) {
-    touch.clock = 0;
-    // The touch is aimed so the ball is about `touchLead` meters in front of the feet at the next touch, whatever the
-    // player's speed (rolling friction slows it a little in between), and sideways drift is brought back onto the line.
-    const ox = ball.x - player.x;
-    const oy = ball.y - player.y;
-    const ahead = ox * facing.x + oy * facing.y;
-    const side = -ox * facing.y + oy * facing.x;
-    const forward = clamp((CONTROL.touchLead - ahead + 0.08) / CONTROL.touchInterval, 0.2, 3);
-    const lateral = clamp(-side / CONTROL.touchInterval, -2, 2);
-    ball.vx = player.vx + facing.x * forward - facing.y * lateral;
-    ball.vy = player.vy + facing.y * forward + facing.x * lateral;
-  }
+  touch.clock = speed < 0.6 ? 0 : touch.clock + dt;
+  const lead = CONTROL.dribbleLead + Math.min(speed, CONTROL.sprintSpeedRef) * CONTROL.dribbleLeadPerSpeed;
+  const bob = Math.sin((touch.clock / CONTROL.touchInterval) * Math.PI * 2) * CONTROL.dribbleBob * Math.min(1, speed / 4);
+  const aimX = player.x + facing.x * (lead + bob);
+  const aimY = player.y + facing.y * (lead + bob);
+  ball.vx = player.vx + (aimX - ball.x) * CONTROL.dribbleStiffness;
+  ball.vy = player.vy + (aimY - ball.y) * CONTROL.dribbleStiffness;
   return true;
 }
 

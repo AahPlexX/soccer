@@ -132,3 +132,8 @@
 #game-root .g-tips-list dt { font-weight: 900; color: #ffd43b; }
 #game-root .g-tips-list dd { margin: 0; }
 #game-root .g-tips-ok { min-height: 36px; padding: 0 16px; border: 0; border-radius: 10px; background: #ffd43b; color: #10321f; font: 900 13px system-ui, sans-serif; cursor: pointer; }
+
+/* Restarts: a smaller banner than GOAL!, and a prompt for the human's own throw-in. */
+#game-root .g-banner.g-banner-restart { font-size: clamp(16px, 3.2vw, 30px); letter-spacing: 0.12em; padding: 6px 16px; top: 26%; }
+#game-root .g-restart-hint { position: absolute; left: 50%; top: calc(26% + 44px); transform: translateX(-50%); padding: 6px 14px; border-radius: 10px; background: rgba(8, 22, 14, 0.85); border: 2px solid #ffd43b; color: #fff; font: 800 clamp(12px, 2.2vw, 16px) system-ui, sans-serif; text-align: center; pointer-events: none; }
+#game-root .g-restart-hint[hidden] { display: none; }

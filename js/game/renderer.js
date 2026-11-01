@@ -1,5 +1,5 @@
 import { GOAL_HEIGHT } from '../ball-physics.js';
-import { CAMERA, edgeIndicator, project, snapToPixels, wholePixels, worldHeadingToScreen } from './camera.js';
+import { CAMERA, edgeIndicator, project, snapToPixels, worldHeadingToScreen } from './camera.js';
 import { HALF_LENGTH, HALF_MOUTH, HALF_WIDTH, PENALTY_DEPTH, PENALTY_HALF_WIDTH } from './rules.js';
 import { BALL_SPRITE, drawBallFrame, spriteSize, drawPlayerFrame, facingFor, pickAnimation, playerPalette, variantFor } from './sprites.js';
 
@@ -63,9 +63,9 @@ export function createRenderer(canvas, { colors = null } = {}) {
     return cache.get(key) ?? bitmap(key, drawPlayerFrame({ palette: playerPalette(player.team, variant, keeper, colors), action: animation.action, frame: animation.frame, facing, keeper, ppm }));
   }
 
-  function ballImage(frame) {
-    const key = `ball|${frame}`;
-    return cache.get(key) ?? bitmap(key, drawBallFrame(frame));
+  function ballImage(frame, size) {
+    const key = `ball|${frame}|${size}`;
+    return cache.get(key) ?? bitmap(key, drawBallFrame(frame, size));
   }
 
   /** Sizes the canvas backing store for the device pixel ratio and returns the CSS-pixel view. */
@@ -267,9 +267,11 @@ export function createRenderer(canvas, { colors = null } = {}) {
         drawPlayer(camera, view, item.p, model, item.p.id === match.activeId);
       } else {
         const at = project(camera, view, ball.x, ball.y, height);
-        const size = wholePixels(Math.max(7, Math.min(28, camera.scale * 0.42)), pixelRatio());
+        const ratio = pixelRatio();
+        const device = Math.round(Math.max(13, Math.min(54, camera.scale * ratio * 0.7))); // device pixels: drawn at its own resolution, so it stays crisp and readable
+        const size = device / ratio;
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(ballImage(Math.floor(ballPhase * 3) % BALL_SPRITE.frames), at.x - size / 2, at.y - size / 2, size, size);
+        ctx.drawImage(ballImage(Math.floor(ballPhase * 3) % BALL_SPRITE.frames, device), at.x - size / 2, at.y - size / 2, size, size);
       }
     }
     goalFrame(camera, view, -1, true);

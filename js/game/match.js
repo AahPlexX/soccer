@@ -3,7 +3,7 @@ import {
   CONTROL, assistedAim, bestPassTarget, canControl, carryBall, headerContact, keeperContact, kickPass, kickShot, leadTarget,
   startDive, startTackle, tackleContact, trapBall,
 } from './ball-control.js';
-import { createPlayer, separatePlayers, stepPlayer } from './player-physics.js';
+import { PLAYER, createPlayer, separatePlayers, stepPlayer, turnToward } from './player-physics.js';
 import {
   HALF_LENGTH, HALF_MOUTH, HALF_WIDTH, attackDirection, boundaryRestart, exitCrossing, formationSlots, inPenaltyArea, opponentOf,
 } from './rules.js';
@@ -20,6 +20,9 @@ export const MATCH = Object.freeze({
   kickerImmunity: 0.3, // seconds a player cannot re-take a ball they just kicked
   blockRadius: 0.45,
   blockSpeed: CONTROL.maxRelativeSpeed,
+  // A throw-in: the taker stands on the line holding the ball overhead until he is told to throw (the human aims and presses pass,
+  // the computer waits `aiDelay`), then a wind-up and the release `release` seconds in.
+  throwIn: { aiDelay: 1.6, humanTimeout: 9, minWait: 0.5, release: 0.3, duration: 0.6, height: 2.0, maxRange: 18 },
 });
 
 const COLLIDERS = goalColliders({ halfLength: HALF_LENGTH, halfMouth: HALF_MOUTH });
@@ -139,7 +142,8 @@ export function setRestart(match, restart) {
   }
   resetBall(match, spot.x, spot.y);
   setOwner(match, taker);
-  match.restart = { ...restart, takerId: taker.id };
+  match.restart = { ...restart, takerId: taker.id, state: 'wait', waited: 0, t: 0, target: null, mate: null };
+  if (restart.type === 'throw-in') match.ball.z = MATCH.throwIn.height; // held overhead
   match.phase = 'restart';
   match.phaseTime = 0;
   if (team === match.humanTeam) match.activeId = taker.id;
@@ -258,7 +262,8 @@ function resolveBallContacts(match, dt) {
   let taker = null;
   let nearest = Infinity;
   for (const player of eligible) {
-    if (!canControl(player, ball)) continue;
+    const receiving = player.id === match.passTarget; // a pass was aimed at him: he is ready for it
+    if (!canControl(player, ball, receiving ? CONTROL.receiverBonus : 0, receiving ? CONTROL.receiverSpeedBonus : 0)) continue;
     const gap = Math.hypot(player.x - ball.x, player.y - ball.y);
     if (gap < nearest - 1e-9 || (Math.abs(gap - nearest) <= 1e-9 && taker && player.id < taker.id)) { nearest = gap; taker = player; }
   }
@@ -287,6 +292,59 @@ function resolveBallContacts(match, dt) {
       return;
     }
   }
+}
+
+/** Starts the throw: picks the receiver (the held direction decides for a human, the open lanes for the computer) and the wind-up. */
+function beginThrow(match, taker, direction) {
+  const r = match.restart;
+  const mate = bestPassTarget(taker, teamOf(match, taker.team), direction, teamOf(match, opponentOf(taker.team)));
+  let target = mate ? leadTarget(match.ball, mate, true) : { x: taker.x + Math.cos(taker.heading) * 8, y: taker.y + Math.sin(taker.heading) * 8 };
+  const dx = target.x - taker.x;
+  const dy = target.y - taker.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance > MATCH.throwIn.maxRange) target = { x: taker.x + (dx / distance) * MATCH.throwIn.maxRange, y: taker.y + (dy / distance) * MATCH.throwIn.maxRange };
+  Object.assign(r, { state: 'throwing', t: 0, target, mate: mate ? mate.id : null });
+  taker.heading = Math.atan2(target.y - taker.y, target.x - taker.x);
+  taker.action = { type: 'throw', t: 0, duration: MATCH.throwIn.duration };
+}
+
+/** The ball leaves the hands: a high arc to the target, and play resumes. */
+function releaseThrow(match, taker) {
+  const r = match.restart;
+  kickPass(match.ball, r.target, { lob: true });
+  match.ball.z = MATCH.throwIn.height;
+  kickImmunity(match, taker);
+  match.lastTouch = { team: taker.team, id: taker.id };
+  match.passTarget = r.mate;
+  releaseBall(match);
+  r.state = 'done';
+  match.phase = 'play';
+  match.phaseTime = 0;
+  emit(match, { type: 'pass', team: taker.team, from: taker.id, to: r.mate, lob: true, throwIn: true });
+}
+
+/**
+ * One step of a throw-in while the match waits for it. The taker cannot move from the line; the human aims with the stick and
+ * throws with pass (after a short minimum, or by himself after `humanTimeout`); the computer throws after `aiDelay`.
+ */
+function stepThrowIn(match, controls, dt) {
+  const r = match.restart;
+  const cfg = MATCH.throwIn;
+  const taker = playerById(match, r.takerId);
+  Object.assign(taker, { x: r.spot.x, y: r.spot.y, vx: 0, vy: 0 });
+  Object.assign(match.ball, { x: taker.x, y: taker.y, z: cfg.height, vx: 0, vy: 0, vz: 0 });
+  if (r.state === 'throwing') {
+    r.t += dt;
+    if (r.t >= cfg.release) releaseThrow(match, taker);
+    return;
+  }
+  r.waited += dt;
+  const human = taker.team === match.humanTeam;
+  const control = human ? controls[taker.id] ?? STILL : STILL;
+  const direction = control.move ?? STILL;
+  if (Math.hypot(direction.x, direction.y) > 0.3) taker.heading = turnToward(taker.heading, Math.atan2(direction.y, direction.x), PLAYER.turnRate * dt);
+  const ready = human ? (Boolean(control.pass) && r.waited >= cfg.minWait) || r.waited >= cfg.humanTimeout : r.waited >= cfg.aiDelay;
+  if (ready) beginThrow(match, taker, direction);
 }
 
 function movePlayers(match, controls, dt, frozen) {
@@ -371,7 +429,8 @@ export function stepMatch(match, controls, dt = MATCH.step) {
       break;
     case 'restart':
       movePlayers(match, {}, dt, true);
-      if (match.phaseTime >= MATCH.restartDelay) { match.phase = 'play'; match.phaseTime = 0; }
+      if (match.restart?.type === 'throw-in' && match.restart.state !== 'done') stepThrowIn(match, controls, dt);
+      else if (match.phaseTime >= MATCH.restartDelay) { match.phase = 'play'; match.phaseTime = 0; }
       break;
     case 'play':
       tickPlay(match, controls, dt);

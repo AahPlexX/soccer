@@ -4,6 +4,7 @@ import { HALF_LENGTH, HALF_WIDTH } from './rules.js';
 // mini-map, big banners (GOAL!, HALF TIME, FULL TIME) and pause/sound buttons. Plain DOM plus one small canvas; no game logic.
 
 const PHASE_BANNERS = { goal: 'GOAL!', halftime: 'HALF TIME', fulltime: 'FULL TIME' };
+const RESTART_BANNERS = { 'throw-in': 'THROW-IN', corner: 'CORNER KICK', 'goal-kick': 'GOAL KICK', 'free-kick': 'FREE KICK' };
 
 /** Seconds as m:ss (never negative, never NaN). */
 export function formatClock(seconds) {
@@ -14,7 +15,15 @@ export function formatClock(seconds) {
 /** The big banner text for a match state, or '' for none. */
 export function bannerFor(match, replaying = false) {
   if (replaying) return 'REPLAY';
+  if (match.phase === 'restart' && match.restart) return `${RESTART_BANNERS[match.restart.type] ?? 'RESTART'} · ${match.restart.team === 'home' ? 'HOME' : 'AWAY'}`;
   return PHASE_BANNERS[match.phase] ?? '';
+}
+
+/** A line telling the human what to do right now (at his own throw-in), or '' for none. */
+export function hintFor(match) {
+  const restart = match.restart;
+  if (match.phase === 'restart' && restart?.type === 'throw-in' && restart.state === 'wait' && restart.team === match.humanTeam) return 'Aim with the stick, then tap PASS to throw';
+  return '';
 }
 
 /** "#7 ST" for the player, or '' for none. */
@@ -58,6 +67,8 @@ export function createHud(root, { onPause, onMute } = {}) {
   banner.setAttribute('role', 'status');
   banner.setAttribute('aria-live', 'polite');
   banner.hidden = true;
+  const restartHint = element('div', 'g-restart-hint');
+  restartHint.hidden = true;
 
   const radar = document.createElement('canvas');
   radar.className = 'g-radar';
@@ -76,7 +87,7 @@ export function createHud(root, { onPause, onMute } = {}) {
   mute.addEventListener('click', () => onMute?.());
   buttons.append(pause, mute);
 
-  layer.append(score, half, label, power, banner, radar, buttons);
+  layer.append(score, half, label, power, banner, restartHint, radar, buttons);
   root.append(layer);
 
   let lastBanner = '';
@@ -101,6 +112,10 @@ export function createHud(root, { onPause, onMute } = {}) {
         banner.hidden = text === '';
         banner.classList.toggle('g-banner-goal', text === 'GOAL!');
       }
+      banner.classList.toggle('g-banner-restart', match.phase === 'restart');
+      const hint = hintFor(match);
+      restartHint.textContent = hint;
+      restartHint.hidden = hint === '';
       mute.textContent = muted ? '✕' : '♪';
       mute.setAttribute('aria-pressed', String(muted));
       radar.hidden = !showRadar;

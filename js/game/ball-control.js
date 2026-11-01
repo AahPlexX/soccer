@@ -7,7 +7,9 @@ import { attackDirection } from './rules.js';
 export const CONTROL = Object.freeze({
   reach: 0.55, // a player controls a ball this close to their feet
   maxHeight: 1.1, // and no higher than this (center height above the grass)
-  maxRelativeSpeed: 7, // and moving no faster than this relative to the player
+  maxRelativeSpeed: 11.5, // and moving no faster than this relative to the player (a ground pass arrives at about 6 m/s, so a teammate running onto it at 5 m/s still controls it)
+  receiverBonus: 0.35, // extra reach for the player a pass was aimed at, who is expected to get a foot to it
+  receiverSpeedBonus: 6, // and extra control speed: a pass aimed at him can be taken even sprinting straight at it
   holdRadius: 1.4, // an owner keeps the ball while it stays this close (a sharp turn swings it wide for a moment, never this far)
   touchInterval: 0.35, // seconds per stride of the dribbling bob
   dribbleLead: 0.30, // how far in front of the feet the ball is held when standing
@@ -42,12 +44,12 @@ const distance2d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const ballSpeed3d = (ball) => Math.hypot(ball.vx, ball.vy, ball.vz);
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
-/** True if `player` can take the ball now: close, low enough, slow enough relative to them, and on their feet. */
-export function canControl(player, ball) {
+/** True if `player` can take the ball now: close (`reachBonus` meters more for the intended receiver), low enough, slow enough relative to them, and on their feet. */
+export function canControl(player, ball, reachBonus = 0, speedBonus = 0) {
   if (player.down > 0 || player.action?.type === 'slide') return false;
-  if (distance2d(player, ball) > CONTROL.reach) return false;
+  if (distance2d(player, ball) > CONTROL.reach + reachBonus) return false;
   if (ball.z - BALL.radius > CONTROL.maxHeight) return false;
-  return Math.hypot(ball.vx - player.vx, ball.vy - player.vy) <= CONTROL.maxRelativeSpeed;
+  return Math.hypot(ball.vx - player.vx, ball.vy - player.vy) <= CONTROL.maxRelativeSpeed + speedBonus;
 }
 
 /** The first touch: the ball loses most of its speed relative to the player and settles at their feet. */

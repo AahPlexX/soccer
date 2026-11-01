@@ -18,14 +18,20 @@ export const CAMERA = Object.freeze({
 
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
-/** How many meters of pitch width to show for a viewport aspect ratio (wide screens show more, portrait phones less). */
-export function visibleWidthFor(aspect) {
-  return clamp(22 + 10 * (Number.isFinite(aspect) ? aspect : 1), 22, 42);
+/**
+ * How many meters of pitch width to show for a viewport aspect ratio (wide screens show more, portrait phones less). On a short
+ * screen (a phone held sideways, under `SHORT_SCREEN` CSS pixels tall) the view is zoomed in about a fifth, because the same
+ * pitch on a small screen makes the players and the ball too small to read.
+ */
+export const SHORT_SCREEN = 520;
+export function visibleWidthFor(aspect, height = Infinity) {
+  const wide = clamp(22 + 10 * (Number.isFinite(aspect) ? aspect : 1), 22, 42);
+  return height < SHORT_SCREEN ? Math.max(24, wide * 0.78) : wide;
 }
 
 /** Pixels per meter for a viewport. */
 export function scaleFor(view) {
-  return view.width / visibleWidthFor(view.width / Math.max(1, view.height));
+  return view.width / visibleWidthFor(view.width / Math.max(1, view.height), view.height);
 }
 
 export function createCamera() {
@@ -80,7 +86,7 @@ export function cameraTarget(match, camera, view) {
  * apart so both stay in view (up to the whole pitch plus margins), never narrower than normal.
  */
 export function targetWidth(match, view) {
-  const normal = visibleWidthFor(view.width / Math.max(1, view.height));
+  const normal = visibleWidthFor(view.width / Math.max(1, view.height), view.height);
   const active = match.players.find((p) => p.id === match.activeId);
   if (!active) return normal;
   const spanX = Math.abs(match.ball.x - active.x) + 8;
@@ -111,7 +117,7 @@ function clampToPitch(camera, view) {
 /** Moves the camera toward `target` by `dt` seconds. The ball speed shortens the smoothing so a fast ball cannot outrun it. */
 export function stepCamera(camera, target, dt, view, ballSpeed = 0) {
   // Zoom eases to the wanted width (slower than panning, so a pass does not make the view pump in and out).
-  const wantedScale = view.width / (target.width ?? visibleWidthFor(view.width / Math.max(1, view.height)));
+  const wantedScale = view.width / (target.width ?? visibleWidthFor(view.width / Math.max(1, view.height), view.height));
   const zoom = smoothDamp(camera.scale, wantedScale, camera.vs ?? 0, 0.6, dt);
   camera.scale = zoom.value;
   camera.vs = zoom.velocity;

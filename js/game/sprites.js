@@ -71,24 +71,47 @@ export function drawPlayerFrame({ palette, action = 'idle', frame = 0, facing = 
 }
 
 
-/** The ball: a white sphere with dark panels that appear to turn over `frames` frames. */
+/** The ball sprite at its smallest, and how many rotation frames it has. `drawBallFrame` can draw it at any larger size. */
 export const BALL_SPRITE = Object.freeze({ size: 8, frames: 4 });
-export function drawBallFrame(frame = 0) {
-  const size = BALL_SPRITE.size;
+
+// The twelve dark patches of a football sit at the vertices of an icosahedron.
+const PATCHES = (() => {
+  const g = (1 + Math.sqrt(5)) / 2;
+  return [[0, 1, g], [0, -1, g], [0, 1, -g], [0, -1, -g], [1, g, 0], [-1, g, 0], [1, -g, 0], [-1, -g, 0], [g, 0, 1], [-g, 0, 1], [g, 0, -1], [-g, 0, -1]]
+    .map(([x, y, z]) => { const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; });
+})();
+
+/**
+ * The ball as a lit sphere (white with dark patches and an outline) turned a little further each frame, drawn at `size` pixels
+ * so it stays crisp at any zoom. `frame` wraps over BALL_SPRITE.frames.
+ */
+export function drawBallFrame(frame = 0, size = BALL_SPRITE.size) {
   const data = new Uint8ClampedArray(size * size * 4);
   const f = ((Math.trunc(frame) % BALL_SPRITE.frames) + BALL_SPRITE.frames) % BALL_SPRITE.frames;
+  const turn = f * 0.95;
+  const [ca, sa] = [Math.cos(turn), Math.sin(turn)];
+  const [cb, sb] = [Math.cos(0.55), Math.sin(0.55)];
   const center = (size - 1) / 2;
+  const radius = size / 2 - 0.1;
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
-      const dx = x - center;
-      const dy = y - center;
-      const r = Math.hypot(dx, dy);
-      if (r > center + 0.2) continue;
-      const rim = r > center - 0.8;
-      const panel = ((dx + f * 1.5) * 0.9) % 3 > 1.6 && r < center - 1 && (x + y + f) % 2 === 0;
-      const color = rim ? [24, 24, 24] : panel ? [40, 40, 44] : r < center - 2 && dx + dy < 0 ? [255, 255, 255] : [226, 230, 236];
+      const dx = (x - center) / radius;
+      const dy = (y - center) / radius;
+      const r2 = dx * dx + dy * dy;
+      if (r2 > 1) continue;
+      const dz = Math.sqrt(1 - r2);
+      // Into the ball's own frame: turned about x, then about y.
+      const y1 = dy * ca - dz * sa;
+      const z1 = dy * sa + dz * ca;
+      const local = [dx * cb + z1 * sb, y1, -dx * sb + z1 * cb];
+      const patch = PATCHES.some((p) => p[0] * local[0] + p[1] * local[1] + p[2] * local[2] > 0.9);
+      const light = Math.max(0, Math.min(1, dx * -0.45 + dy * -0.55 + dz * 0.7));
+      const edge = Math.sqrt(r2) * radius > radius - 1;
+      const tone = edge ? 0.12 : 0.6 + 0.4 * light;
+      const base = edge ? 255 : patch ? 34 : 246;
       const i = (y * size + x) * 4;
-      data[i] = color[0]; data[i + 1] = color[1]; data[i + 2] = color[2]; data[i + 3] = 255;
+      const value = Math.round(base * tone);
+      data[i] = value; data[i + 1] = value; data[i + 2] = edge ? value : Math.min(255, value + (patch ? 4 : 2)); data[i + 3] = 255;
     }
   }
   return { width: size, height: size, data };
@@ -121,6 +144,7 @@ export function pickAnimation(player, { time = 0, celebrating = false, keeperDiv
   if (act?.type === 'header') return { action: 'header', frame: progress(act, 'header') };
   if (act?.type === 'catch') return { action: 'gk-catch', frame: progress(act, 'gk-catch') };
   if (act?.type === 'dive') return { action: 'gk-dive', frame: progress(act, 'gk-dive') };
+  if (act?.type === 'throw') return { action: 'throw', frame: progress(act, 'throw') };
   if (throwIn) return { action: 'throw', frame: 1 }; // both arms overhead, ball above the head
   if (celebrating) return { action: 'celebrate', frame: Math.floor(time * 8) % 8 };
   if (keeper && keeperDive) return { action: 'gk-dive', frame: 2 };

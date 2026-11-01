@@ -15,15 +15,31 @@ export function formatClock(seconds) {
 /** The big banner text for a match state, or '' for none. */
 export function bannerFor(match, replaying = false) {
   if (replaying) return 'REPLAY';
-  if (match.phase === 'restart' && match.restart) return `${RESTART_BANNERS[match.restart.type] ?? 'RESTART'} · ${match.restart.team === 'home' ? 'HOME' : 'AWAY'}`;
+  if (match.phase === 'restart' && match.restart) return `${RESTART_BANNERS[match.restart.type] ?? 'RESTART'} · ${whose(match, match.restart.team)}`;
   return PHASE_BANNERS[match.phase] ?? '';
 }
 
-/** A line telling the human what to do right now (at his own throw-in), or '' for none. */
+/** Whose restart it is, from the human's point of view (HOME or AWAY when nobody is playing). */
+function whose(match, team) {
+  if (match.humanTeam === 'none') return team === 'home' ? 'HOME' : 'AWAY';
+  return team === match.humanTeam ? 'YOUR BALL' : 'COMPUTER';
+}
+
+function who(match, team) {
+  if (match.humanTeam === 'none') return team === 'home' ? 'Home' : 'Away';
+  return team === match.humanTeam ? 'You' : 'Computer';
+}
+
+/**
+ * The line under the banner during a restart: why the other team has the ball (who put it out, or who fouled), and at the human's own
+ * throw-in what to do. '' when there is nothing to say.
+ */
 export function hintFor(match) {
   const restart = match.restart;
-  if (match.phase === 'restart' && restart?.type === 'throw-in' && restart.state === 'wait' && restart.team === match.humanTeam) return 'Aim with the stick, then tap PASS to throw';
-  return '';
+  if (match.phase !== 'restart' || !restart) return '';
+  const cause = restart.foulBy ? `${who(match, restart.foulBy)} fouled` : restart.outBy ? `${who(match, restart.outBy)} put it out` : '';
+  const prompt = restart.type === 'throw-in' && restart.state === 'wait' && restart.team === match.humanTeam ? 'aim with the stick, then tap PASS to throw' : '';
+  return [cause, prompt].filter(Boolean).join(' · ');
 }
 
 /** "#7 ST" for the player, or '' for none. */

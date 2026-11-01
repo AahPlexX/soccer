@@ -234,6 +234,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
       renderer.draw({ match: model, camera, view, effects, time: session.time, celebrating: match.phase === 'goal' ? session.scorer : null, aim: session.mode === 'playing', passPreview: session.mode === 'playing' ? session.preview : null });
       hud.update({ match, charge: session.mode === 'playing' ? (session.charge ?? 0) : 0, replaying: session.mode === 'replay', muted: !settings.sound, showRadar: settings.radar });
       root.dataset.score = `${match.score.home}-${match.score.away}`;
+      root.dataset.restart = match.phase === 'restart' && match.restart ? `${match.restart.type}:${match.restart.team}` : ''; // for the capture script
       const mine = playerById(match, match.activeId);
       if (mine) root.dataset.activeAt = `${mine.x.toFixed(2)},${mine.y.toFixed(2)}`; // for the capture script
     } else {

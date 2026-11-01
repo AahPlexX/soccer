@@ -72,6 +72,26 @@ const server = http.createServer((req, res) => {
     console.log(name, JSON.stringify(info), 'errors', JSON.stringify(errors));
     await ctx.close();
   }
+  // Who gets the ball when it goes out: the human dribbles it over the top touchline, so the computer must get the throw-in.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const tab = await ctx.newPage();
+    await tab.goto(url);
+    await tab.waitForTimeout(500);
+    await tab.click('#game-mode-toggle');
+    await tab.waitForTimeout(600);
+    await tab.click('text=Kick off');
+    await tab.waitForTimeout(2200);
+    await tab.keyboard.down('ArrowUp');
+    await tab.keyboard.down('KeyL');
+    let restart = '';
+    for (let i = 0; i < 40 && !restart; i += 1) { await tab.waitForTimeout(250); restart = await tab.evaluate(() => document.querySelector('#game-root').dataset.restart); }
+    await tab.keyboard.up('ArrowUp');
+    await tab.keyboard.up('KeyL');
+    await tab.screenshot({ path: `${out}/out-of-play.png` });
+    console.log('human dribbled it out ->', restart || '(no restart seen)', '(expected throw-in:away)');
+    await ctx.close();
+  }
   await browser.close();
   server.close();
 });

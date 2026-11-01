@@ -231,7 +231,7 @@ function resolveBallContacts(match, dt) {
     } else if (result === 'foul') {
       const victim = foes.find((foe) => foe.down > 0);
       emit(match, { type: 'foul', team: tackler.team, id: tackler.id });
-      setRestart(match, { type: 'free-kick', team: opponentOf(tackler.team), spot: { x: victim?.x ?? tackler.x, y: victim?.y ?? tackler.y } });
+      setRestart(match, { type: 'free-kick', team: opponentOf(tackler.team), foulBy: tackler.team, spot: { x: victim?.x ?? tackler.x, y: victim?.y ?? tackler.y } });
       return;
     }
   }
@@ -409,7 +409,7 @@ function tickPlay(match, controls, dt) {
       match.owner = null;
       emit(match, { type: 'goal', team: restart.scoredBy, score: { ...match.score } });
     } else if (restart) {
-      setRestart(match, restart);
+      setRestart(match, { ...restart, outBy: match.lastTouch.team }); // who put it out, so the screen can say why the other team has it
     }
     return;
   }

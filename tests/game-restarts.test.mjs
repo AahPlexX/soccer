@@ -101,17 +101,47 @@ test('a human who does nothing is not stuck forever: the throw happens by itself
   assert.equal(match.phase, 'play');
 });
 
-test('the banner names the restart and who takes it, and the human is told how to throw', () => {
-  const mine = ballOut({ lastTouch: 'away', humanTeam: 'home' });
-  assert.equal(bannerFor(mine), 'THROW-IN · HOME');
-  assert.match(hintFor(mine), /PASS/);
+test('the screen says whose ball it is and why: who put it out, from the human\'s point of view', () => {
+  // I kicked it out: it is the computer\'s throw-in.
   const theirs = ballOut({ lastTouch: 'home', humanTeam: 'home' });
-  assert.equal(bannerFor(theirs), 'THROW-IN · AWAY');
-  assert.equal(hintFor(theirs), '', 'no instructions at the computer\'s throw-in');
+  assert.equal(bannerFor(theirs), 'THROW-IN · COMPUTER');
+  assert.equal(hintFor(theirs), 'You put it out', 'and no instructions at the computer\'s throw-in');
+  // The computer kicked it out: it is mine, and I am told how to throw.
+  const mine = ballOut({ lastTouch: 'away', humanTeam: 'home' });
+  assert.equal(bannerFor(mine), 'THROW-IN · YOUR BALL');
+  assert.match(hintFor(mine), /^Computer put it out · aim with the stick, then tap PASS to throw$/);
+  mine.restart.state = 'throwing';
+  assert.equal(hintFor(mine), 'Computer put it out', 'the instruction goes once the throw has started');
+  // The same from the other seat (the human plays away).
+  assert.equal(bannerFor(ballOut({ lastTouch: 'away', humanTeam: 'away' })), 'THROW-IN · COMPUTER');
+  assert.equal(bannerFor(ballOut({ lastTouch: 'home', humanTeam: 'away' })), 'THROW-IN · YOUR BALL');
+  // Nobody playing (computer against computer): plain team names.
+  assert.equal(bannerFor(ballOut({ lastTouch: 'home', humanTeam: 'none' })), 'THROW-IN · AWAY');
+  assert.equal(hintFor(ballOut({ lastTouch: 'home', humanTeam: 'none' })), 'Home put it out');
   assert.equal(bannerFor({ phase: 'play' }), '');
   assert.equal(bannerFor({ phase: 'goal' }), 'GOAL!');
-  mine.restart.state = 'throwing';
-  assert.equal(hintFor(mine), '', 'and none once the throw has started');
+  assert.equal(hintFor({ phase: 'play' }), '');
+  // A foul gives the other side a free kick, and says who fouled.
+  const foul = { phase: 'restart', humanTeam: 'home', restart: { type: 'free-kick', team: 'away', foulBy: 'home', state: 'wait' } };
+  assert.equal(bannerFor(foul), 'FREE KICK · COMPUTER');
+  assert.equal(hintFor(foul), 'You fouled');
+});
+
+test('whoever kicks it out, the other team gets the ball, at every edge of the pitch', () => {
+  for (const [name, point] of [['top touchline', { x: 6, y: HALF_WIDTH - 0.2, vx: 0, vy: 6 }], ['bottom touchline', { x: -6, y: -HALF_WIDTH + 0.2, vx: 0, vy: -6 }], ['right goal line', { x: 27.2, y: 9, vx: 8, vy: 0 }], ['left goal line', { x: -27.2, y: -9, vx: -8, vy: 0 }]]) {
+    for (const lastTouch of ['home', 'away']) {
+      const match = createMatch({ seed: 2, humanTeam: 'home' });
+      match.phase = 'play';
+      match.players.forEach((p, i) => Object.assign(p, { x: p.team === 'home' ? -10 : 10, y: (i % 7) * 4 - 12, vx: 0, vy: 0 }));
+      Object.assign(match.ball, { x: point.x, y: point.y, z: BALL.radius, vx: point.vx, vy: point.vy, vz: 0 });
+      match.owner = null;
+      match.lastTouch = { team: lastTouch, id: `${lastTouch}-3` };
+      for (let i = 0; i < 120 && match.phase === 'play'; i += 1) stepMatch(match, {}, DT);
+      assert.equal(match.phase, 'restart', `${name}: the ball went out`);
+      assert.equal(match.restart.outBy, lastTouch, `${name}: recorded who put it out`);
+      assert.notEqual(match.restart.team, lastTouch, `${name}: ${lastTouch} kicked it out, so ${lastTouch} must not get it`);
+    }
+  }
 });
 
 test('the thrower is shown holding the ball up, then throwing', () => {

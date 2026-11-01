@@ -47,6 +47,17 @@ export function stickFromDrag(dx, dy, radius, deadzone = INPUT.stickDeadzone) {
   return { x: (dx / length) * scaled, y: (dy / length) * scaled };
 }
 
+/**
+ * A thumb stick reaches full speed at `full` of its travel (a finger cannot hold a precise half-push, which made the running speed
+ * vary from touch to touch); anything below that scales smoothly from zero. Direction is unchanged.
+ */
+export function shapeStick(stick, full = 0.62) {
+  const magnitude = Math.hypot(stick.x, stick.y);
+  if (magnitude === 0) return { x: 0, y: 0 };
+  const k = Math.min(1, magnitude / full) / magnitude;
+  return { x: stick.x * k, y: stick.y * k };
+}
+
 /** A swipe's direction as a unit { x, y }, or null if it was too short or too slow. */
 export function classifySwipe(dx, dy, seconds) {
   const length = Math.hypot(dx, dy);
@@ -138,12 +149,12 @@ export function createInput(bindings = DEFAULT_BINDINGS) {
      * One control frame for the human's active player. `heading` (radians) lets the shot's curl follow the sideways part of the
      * held direction. The edge events (pass, shoot, tackle, switch, pause) appear in exactly one frame.
      */
-    sample(dt, heading = 0) {
+    sample(dt, heading = 0, toWorld = null) {
       let x = (held.right > 0 ? 1 : 0) - (held.left > 0 ? 1 : 0) + state.stick.x;
       let y = (held.down > 0 ? 1 : 0) - (held.up > 0 ? 1 : 0) + state.stick.y;
       const length = Math.hypot(x, y);
       if (length > 1) { x /= length; y /= length; }
-      const move = { x, y };
+      const move = toWorld ? toWorld({ x, y }) : { x, y }; // keys and the stick are screen directions; `toWorld` maps them to the world
       if (held.pass > 0) state.passFor += dt;
       if (held.shoot > 0) state.shootFor += dt;
 
@@ -162,7 +173,7 @@ export function createInput(bindings = DEFAULT_BINDINGS) {
         state.shootFor = 0;
       }
       if (pressed.has('tackle')) frame.tackle = Math.hypot(move.x, move.y) >= INPUT.slideThreshold ? 'slide' : 'stand';
-      if (state.swipe) { frame.switch = { dir: state.swipe }; state.swipe = null; }
+      if (state.swipe) { frame.switch = { dir: toWorld ? toWorld(state.swipe) : state.swipe }; state.swipe = null; }
       else if (pressed.has('switch')) frame.switch = held.switchDir > 0 && Math.hypot(move.x, move.y) > 0.3 ? { dir: { ...move } } : 'cycle';
       if (pressed.has('pause')) frame.pause = true;
       pressed.clear();

@@ -1,10 +1,12 @@
 import { aiControls, createAi } from './ai.js';
 import { createAudio, soundFor } from './audio.js';
-import { cameraTarget, createCamera, snapCamera, stepCamera } from './camera.js';
+import { cameraTarget, createCamera, screenToWorldMove, snapCamera, stepCamera } from './camera.js';
 import { addFromEvent, addFromMotion, createEffects, stepEffects } from './effects.js';
 import { createHud } from './hud.js';
 import { ACTIONS, DEFAULT_BINDINGS, createInput, frameToControl } from './input-map.js';
-import { MATCH, createMatch, drainEvents, playerById, stepMatch } from './match.js';
+import { bestPassTarget } from './ball-control.js';
+import { MATCH, createMatch, drainEvents, playerById, stepMatch, teamOf } from './match.js';
+import { opponentOf } from './rules.js';
 import { createMenus } from './menus.js';
 import { clearReplay, createReplay, recordReplay, replayFrameAt, replayFrames } from './replay.js';
 import { createRenderer } from './renderer.js';
@@ -69,8 +71,10 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
 
   const hud = createHud(root, { onPause: () => pause(), onMute: () => { settings.sound = !settings.sound; audio.setMuted(!settings.sound); saveSettings(storage, settings, ACTIONS); } });
   hud.setVisible(false);
+  const tipsDone = () => { settings.tipsSeen = true; saveSettings(storage, settings, ACTIONS); };
   const menus = createMenus(root, {
     settings,
+    touch: isTouchDevice(),
     onStart: () => { audio.resume(); audio.play('select'); beginMatch(); },
     onResume: () => resume(),
     onRestart: () => beginMatch(),
@@ -78,7 +82,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     onSettings: () => {
       audio.setMuted(!settings.sound);
       saveSettings(storage, settings, ACTIONS);
-      if (touch) { touch.destroy(); touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics }); } // size and vibration apply at once
+      if (touch) { touch.destroy(); touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics, onTipsDone: tipsDone }); if (!settings.tipsSeen) touch.showTips(); } // size and vibration apply at once
     },
     bindings: () => effectiveBindings(DEFAULT_BINDINGS, settings),
     defaultBindings: DEFAULT_BINDINGS,
@@ -104,7 +108,10 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     snapCamera(camera, session.match.ball, view);
     menus.hide();
     hud.setVisible(true);
-    if (isTouchDevice() && !touch) touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics });
+    if (isTouchDevice() && !touch) {
+      touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics, onTipsDone: tipsDone });
+      if (!settings.tipsSeen) touch.showTips();
+    }
     root.dataset.gamePhase = 'playing';
     root.focus?.();
   }
@@ -142,7 +149,9 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     const controls = { ...session.aiMap };
     if (match.activeId) controls[match.activeId] = first ? frameToControl(frame, playerById(match, match.activeId)) : { move: frame.move, sprint: frame.sprint };
     stepMatch(match, controls);
+    const before = match.activeId;
     autoSwitch(match);
+    if (match.activeId !== before) { audio.play('blip'); if (settings.haptics) globalThis.navigator?.vibrate?.(10); } // the game changed your player: say so
     handleEvents(match, drainEvents(match));
     recordReplay(replay, match, MATCH.step);
     session.steps += 1;
@@ -151,7 +160,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   function updatePlaying(dt) {
     const { match } = session;
     const active = playerById(match, match.activeId);
-    const frame = input.sample(dt, active?.heading ?? 0);
+    const frame = input.sample(dt, active?.heading ?? 0, screenToWorldMove); // the stick and keys are screen directions; the pitch is drawn squashed
     if (frame.pause) { pause(); return; }
     if (frame.switch === 'cycle') cycleSwitch(match);
     else if (frame.switch) directionSwitch(match, frame.switch.dir);
@@ -164,6 +173,9 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
       session.accumulator -= MATCH.step;
     }
     touch?.setCharge(frame.charge);
+    // Show who a pass would go to right now (the same choice the pass makes), so a pass is never a surprise.
+    session.preview = null;
+    if (match.phase === 'play' && active && match.owner === active.id) session.preview = bestPassTarget(active, teamOf(match, active.team), frame.move, teamOf(match, opponentOf(active.team)))?.id ?? null;
     session.charge = frame.charge;
 
     if (match.phase === 'goal') {
@@ -219,9 +231,11 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
       if (session.mode !== 'paused' && session.mode !== 'over') { addFromMotion(effects, match, dt); }
       stepEffects(effects, dt);
       stepCamera(camera, cameraTarget(model, camera, view), dt, view, Math.hypot(model.ball.vx, model.ball.vy));
-      renderer.draw({ match: model, camera, view, effects, time: session.time, celebrating: match.phase === 'goal' ? session.scorer : null, aim: session.mode === 'playing' });
+      renderer.draw({ match: model, camera, view, effects, time: session.time, celebrating: match.phase === 'goal' ? session.scorer : null, aim: session.mode === 'playing', passPreview: session.mode === 'playing' ? session.preview : null });
       hud.update({ match, charge: session.mode === 'playing' ? (session.charge ?? 0) : 0, replaying: session.mode === 'replay', muted: !settings.sound, showRadar: settings.radar });
       root.dataset.score = `${match.score.home}-${match.score.away}`;
+      const mine = playerById(match, match.activeId);
+      if (mine) root.dataset.activeAt = `${mine.x.toFixed(2)},${mine.y.toFixed(2)}`; // for the capture script
     } else {
       // Behind the title screen: a quiet empty pitch.
       const idle = createMatch({ seed: 1 });

@@ -1,5 +1,5 @@
 import { GOAL_HEIGHT } from '../ball-physics.js';
-import { CAMERA, edgeIndicator, project, snapToPixels, wholePixels } from './camera.js';
+import { CAMERA, edgeIndicator, project, snapToPixels, wholePixels, worldHeadingToScreen } from './camera.js';
 import { HALF_LENGTH, HALF_MOUTH, HALF_WIDTH, PENALTY_DEPTH, PENALTY_HALF_WIDTH } from './rules.js';
 import { BALL_SPRITE, drawBallFrame, spriteSize, drawPlayerFrame, facingFor, pickAnimation, playerPalette, variantFor } from './sprites.js';
 
@@ -173,7 +173,7 @@ export function createRenderer(canvas, { colors = null } = {}) {
 
   function drawPlayer(camera, view, player, model, isActive) {
     const animation = pickAnimation(player, { time: model.time, celebrating: model.celebrating === player.team, throwIn: model.match.phase === 'restart' && model.match.restart?.type === 'throw-in' && model.match.restart.takerId === player.id });
-    const { facing } = facingFor(player.heading);
+    const { facing } = facingFor(worldHeadingToScreen(player.heading)); // the pitch is drawn squashed, so a sprite faces its on-screen direction
     const ratio = pixelRatio();
     const wanted = camera.scale * ratio * PLAYER_SCALE; // device pixels per (enlarged) meter on screen
     const ppm = spritePpm(wanted);
@@ -238,11 +238,23 @@ export function createRenderer(canvas, { colors = null } = {}) {
         ctx.setLineDash([]);
       }
     }
-    const target = match.passTarget ? match.players.find((p) => p.id === match.passTarget) : null;
+    // The receiver of the pass just made, or (while you hold the ball) of the pass you would make now, joined to you by a dashed line.
+    const previewing = !match.passTarget && model.passPreview;
+    const targetId = match.passTarget ?? (previewing ? model.passPreview : null);
+    const target = targetId ? match.players.find((p) => p.id === targetId) : null;
     if (target) {
       const p = project(camera, view, target.x, target.y, 0);
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-      ctx.lineWidth = 2;
+      const carrier = previewing ? match.players.find((q) => q.id === match.activeId) : null;
+      if (carrier) {
+        const from = project(camera, view, carrier.x, carrier.y, 0);
+        ctx.strokeStyle = 'rgba(255,212,59,0.7)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([camera.scale * 0.3, camera.scale * 0.25]);
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.strokeStyle = previewing ? 'rgba(255,212,59,0.95)' : 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = previewing ? 3 : 2;
       ctx.beginPath(); ctx.ellipse(p.x, p.y, camera.scale * 0.6, camera.scale * 0.6 * CAMERA.tilt, 0, 0, Math.PI * 2); ctx.stroke();
     }
 

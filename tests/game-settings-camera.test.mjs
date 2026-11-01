@@ -13,7 +13,9 @@ const memoryStorage = (initial = {}) => { const data = { ...initial }; return { 
 test('settings default sensibly, and junk never gets through', () => {
   assert.deepEqual(normalizeSettings(null), { ...DEFAULT_SETTINGS, bindings: {} });
   const messy = normalizeSettings({ difficulty: 'godlike', halfMinutes: 7, sound: 'yes', touchScale: 99, radar: 0, extra: 1, bindings: { pass: ['KeyP', 'KeyP', 5, ''], nonsense: ['KeyZ'], shoot: 'KeyK' } }, ACTIONS);
-  assert.deepEqual(messy, { schemaVersion: 1, difficulty: 'normal', halfMinutes: 2, sound: true, haptics: true, touchScale: 1.4, radar: true, bindings: { pass: ['KeyP'] } });
+  assert.deepEqual(messy, { schemaVersion: 1, difficulty: 'normal', halfMinutes: 2, sound: true, haptics: true, touchScale: 1.4, radar: true, tipsSeen: false, bindings: { pass: ['KeyP'] } });
+  assert.equal(normalizeSettings({ tipsSeen: true }).tipsSeen, true);
+  assert.equal(normalizeSettings({ tipsSeen: 'yes' }).tipsSeen, false, 'only a real boolean counts');
   assert.equal(normalizeSettings({ difficulty: 'hard', halfMinutes: 3, sound: false, touchScale: 0.1 }).touchScale, 0.8);
   assert.equal(normalizeSettings([]).difficulty, 'normal');
   assert.deepEqual(normalizeSettings(normalizeSettings({ difficulty: 'easy' })), normalizeSettings({ difficulty: 'easy' }), 'idempotent');

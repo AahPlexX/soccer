@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   haptics: true,
   touchScale: 1,
   radar: true,
+  tipsSeen: false, // the first-run touch controls card has been shown
   bindings: {}, // action -> array of key codes, merged over the defaults
 });
 
@@ -41,6 +42,7 @@ export function normalizeSettings(raw, knownActions = []) {
     haptics: typeof source.haptics === 'boolean' ? source.haptics : DEFAULT_SETTINGS.haptics,
     touchScale: clampNumber(source.touchScale, 0.8, 1.4, DEFAULT_SETTINGS.touchScale),
     radar: typeof source.radar === 'boolean' ? source.radar : DEFAULT_SETTINGS.radar,
+    tipsSeen: typeof source.tipsSeen === 'boolean' ? source.tipsSeen : DEFAULT_SETTINGS.tipsSeen,
     bindings,
   };
 }

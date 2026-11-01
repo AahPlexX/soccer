@@ -1,5 +1,6 @@
 import { DIFFICULTIES } from './ai.js';
 import { rebind } from './settings.js';
+import { TOUCH_HELP } from './touch-controls.js';
 
 // Game Mode menus as plain DOM: the title screen (difficulty, half length, kick off), the pause menu, the controls help and the
 // full-time summary. Each screen is built fresh when shown, takes focus on its first button and is keyboard and touch friendly.
@@ -51,7 +52,7 @@ const BINDABLE = [
 const TOUCH_SIZES = [[0.8, 'Small'], [1, 'Normal'], [1.25, 'Large']];
 const onOff = [[true, 'On'], [false, 'Off']];
 
-export function createMenus(root, { settings, onStart, onResume, onRestart, onExit, onSettings, bindings, defaultBindings, onBindings }) {
+export function createMenus(root, { settings, onStart, onResume, onRestart, onExit, onSettings, bindings, defaultBindings, onBindings, touch = false }) {
   const layer = element('div', 'g-menu-layer');
   layer.hidden = true;
   root.append(layer);
@@ -123,8 +124,11 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
         ['Switch player', `${keysText(keys.switch)} · Y · Switch button · ${keysText(keys.switchDir)} + direction, right stick or a swipe picks one`],
         ['Pause', `${keysText(keys.pause)} · Start · the II button`],
       ];
-      for (const [action, text] of rows) list.append(element('dt', '', action), element('dd', '', text));
-      panel.append(list, button('Change keys', () => api.showKeys(back)), button('Back', back, { primary: true }));
+      for (const [action, text] of touch ? TOUCH_HELP : rows) list.append(element('dt', '', action), element('dd', '', text));
+      panel.append(list);
+      if (touch) panel.append(button('Show these tips at the next kickoff', () => { settings.tipsSeen = false; onSettings?.(settings); }));
+      else panel.append(button('Change keys', () => api.showKeys(back)));
+      panel.append(button('Back', back, { primary: true }));
       show(panel);
     },
 
@@ -137,7 +141,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
         choice('Vibration', onOff, settings.haptics, set('haptics')),
         choice('Radar', onOff, settings.radar, set('radar')),
         choice('Touch buttons', TOUCH_SIZES, settings.touchScale, set('touchScale')),
-        button('Change keys', () => api.showKeys(() => api.showSettings(back))),
+        touch ? button('Show the touch tips at the next kickoff', () => { settings.tipsSeen = false; onSettings?.(settings); }) : button('Change keys', () => api.showKeys(() => api.showSettings(back))),
         button('Back', back, { primary: true }),
       );
       show(panel);

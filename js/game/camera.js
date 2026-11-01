@@ -172,3 +172,22 @@ export function edgeIndicator(camera, view, point, inset = 30, z = 0) {
   const scale = Math.min((cx - inset) / Math.max(1e-9, Math.abs(dx)), (cy - inset) / Math.max(1e-9, Math.abs(dy)));
   return { x: cx + dx * scale, y: cy + dy * scale, angle: Math.atan2(dy, dx) };
 }
+
+/**
+ * A direction on the screen (x right, y down) as the world direction that moves that way on screen. The pitch is drawn squashed
+ * vertically by CAMERA.tilt, so the same world step along y covers fewer pixels than one along x; without this a thumb pushed at 45
+ * degrees would move the player at about 38. The length is kept, so a half push stays a half push.
+ */
+export function screenToWorldMove(move) {
+  const length = Math.hypot(move.x, move.y);
+  if (length === 0) return { x: 0, y: 0 };
+  const wx = move.x;
+  const wy = move.y / CAMERA.tilt;
+  const k = length / Math.hypot(wx, wy);
+  return { x: wx * k, y: wy * k };
+}
+
+/** The angle on the screen of a world heading, which is the way a sprite should face to look like it moves that way. */
+export function worldHeadingToScreen(heading) {
+  return Math.atan2(Math.sin(heading) * CAMERA.tilt, Math.cos(heading));
+}

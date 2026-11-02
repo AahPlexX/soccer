@@ -284,3 +284,12 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
 /* The side panel scrolls: a soft shadow at its foot says there is more below. */
 .board-panel { background-image: linear-gradient(to top, rgba(0, 0, 0, .14), rgba(0, 0, 0, 0) 22px); background-repeat: no-repeat; background-attachment: local, scroll; }
 @media (max-width: 680px) { .frame-control, .frame-control select { min-width: 7.5rem; } }
+@media (max-width: 680px) {
+ /* The selection bar is no longer pinned into the one-line hint area, so its wrapped buttons all fit and none slip under the dock. */
+ .board-hint.has-selection { height: auto; min-height: 0; }
+ .board-hint.has-selection > :not(.selection-bar) { display: none; }
+ .selection-bar { position: static; width: 100%; }
+}
+@media (max-width: 680px) { .selection-actions button[aria-label^="Move selection"] { display: none; } }
+@media (max-width: 680px) { .selection-actions button { flex: 1 1 30%; padding-inline: 4px; } }
+@media (max-width: 680px) { .selection-actions button { flex: 1 1 28%; min-width: 0; white-space: normal; line-height: 1.1; font-size: 12.5px; } }

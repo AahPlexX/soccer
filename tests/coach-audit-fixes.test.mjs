@@ -92,3 +92,12 @@ test('C-47: when the browser will not save, the coach is told (a warning element
   assert.match(app, /Export backup/);
   assert.match(css, /#storage-warning \{/);
 });
+
+test('C-03: on a phone the selection bar is not pinned into the one-line hint, shows six actions in two rows, and the redundant nudge arrows are hidden', () => {
+  assert.match(css, /\.board-hint\.has-selection \{ height: auto; min-height: 0; \}/);
+  assert.match(css, /\.selection-bar \{ position: static; width: 100%; \}/);
+  assert.match(css, /\.selection-actions button\[aria-label\^="Move selection"\] \{ display: none; \}/);
+  assert.match(css, /\.selection-actions button \{ flex: 1 1 28%;/);
+  // The editor dialog keeps its own labelled nudge arrows, so precise nudging is still there on a phone.
+  assert.equal((html.match(/data-nudge="(up|down|left|right)" aria-label="Move player/g) ?? []).length, 4);
+});

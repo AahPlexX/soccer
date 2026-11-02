@@ -16,10 +16,11 @@ export const CAMERA_FOV_DEGREES = 40;
 
 // Distances are for a 4:3 viewport; presetOrbit() widens them for narrower ones so the pitch still fits.
 export const CAMERA_PRESETS = Object.freeze({
-  top: Object.freeze({ label: 'Top-down', azimuth: 0, polar: 0.02, distance: 62 }),
-  broadcast: Object.freeze({ label: 'Broadcast', azimuth: 0, polar: 1.05, distance: 72 }),
+  // wideFloor: how far a widescreen stage may pull the camera in. Top-down is limited by the pitch's width on screen, so it never moves in.
+  top: Object.freeze({ label: 'Top-down', azimuth: 0, polar: 0.02, distance: 62, wideFloor: 1 }),
+  broadcast: Object.freeze({ label: 'Broadcast', azimuth: 0, polar: 1.05, distance: 94, wideFloor: 0.6 }),
   goal: Object.freeze({ label: 'Behind our goal', azimuth: -Math.PI / 2, polar: 1.2, distance: 58, goalRelative: true }),
-  sideline: Object.freeze({ label: 'Sideline low', azimuth: 0, polar: 1.38, distance: 50 }),
+  sideline: Object.freeze({ label: 'Sideline low', azimuth: 0, polar: 1.38, distance: 50, wideFloor: 1 }),
   // Half-field framing (COACH-007): the home team attacks toward +x, so its own half is at -x.
   ourHalf: Object.freeze({ label: 'Our half', azimuth: 0, polar: 0.9, distance: 44, targetX: -PITCH_WORLD.length / 4 }),
   theirHalf: Object.freeze({ label: 'Their half', azimuth: 0, polar: 0.9, distance: 44, targetX: PITCH_WORLD.length / 4 }),
@@ -29,10 +30,14 @@ export const DEFAULT_PRESET = 'broadcast';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-/** An orbit for a named preset, centered on the pitch, with the distance widened for viewports narrower than 4:3. */
+// Widescreen stages are shorter than 4:3 ones, so the pitch (60 long, filling the width) used to float in ~55% of the stage (C-06).
+// Moving in on them fills it; the floor keeps the 60-yard pitch's ends inside the frame on the lowest presets.
+export const WIDE_DISTANCE_FLOOR = 0.85;
+
+/** An orbit for a named preset, centered on the pitch: backed off for viewports narrower than 4:3, brought in (to a floor) for wider ones. */
 export function presetOrbit(name, aspect = 4 / 3, flipped = false) {
   const preset = CAMERA_PRESETS[name] ?? CAMERA_PRESETS[DEFAULT_PRESET];
-  const widen = Math.max(1, (4 / 3) / (Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3));
+  const widen = Math.max(preset.wideFloor ?? WIDE_DISTANCE_FLOOR, (4 / 3) /(Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 3));
   return clampOrbit({
     // On a flipped board our goal and our half are on the other side, so goal-relative presets turn with them.
     target: { x: (preset.targetX ?? 0) * (flipped ? -1 : 1), z: preset.targetZ ?? 0 },

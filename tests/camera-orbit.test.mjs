@@ -52,10 +52,14 @@ test('half-field presets center on their own half and share the pitch-fitting wi
   assert.ok(presetOrbit('ourHalf', 0.6).distance > presetOrbit('ourHalf', 4 / 3).distance);
 });
 
-test('narrow viewports back the camera off so the pitch still fits; wide ones keep the base distance', () => {
+test('narrow viewports back the camera off so the pitch still fits; wide ones move in, down to a floor (C-06)', () => {
   const base = presetOrbit('broadcast', 4 / 3).distance;
   assert.ok(presetOrbit('broadcast', 0.6).distance > base);
-  near(presetOrbit('broadcast', 2).distance, base);
+  assert.ok(presetOrbit('broadcast', 1.6).distance < base, 'a widescreen stage gets a closer camera');
+  near(presetOrbit('broadcast', 2.2).distance, base * (4 / 3) / 2.2);
+  near(presetOrbit('broadcast', 5).distance, base * 0.6, 'but never closer than the floor, so the pitch ends stay in frame');
+  assert.equal(presetOrbit('top', 2.2).distance, presetOrbit('top', 4 / 3).distance, 'top-down is limited by height, so it never moves in');
+  assert.equal(presetOrbit('sideline', 2.2).distance, presetOrbit('sideline', 4 / 3).distance);
   near(presetOrbit('broadcast', Number.NaN).distance, base);
   assert.deepEqual(presetOrbit('nope'), presetOrbit('broadcast'));
 });

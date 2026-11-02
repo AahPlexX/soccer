@@ -101,3 +101,13 @@ test('C-03: on a phone the selection bar is not pinned into the one-line hint, s
   // The editor dialog keeps its own labelled nudge arrows, so precise nudging is still there on a phone.
   assert.equal((html.match(/data-nudge="(up|down|left|right)" aria-label="Move player/g) ?? []).length, 4);
 });
+
+test('C-05 and C-06: the 3D view refits its first camera to the real stage shape, and phones give it more room', () => {
+  const view3d = readFileSync(new URL('../js/view3d.js', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.match(view3d, /JSON\.stringify\(orbit\) === framed/, 'an untouched orbit is refit when the stage gets its real size');
+  assert.equal((view3d.match(/framed = JSON\.stringify\(orbit\)/g) ?? []).length, 4, 'initial, refit, setPreset and reset all record what they chose');
+  assert.match(app, /classList\.toggle\('mode-3d', on\)/);
+  assert.match(css, /body\.mode-3d \.board-heading p \{ display: none; \}/);
+  assert.match(css, /#view3d \{ min-height: 260px; \}/);
+});

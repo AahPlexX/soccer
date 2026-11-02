@@ -487,6 +487,7 @@ async function setView3D(on) {
   document.querySelector('#edit-3d').hidden = !on;
   view3dToggle.setAttribute('aria-pressed', String(on));
   svg.style.display = on ? 'none' : '';
+  document.body.classList.toggle('mode-3d', on); // lets phone CSS give the 3D stage the room (C-05)
   view3dContainer.hidden = !on;
   cameraPresetControl.hidden = !on;
   cameraFollowControl.hidden = !on;

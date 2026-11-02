@@ -33,6 +33,7 @@ export async function createView3D({ container, getState, onContextLost = () => 
 
   let preset = DEFAULT_PRESET;
   let orbit = presetOrbit(preset);
+  let framed = JSON.stringify(orbit); // the orbit this module chose itself; once the coach moves the camera it no longer matches and is left alone
   let follow = 'off'; // 'ball' or 'selected': the camera target eases toward it each frame; panning by hand turns it off
   let frame = 0;
   let width = 0;
@@ -53,6 +54,8 @@ export async function createView3D({ container, getState, onContextLost = () => 
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    // The first orbit was framed for 4:3 before the stage had a size; refit it to the real shape (C-06), unless the coach has moved it.
+    if (JSON.stringify(orbit) === framed) { orbit = presetOrbit(preset, width / height, getState().flipped === true); framed = JSON.stringify(orbit); }
   }
 
   function render() {
@@ -173,9 +176,9 @@ export async function createView3D({ container, getState, onContextLost = () => 
     /** Stops drawing; the scene and renderer stay ready for the next start. */
     stop() { cancelAnimationFrame(frame); frame = 0; },
     /** Moves the camera to a named preset (js/camera-orbit.js). */
-    setPreset(name) { preset = name; orbit = presetOrbit(name, width && height ? width / height : 4 / 3, getState().flipped === true); },
+    setPreset(name) { preset = name; orbit = presetOrbit(name, width && height ? width / height : 4 / 3, getState().flipped === true); framed = JSON.stringify(orbit); },
     /** Returns the camera to the current preset. */
-    reset() { orbit = presetOrbit(preset, width && height ? width / height : 4 / 3, getState().flipped === true); },
+    reset() { orbit = presetOrbit(preset, width && height ? width / height : 4 / 3, getState().flipped === true); framed = JSON.stringify(orbit); },
     /** Zooms by a factor (greater than 1 moves closer). */
     zoom(factor) { orbit = zoomOrbit(orbit, factor); },
     /** Keeps the camera centered on the 'ball' or the 'selected' player (CAM-006) until 'off' or the coach pans by hand. */

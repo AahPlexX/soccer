@@ -143,6 +143,9 @@ body.presentation #presentation-toggle { background: #e0edbd; color: #173e2c; }
  .selection-bar { align-items: flex-start; flex-direction: column; gap: 5px; }
  .selection-actions { width: 100%; }
  input, textarea, select { font-size: 16px; }
+ body.mode-3d .board-heading .eyebrow, body.mode-3d .board-heading p { display: none; }
+ body.mode-3d .board-heading h1 { margin-block: 0; }
+ #view3d { min-height: 260px; }
  body.presentation .header-actions { width: auto; display: flex; margin-left: auto; }
  body.presentation .top-rail { flex-wrap: nowrap; }
  body.presentation .board-heading-copy { flex-basis: auto; }

@@ -111,3 +111,8 @@ test('C-05 and C-06: the 3D view refits its first camera to the real stage shape
   assert.match(css, /body\.mode-3d \.board-heading p \{ display: none; \}/);
   assert.match(css, /#view3d \{ min-height: 260px; \}/);
 });
+
+test('C-07: Present on a short screen (phone held sideways) slims the header and dock so the pitch keeps its height', () => {
+  assert.match(css, /@media \(max-height: 520px\) \{\n body\.presentation \.app-shell \{ grid-template-rows: 44px minmax\(0,1fr\) auto; \}/);
+  assert.match(css, /body\.presentation \.teaching-strip, body\.presentation \.simulation-group button:not\(#play-toggle\) \{ display: none; \}/);
+});

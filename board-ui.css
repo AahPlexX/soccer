@@ -296,3 +296,13 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
 @media (max-width: 680px) { .selection-actions button[aria-label^="Move selection"] { display: none; } }
 @media (max-width: 680px) { .selection-actions button { flex: 1 1 30%; padding-inline: 4px; } }
 @media (max-width: 680px) { .selection-actions button { flex: 1 1 28%; min-width: 0; white-space: normal; line-height: 1.1; font-size: 12.5px; } }
+
+/* Present on a short screen (a phone held sideways): the 64 px header and the full dock left the pitch ~80 px (C-07). Slim header, Play-only dock. */
+@media (max-height: 520px) {
+ body.presentation .app-shell { grid-template-rows: 44px minmax(0,1fr) auto; }
+ body.presentation .top-rail { padding-block: 4px; }
+ body.presentation .board-heading { display: none; }
+ body.presentation .teaching-strip, body.presentation .simulation-group button:not(#play-toggle) { display: none; }
+ body.presentation .bottom-dock { padding: 4px 8px; }
+ body.presentation .workspace { padding: 4px; }
+}

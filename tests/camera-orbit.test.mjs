@@ -81,7 +81,7 @@ test('tilting is limited so the camera never goes under the ground or flips over
 test('zooming halves or doubles the distance and stays within limits', () => {
   const start = { ...presetOrbit('broadcast'), distance: 60 };
   near(zoomOrbit(start, 2).distance, 30);
-  near(zoomOrbit(start, 0.5).distance, 110);
+  near(zoomOrbit(start, 0.5).distance, 120);
   assert.equal(zoomOrbit(start, 1000).distance, ORBIT_LIMITS.distance.min);
   assert.equal(zoomOrbit(start, 0.001).distance, ORBIT_LIMITS.distance.max);
 });
@@ -111,4 +111,11 @@ test('ground per pixel shrinks as the camera zooms in', () => {
   const farther = groundPerPixel({ distance: 60 }, 800);
   near(farther, closer * 2);
   assert.ok(Number.isFinite(groundPerPixel({ distance: 30 }, 0)));
+});
+
+test('C-07: a tall, narrow stage (phone portrait, aspect 0.62) is not clamped, so the whole pitch fits across its width', () => {
+  const orbit = presetOrbit('broadcast', 374 / 600);
+  assert.ok(orbit.distance > 110, 'it needs more than the old 110 limit');
+  near(orbit.distance, presetOrbit('broadcast', 4 / 3).distance * (4 / 3) / (374 / 600));
+  assert.ok(orbit.distance <= ORBIT_LIMITS.distance.max);
 });

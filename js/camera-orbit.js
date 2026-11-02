@@ -8,7 +8,7 @@ export const PITCH_WORLD = Object.freeze({ length: 60, width: 40.8 }); // yards;
 
 export const ORBIT_LIMITS = Object.freeze({
   polar: Object.freeze({ min: 0.02, max: 1.45 }), // never below the ground
-  distance: Object.freeze({ min: 12, max: 110 }),
+  distance: Object.freeze({ min: 12, max: 240 }), // a tall, narrow phone stage needs ~200 to fit the 60-yard pitch across its width (C-07); the camera far plane is 400
   panMargin: 10, // how far past the touchlines and goal lines the target may move
 });
 

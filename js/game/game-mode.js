@@ -297,7 +297,11 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
   document.addEventListener('visibilitychange', onVisibility);
-  root.addEventListener('pointerdown', () => audio.resume(), { passive: true });
+  // A finger on a device that counted as a laptop (a touchscreen laptop): bring up the on-screen pad quietly, no choice to make.
+  root.addEventListener('pointerdown', (event) => {
+    audio.resume();
+    if (event.pointerType === 'touch' && !touch && session.mode === 'playing') touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics, onTipsDone: tipsDone });
+  }, { passive: true });
   root.tabIndex = -1;
 
   menus.showTitle();

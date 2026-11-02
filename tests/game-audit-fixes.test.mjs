@@ -167,7 +167,7 @@ test('G-10: Esc and B always mean one level back, and never throw you out of the
   const m = menus(calls);
   assert.equal(m.back(), false, 'nothing to go back from before a screen is shown');
   m.showTitle();
-  press(m.layer, 'Controls');
+  press(m.layer, 'View controls');
   assert.equal(m.back(), true);
   assert.ok(m.layer.querySelectorAll('button').some((n) => n.textContent === 'Kick off'), 'back from Controls is the title screen, not leaving the game');
   assert.equal(calls.exit ?? 0, 0);

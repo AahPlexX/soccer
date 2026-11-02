@@ -78,6 +78,14 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
     layer.querySelector('button')?.focus();
   }
 
+  // One line under the title: the controls for the device being used (detected, never asked), so a first-time player sees them before kickoff.
+  function controlsLine() {
+    if (touch) return 'Left thumb moves · Pass, Shoot, Run, Tackle and Switch buttons on the right';
+    const keys = bindings();
+    const first = (codes) => keyLabel(codes[0]).replace(/^(Up|Down|Left|Right)$/, (word) => ({ Up: '↑', Down: '↓', Left: '←', Right: '→' })[word]);
+    return `Move ${first(keys.up)} ${first(keys.left)} ${first(keys.down)} ${first(keys.right)} · Pass ${first(keys.pass)} · Shoot ${first(keys.shoot)} · Sprint ${first(keys.sprint)} · Tackle ${first(keys.tackle)} · Switch ${first(keys.switch)}`;
+  }
+
   const api = {
     layer,
     get visible() { return !layer.hidden; },
@@ -120,10 +128,11 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
       panel.append(
         element('h2', 'g-title', 'U9 SOCCER'),
         element('p', 'g-subtitle', 'Seven a side. You control one player at a time.'),
+        element('p', 'g-controls-line', controlsLine()),
         choice('Difficulty', Object.entries(DIFFICULTIES).map(([key, profile]) => [key, profile.label]), settings.difficulty, (value) => { settings.difficulty = value; onSettings?.(settings); }),
         choice('Half length', [[1, '1 min'], [2, '2 min'], [3, '3 min']], settings.halfMinutes, (value) => { settings.halfMinutes = value; onSettings?.(settings); }),
         button('Kick off', () => onStart(settings), { primary: true }),
-        button('Controls', () => api.showControls(() => api.showTitle())),
+        button('View controls', () => api.showControls(() => api.showTitle())),
         button('Settings', () => api.showSettings(() => api.showTitle())),
         button('Back to coach', () => onExit()),
       );
@@ -138,7 +147,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
         choice('Difficulty', Object.entries(DIFFICULTIES).map(([key, profile]) => [key, profile.label]), settings.difficulty, (value) => { settings.difficulty = value; onSettings?.(settings); onDifficulty?.(value); }),
         button('Resume', () => onResume(), { primary: true }),
         confirmButton('Restart match', () => onRestart()),
-        button('Controls', () => api.showControls(() => api.showPause())),
+        button('View controls', () => api.showControls(() => api.showPause())),
         button('Settings', () => api.showSettings(() => api.showPause())),
         confirmButton('Exit to coach', () => onExit()),
       );

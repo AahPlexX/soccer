@@ -17,9 +17,14 @@ function element(tag, className, text) {
   return node;
 }
 
-/** True on devices whose primary pointer is a finger. */
+/**
+ * True on devices whose PRIMARY pointer is a finger (phones, tablets). A laptop with a touchscreen still has a trackpad or mouse as its
+ * primary pointer and exposes ontouchstart, so it is a laptop here: keyboard play, no on-screen pad (see mountOnFirstTouch in game-mode.js
+ * for the case where someone then uses a finger anyway). The ontouchstart check is only a fallback for browsers without matchMedia.
+ */
 export function isTouchDevice() {
-  return Boolean(globalThis.matchMedia?.('(pointer: coarse)').matches) || 'ontouchstart' in globalThis;
+  const query = globalThis.matchMedia?.('(pointer: coarse)');
+  return query ? query.matches : 'ontouchstart' in globalThis;
 }
 
 /** What each control does, as shown on the first-run card and in the Controls screen on a touch device. */

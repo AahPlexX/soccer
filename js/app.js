@@ -976,7 +976,7 @@ async function refreshSavedList() {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
     empty.textContent = savedFilter === 'All'
-      ? 'Your saved positions will appear below the built-in teaching scenarios.'
+      ? 'Your own saves will appear below the built-in teaching scenarios.'
       : `No saved ${savedFilter.toLowerCase()} yet. Use Save as to add one.`;
     savedList.append(empty);
     return;
@@ -1021,7 +1021,7 @@ importFile.addEventListener('change', async () => {
     replaceBoard(await importBackup(await file.text()));
     coachingUI?.onLoad();
     resetBaselineReady = restoreResetBaseline();
-    showToast('Backup imported');
+    showToast('Backup imported. Undo brings your previous board back.');
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'Backup import failed');
   } finally {

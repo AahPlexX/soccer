@@ -25,8 +25,6 @@ button[aria-pressed="true"], .tool-button.is-active, .primary-action { backgroun
 .header-actions { display: flex; gap: 6px; align-items: center; }
 .header-actions button, #panel-toggle { color: #f6faef; background: transparent; border-color: #58725e; padding-inline: 12px; white-space: nowrap; }
 .header-actions button:hover, #panel-toggle:hover { background: #2d5340; }
-#coach-open { background: #e0edbd; color: #173e2c; border-color: #e0edbd; }
-#coach-open:hover { background: #ecf5d8; }
 #undo, #redo { font-size: 12px; padding-inline: 10px; }
 #panel-toggle, #panel-close { display: none; }
 .board-panel { grid-area: tools; overflow-y: auto; overscroll-behavior: contain; padding: 20px 14px; border-right: 1px solid var(--line); background: var(--rail); }
@@ -224,8 +222,6 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
 /* Hierarchy and contrast. */
 .board-heading p { color: color-mix(in srgb, var(--text) 80%, var(--page)); }
 .header-actions button:disabled, #undo:disabled, #redo:disabled { opacity: .62; }
-#coach-open { background: rgba(255, 255, 255, .12); color: #f6faef; border-color: rgba(255, 255, 255, .38); }
-#coach-open:hover { background: rgba(255, 255, 255, .2); }
 .teaching-strip button:disabled { opacity: .55; }
 #drill-clock { margin-inline: 12px; font-variant-numeric: tabular-nums; }
 /* Bottom bar: Play is the primary action, the rest are quiet secondary controls with clear spacing. */
@@ -284,3 +280,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
  .board-heading p, .board-hint, .board-heading .eyebrow, .view-group label { font-size: 13px; }
 }
 #storage-warning { background: #fff3cd; color: #5a4300; border: 1px solid #e0b64a; border-radius: 9px; padding: 8px 12px; font-size: 13px; line-height: 1.4; flex-shrink: 0; }
+
+/* The side panel scrolls: a soft shadow at its foot says there is more below. */
+.board-panel { background-image: linear-gradient(to top, rgba(0, 0, 0, .14), rgba(0, 0, 0, 0) 22px); background-repeat: no-repeat; background-attachment: local, scroll; }
+@media (max-width: 680px) { .frame-control, .frame-control select { min-width: 7.5rem; } }

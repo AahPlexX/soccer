@@ -3,7 +3,7 @@ import { duplicateProp, setPlayerBenched } from './coaching.js';
 import { giveBallToPlayer } from './board-interactions.js';
 
 const HINTS = {
-  move: 'Drag to move. Tap an object for coaching actions; Enter edits a player.',
+  move: globalThis.matchMedia?.('(pointer: coarse)').matches ? 'Drag to move. Tap a player or the ball for coaching actions.' : 'Drag to move. Tap an object for coaching actions; Enter edits a player.',
   select: 'Tap or use Enter/Space to select objects. Drag a selected object to move the unit; arrows nudge.',
   draw: 'Draw a coaching mark on the pitch. Undo recovers the last stroke.',
   arrow: 'Drag from the passer to the intended receiver.',
@@ -125,7 +125,7 @@ export function setupBoardSurface({ getState, getSelection, clearSelection, comm
     });
     byId('board-title').textContent = state.coaching.title || 'Untitled coaching setup';
     const count = (team) => state.players.filter((p) => p.team === team && !p.benched).length;
-    byId('board-summary').textContent = `${state.simulation.running ? 'Playing' : 'Paused'} · ${count('home')} v ${count('away')} · ${state.homeFormation} / ${state.awayFormation}`;
+    byId('board-summary').textContent = `${state.simulation.running ? 'Playing' : 'Paused'} · Us ${count('home')} (${state.homeFormation}) v Them ${count('away')} (${state.awayFormation})${state.awayVisible ? '' : ' · opponents hidden but still playing'}`;
     byId('board-tool-hint').textContent = mode3D() ? edit3D() ? 'Drag a player, ball or prop on the ground. Two fingers or right-drag moves the camera.' : 'Drag to orbit. Enable Edit in 3D to reposition players, balls and equipment.' : HINTS[state.tool];
   }
   return { sync, closePanel: () => setPanel(false) };

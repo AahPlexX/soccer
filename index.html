@@ -39,7 +39,7 @@
 <div class="header-actions">
 <button id="undo" class="tool-button" type="button" title="Undo (Ctrl or Cmd + Z)">Undo</button>
 <button id="redo" class="tool-button" type="button" title="Redo (Shift + Ctrl or Cmd + Z)">Redo</button>
-<button id="saved-open" class="rail-button" type="button" aria-label="Library — saved positions">Library</button>
+<button id="saved-open" class="rail-button" type="button" aria-label="Library — your saved setups, plays and drills">Library</button>
 <button id="save-as" type="button" aria-label="Save position">Save</button>
 <button id="coach-open" class="rail-button" type="button">Coach workspace</button>
 <button class="" id="presentation-toggle" aria-controls="workspace" type="button" aria-pressed="false">Present</button>
@@ -123,7 +123,7 @@
         <label for="home-formation">Our shape</label>
         <select id="home-formation">
           <option value="1-3-2-1">1-3-2-1</option>
-          <option value="1-2-3-1">1-2-3-1</option>
+          <option value="1-2-3-1">1-2-3-1</option><option value="1-2-2-2">1-2-2-2 (two strikers)</option><option value="1-3-1-2">1-3-1-2 (three at the back)</option>
         </select>
         <button id="home-formation-apply" class="formation-apply" type="button" aria-label="Reapply our shape" title="Reapply our shape">↺</button>
       </div>
@@ -131,7 +131,7 @@
         <label for="away-formation">Their shape</label>
         <select id="away-formation">
           <option value="1-3-2-1">1-3-2-1</option>
-          <option value="1-2-3-1" selected="">1-2-3-1</option>
+          <option value="1-2-3-1" selected="">1-2-3-1</option><option value="1-2-2-2">1-2-2-2 (two strikers)</option><option value="1-3-1-2">1-3-1-2 (three at the back)</option>
         </select>
         <button id="away-formation-apply" class="formation-apply" type="button" aria-label="Reapply their shape" title="Reapply their shape">↺</button>
       </div>
@@ -182,7 +182,7 @@
         <button id="zoom-out" class="tool-button" type="button" title="Zoom out (pinch, or mouse wheel)" aria-label="Zoom out">−</button>
         <button id="zoom-in" class="tool-button" type="button" title="Zoom in (pinch, or mouse wheel)" aria-label="Zoom in">+</button>
         <button id="zoom-fit" class="tool-button" type="button" title="Reset the view: 2D shows the whole pitch again; 3D returns the camera to the selected angle">Reset view</button>
-        <label class="camera-preset-control frame-control" for="view-frame" title="Frame the whole pitch, or zoom to one half. In 3D this moves the camera to that half.">Frame
+        <label class="camera-preset-control frame-control" for="view-frame" title="Frame the whole pitch, or zoom to one half. In 3D this moves the camera to that half.">Show
           <select id="view-frame" name="viewFrame"><option value="whole">Whole pitch</option><option value="ours">Our half</option><option value="theirs">Their half</option><option value="custom" disabled hidden>Custom</option></select>
         </label>
         <button id="view-3d-toggle" class="tool-button" type="button" aria-pressed="false" title="Switch between the 2D board and a 3D camera view">3D view</button>
@@ -232,7 +232,7 @@
 </div>
 </section>
 <span id="board-tool-hint">Drag a player or ball. Tap a player to edit.</span>
-<button id="quick-capture" type="button">Capture teaching step</button>
+<button id="quick-capture" type="button">Capture step</button>
 </div>
 </main>
 
@@ -240,7 +240,7 @@
 <div class="simulation-group">
         <button id="play-toggle" class="primary-action" type="button">Play simulation</button>
         <button id="script-clear" type="button" hidden title="Remove the queued player actions and their arrows">Clear script</button>
-<button id="simulation-step" type="button" title="Play exactly one second of the simulation, then pause, so you can stop on a moment and discuss it">Step 1 sec</button>
+<button id="simulation-step" type="button" title="Play exactly one second of the simulation, then pause, so you can stop on a moment and discuss it">Step forward 1 s</button>
         <button id="reset-board" type="button">Reset setup</button>
 
 
@@ -251,7 +251,7 @@
           <button id="teaching-next" type="button" aria-label="Next teaching step">→</button>
           <output id="drill-clock" aria-label="Drill time remaining">5:00</output>
           <button id="clock-toggle" type="button">Start clock</button>
-          <button id="clock-reset" type="button" aria-label="Reset clock">Reset clock</button>
+          <button id="clock-reset" type="button" aria-label="Reset clock" title="Reset the clock to the starting time">Reset clock</button>
           <span id="clock-status" class="visually-hidden" role="status">Drill clock paused</span>
         </div>
 </footer>
@@ -315,7 +315,7 @@
       <p>Capture up to 12 board snapshots with teaching points. Arrange a play, drill progressions, or a practice plan. Previous / Next loads each snapshot paused; arrows illustrate intent and do not command the CPU.</p>
       <label for="teaching-title">Step name</label>
 <input id="teaching-title" maxlength="80" type="text" placeholder="e.g. 1. Split wide; 2. Receive on the turn">
-      <button id="teaching-capture" type="button">Capture board &amp; brief</button>
+      <button id="teaching-capture" type="button">Capture step with notes</button>
       <ol id="teaching-steps">
 </ol>
     </details>
@@ -466,10 +466,10 @@
   <dialog id="saved-dialog" class="library-dialog">
     <div class="dialog-heading">
 <div>
-<h2>Saved positions</h2>
-<p>Load a formation, position, play, drill, or rule setup.</p>
+<h2>Library</h2>
+<p>Load a formation, setup, play, drill, or rule set. Your own saves appear here too.</p>
 </div>
-<button id="saved-close" class="icon-button" type="button" aria-label="Close saved positions">×</button>
+<button id="saved-close" class="icon-button" type="button" aria-label="Close library">×</button>
 </div>
     <div id="saved-tabs" class="saved-tabs" role="tablist" aria-label="Saved preset categories">
       <button id="saved-tab-all" type="button" role="tab" data-library-filter="All" aria-selected="true" aria-controls="saved-list">All</button>

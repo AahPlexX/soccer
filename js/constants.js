@@ -4,7 +4,8 @@ export const FALLBACK_PRESETS_KEY = 'u9_tactical_board_presets_v1';
 export const DB_NAME = 'u9_tactical_board_v1';
 export const DB_VERSION = 1;
 
-export const FORMATION_NAMES = Object.freeze(['1-3-2-1', '1-2-3-1']);
+// The leading 1 is the goalkeeper: 1-3-2-1 is the usual "3-2-1" of 7v7 and 1-2-3-1 the "2-3-1".
+export const FORMATION_NAMES = Object.freeze(['1-3-2-1', '1-2-3-1', '1-2-2-2', '1-3-1-2']);
 export const TEAM_IDS = Object.freeze(['home', 'away']);
 
 // The 7v7 pitch is 60 x 40.8 yards (the 3D scene's world units); ball physics works in meters.

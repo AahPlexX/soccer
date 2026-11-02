@@ -270,3 +270,17 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
 
 /* The selection halo is white with a dark edge: a yellow halo vanished against the yellow goalkeeper kit. */
 .player-token.is-selected .player-halo, .player-token.is-dragging .player-halo { stroke: #fff; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
+
+/* Coach audit fixes: Undo/Redo stay on touch screens, the phone header and selection bar do not hide actions, small text is larger, and a lasting warning when saving is blocked. */
+@media (max-width: 1099px) { #undo, #redo { display: inline-flex; align-items: center; justify-content: center; } }
+@media (max-width: 680px) {
+ .header-actions { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+ #undo, #redo, #saved-open, #save-as { grid-column: span 3; }
+ #coach-open { grid-column: span 5; }
+ #presentation-toggle { grid-column: span 3; }
+ #game-mode-toggle { grid-column: span 4; }
+ .selection-actions { flex-wrap: wrap; overflow-x: visible; width: 100%; }
+ .selection-actions button { flex: 1 1 auto; font-size: 13px; }
+ .board-heading p, .board-hint, .board-heading .eyebrow, .view-group label { font-size: 13px; }
+}
+#storage-warning { background: #fff3cd; color: #5a4300; border: 1px solid #e0b64a; border-radius: 9px; padding: 8px 12px; font-size: 13px; line-height: 1.4; flex-shrink: 0; }

@@ -151,7 +151,7 @@ function buildBall(ball) {
   });
   group.append(el('ellipse', { rx: 11, ry: 4.5, cy: 9, class: 'ball-shadow' }));
   const visual = el('g', { class: 'object-visual ball-visual' });
-  visual.append(el('circle', { r: 18, class: 'ball-hit' }));
+  visual.append(el('circle', { r: 30, class: 'ball-hit' })); // a ball is small, so its tap area is generous (22 px across was too hard to grab)
   visual.append(el('circle', { r: 12, class: 'ball-core' }));
   visual.append(el('path', { d: 'M0-7 6-2 4 6-4 6-6-2Z', class: 'ball-patch' }));
   const lift = el('g', { class: 'ball-lift' });

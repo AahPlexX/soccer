@@ -8,7 +8,7 @@ export const EDIT_KEYS = Object.freeze([
 const read = (state) => JSON.stringify(EDIT_KEYS.map((key) => state[key]));
 const apply = (state, snapshot) => JSON.parse(snapshot).forEach((value, index) => { state[EDIT_KEYS[index]] = value; });
 
-export function createHistory(limit = 50) {
+export function createHistory(limit = 200) {
   const undoStack = [];
   const redoStack = [];
   let baseline = '';

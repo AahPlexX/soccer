@@ -150,16 +150,31 @@ async function restoreResetBaseline() {
 
 resetBaselineReady = restoreResetBaseline();
 
-function scheduleAutosave() {
-  clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(() => saveAutosave(state), AUTOSAVE_DELAY_MS);
+let storageWarning = null;
+/** Shows (or removes) a lasting notice when the browser will not let the board be saved, so work is never lost silently. */
+function setStorageWarning(blocked) {
+  if (blocked && !storageWarning) {
+    storageWarning = document.createElement('div');
+    storageWarning.id = 'storage-warning';
+    storageWarning.setAttribute('role', 'alert');
+    storageWarning.textContent = 'This browser is not letting the board save. Your work will be lost when you close the page. Use Library, then Export backup, to keep it.';
+    document.querySelector('.workspace')?.prepend(storageWarning);
+  } else if (!blocked && storageWarning) {
+    storageWarning.remove();
+    storageWarning = null;
+  }
 }
 
-function showToast(message) {
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => setStorageWarning(saveAutosave(state) === false), AUTOSAVE_DELAY_MS);
+}
+
+function showToast(message, duration = TOAST_DURATION_MS) {
   clearTimeout(toastTimer);
   toast.textContent = message;
   toast.hidden = false;
-  toastTimer = setTimeout(() => { toast.hidden = true; }, TOAST_DURATION_MS);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, duration);
 }
 
 function syncControls() {
@@ -275,7 +290,7 @@ redoButton.addEventListener('click', () => stepHistory('redo'));
 // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z or Ctrl+Y redoes; text fields and open dialogs keep their own behavior.
 document.addEventListener('keydown', (event) => {
   if (document.body.classList.contains('presentation') || document.body.classList.contains('game-active')) return;
-  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.target.closest?.('input, textarea, select, dialog[open]')) return;
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.target.closest?.('input, textarea, dialog[open]')) return;
   const key = event.key.toLowerCase();
   if (key !== 'z' && key !== 'y') return;
   event.preventDefault();
@@ -479,7 +494,7 @@ async function setView3D(on) {
     [zoomInButton, zoomOutButton, zoomFitButton].forEach((button) => { button.disabled = false; });
     view3d.setEditing(editing3D);
     view3d.start();
-    showToast('Drag to rotate the camera, or enable Edit in 3D to move objects.');
+    showToast('Drag to rotate the camera, or enable Edit in 3D to move objects.', 2600); // briefly: it sits over the pitch
   } else {
     view3d?.stop();
     applyView(view);
@@ -785,7 +800,7 @@ resetBoard.addEventListener('click', async () => {
   await resetBaselineReady;
   const baseline = { ...(state.coaching.startBoard ?? resetSnapshot), coaching: state.coaching };
   replaceBoard(resetBoardState(baseline, state), { baseline: false });
-  showToast('Board reset to starting position');
+  showToast('Board reset to the starting position. Undo brings your last setup back.');
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -157,7 +157,7 @@ function normalizeBalls(balls, fallback) {
 function normalizeDrawings(drawings) {
   if (!Array.isArray(drawings)) return [];
   return drawings
-    .filter((drawing) => isRecord(drawing) && Array.isArray(drawing.points) && drawing.points.length > 0 && drawing.points.every(isPoint))
+    .filter((drawing) => isRecord(drawing) && Array.isArray(drawing.points) && drawing.points.length > 1 && drawing.points.every(isPoint))
     .map(({ color, width, source, ...drawing }) => ({
       ...drawing,
       ...(source === 'action' ? { source } : {}), // arrows made by the player-action dialog; they belong to the play script

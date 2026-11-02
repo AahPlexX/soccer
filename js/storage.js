@@ -300,7 +300,11 @@ export async function importBackup(text) {
   if (!validBackupState(payload.currentState) || !payload.presets.every(validBackupPreset)) {
     throw new Error('This backup contains invalid saved positions.');
   }
+  // A same-id preset already on this device that is newer than the backup's copy is kept, not overwritten.
+  const existing = new Map((await listPresets()).map((item) => [item.id, item.updatedAt]));
   for (const preset of payload.presets) {
+    const have = existing.get(preset.id);
+    if (have && Date.parse(have) > Date.parse(preset.updatedAt)) continue;
     await storePreset({
       id: preset.id,
       title: presetTitle(preset.title),

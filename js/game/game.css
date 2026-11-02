@@ -43,7 +43,7 @@
 .g-banner-goal { color: #ffd43b; }
 .g-radar { position: absolute; right: max(12px, env(safe-area-inset-right)); top: calc(max(10px, env(safe-area-inset-top)) + 4px); width: 132px; height: 88px; border: 2px solid rgba(255, 255, 255, 0.85); border-radius: 6px; opacity: 0.92; }
 .g-radar[hidden] { display: none; }
-.g-buttons { position: absolute; left: max(12px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); display: flex; gap: 8px; pointer-events: auto; }
+.g-buttons { position: absolute; left: max(12px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); display: flex; gap: 8px; pointer-events: auto; z-index: 3; }
 #game-root .g-button { width: 44px; height: 44px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.85); background: rgba(8, 22, 14, 0.78); color: #fff; font-size: 18px; font-weight: 800; cursor: pointer; }
 .g-button:active { transform: translateY(1px); background: rgba(40, 90, 55, 0.9); }
 @keyframes g-pop { from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }

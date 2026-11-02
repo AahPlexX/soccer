@@ -1,7 +1,7 @@
 import { moveSelection } from './board-interactions.js';
 import { setupBoardSurface } from './board-surface.js';
 import { setupCoaching } from './coaching-ui.js';
-import { captureBoard, eraseDrawingNear, retainRoster } from './coaching.js';
+import { captureBoard, eraseDrawingNear, isDegenerateDrawing, retainRoster } from './coaching.js';
 import {
   addProp, applyTeamFormation, findObject, isPlayerId, keyboardNudge, loadPresetState, moveObjectBy, nudgePlayer,
   removeSelectedProp, resetBoardState, settlePlayers, toggleZone, updatePlayerDetails, updateTeamColors,
@@ -134,7 +134,13 @@ let objectDrag3D = null;
 
 // Restore the saved preset's original snapshot after a reload, while allowing a newer
 // formation/load/save action to win over the asynchronous IndexedDB lookup.
+// The board as the coach left it when Play or Step began. Reset returns here, so dragged layouts and hand-drawn
+// arrows survive a simulation. Any edit made afterwards discards it, and the next Play captures a fresh one.
+let playStartSnapshot = null;
+let keepPlayStart = false;
+
 function setResetSnapshot(snapshot) {
+  playStartSnapshot = null;
   resetSnapshot = snapshotState(snapshot);
   resetSnapshotVersion += 1;
 }
@@ -167,8 +173,17 @@ function setStorageWarning(blocked) {
 
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(() => setStorageWarning(saveAutosave(state) === false), AUTOSAVE_DELAY_MS);
+  autosaveTimer = setTimeout(() => { autosaveTimer = undefined; setStorageWarning(saveAutosave(state) === false); }, AUTOSAVE_DELAY_MS);
 }
+
+function flushAutosave() {
+  if (autosaveTimer == null) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = undefined;
+  saveAutosave(state);
+}
+window.addEventListener('pagehide', flushAutosave);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAutosave(); });
 
 function showToast(message, duration = TOAST_DURATION_MS) {
   clearTimeout(toastTimer);
@@ -255,7 +270,8 @@ function renderBench() {
 function commitChange(options) {
   settlePlayers(state, selectedUnit.size ? [...selectedUnit] : [state.selectedObjectId]);
   // While the simulation runs it moves players on its own; that is not an edit, so the baseline follows silently.
-  if (state.simulation.running) boardHistory.rebase(state); else boardHistory.record(state);
+  if (state.simulation.running) boardHistory.rebase(state);
+  else if (boardHistory.record(state) && !keepPlayStart) playStartSnapshot = null;
   render(options);
   scheduleAutosave();
 }
@@ -573,7 +589,8 @@ zonesToggle.addEventListener('click', () => {
   zonePanel.hidden = expanded;
 });
 zonesClear.addEventListener('click', () => { state.selectedZones = []; commitChange(); });
-zoneOpacity.addEventListener('input', () => { state.zoneOpacity = Number(zoneOpacity.value); commitChange(); });
+zoneOpacity.addEventListener('input', () => { state.zoneOpacity = Number(zoneOpacity.value); render(); scheduleAutosave(); });
+zoneOpacity.addEventListener('change', () => { state.zoneOpacity = Number(zoneOpacity.value); commitChange(); }); // one undo step per drag
 zoneRestrictionMode.addEventListener('change', () => { state.zoneRestrictionMode = zoneRestrictionMode.value; commitChange(); });
 zoneRestrictionScope.addEventListener('change', () => { state.zoneRestrictionScope = zoneRestrictionScope.value; commitChange(); });
 
@@ -640,6 +657,7 @@ function handleToolPointerDown(event) {
 
 svg.addEventListener('pointerdown', (event) => {
   if (document.body.classList.contains('presentation')) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return; // right and middle clicks neither draw nor drag
   const hit = event.target.closest('[data-hit-for]'); // an oversized player target stands in for its token
   const target = event.target.closest('[data-object-id]') ?? (hit && svg.querySelector(`#object-${hit.dataset.hitFor}`));
   if (state.tool === 'move' || state.tool === 'select') {
@@ -696,7 +714,10 @@ function finishPointer(event) {
     commitChange();
   }
   if (drawSession?.pointerId === event.pointerId) {
+    const { drawing } = drawSession;
     drawSession = null;
+    // A tap with a drawing tool makes a one-point mark that is invisible and cannot be erased, so discard it.
+    if (isDegenerateDrawing(drawing)) state.drawings = state.drawings.filter((item) => item !== drawing);
     commitChange({ rebuild: true });
   }
 }
@@ -791,17 +812,20 @@ removeSelected.addEventListener('click', () => {
 
 playToggle.addEventListener('click', () => {
   if (!state.players.some((player) => !player.benched)) { showToast('Put at least one player on the pitch in Coach workspace.'); return; }
+  if (!state.simulation.running && !playStartSnapshot) playStartSnapshot = snapshotState(state);
   state.simulation.running = !state.simulation.running;
   selectedUnit.clear(); state.selectedObjectId = null;
   state.tool = 'move';
-  commitChange();
+  keepPlayStart = true; // the players moved by the simulation are not a coach edit
+  try { commitChange(); } finally { keepPlayStart = false; }
 });
 
 resetBoard.addEventListener('click', async () => {
   await resetBaselineReady;
-  const baseline = { ...(state.coaching.startBoard ?? resetSnapshot), coaching: state.coaching };
+  const fromPlay = !state.coaching.startBoard && playStartSnapshot;
+  const baseline = { ...(state.coaching.startBoard ?? playStartSnapshot ?? resetSnapshot), coaching: state.coaching };
   replaceBoard(resetBoardState(baseline, state), { baseline: false });
-  showToast('Board reset to the starting position. Undo brings your last setup back.');
+  showToast(fromPlay ? 'Board reset to where you pressed Play. Undo brings back the played position.' : 'Board reset to the starting position. Undo brings your last setup back.');
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1066,10 +1090,13 @@ coachingUI = setupCoaching({
   returnStart: () => resetBoard.click(),
   step: () => {
     if (!state.players.some((p) => !p.benched)) { showToast('Put a player on the pitch first.'); return; }
+    if (!playStartSnapshot) playStartSnapshot = snapshotState(state);
     const speed = state.speed; state.speed = 1; state.simulation.running = true;
     try { for (let i = 0; i < 60; i++) stepSimulation(state, 1 / 60); }
     finally { state.simulation.running = false; state.speed = speed; }
-    commitChange(); showToast('Advanced one simulated second; paused for discussion.');
+    keepPlayStart = true;
+    try { commitChange(); } finally { keepPlayStart = false; }
+    showToast('Advanced one simulated second; paused for discussion.');
   },
 });
 // Player action steps: two selected players, pick an action, and arrows are drawn between them.

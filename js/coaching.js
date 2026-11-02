@@ -90,10 +90,17 @@ export function setSmallSided(state, count) {
   return true;
 }
 
+/** A drawing with fewer than two distinct points has no visible stroke and cannot be erased. */
+export function isDegenerateDrawing(drawing) {
+  const [first, ...rest] = drawing.points;
+  return !first || !rest.some((point) => point.x !== first.x || point.y !== first.y);
+}
+
 export function eraseDrawingNear(state, point) {
   const scaled = (p) => ({ x: p.x, y: p.y * 0.68 });
   let nearest = -1; let gap = 0.03;
   state.drawings.forEach((drawing, index) => {
+    if (drawing.source === 'action') return; // these belong to the play script; deleting one would leave its task running unseen
     const points = drawing.type === 'freehand' || drawing.type === 'curve' ? drawing.points : drawing.points.slice(0, 2);
     for (let i = 1; i < points.length; i++) {
       const distance = distanceToSegment(scaled(point), scaled(points[i - 1]), scaled(points[i]));

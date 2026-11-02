@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   bindings: {}, // action -> array of key codes, merged over the defaults
 });
 
-const DIFFICULTY_KEYS = ['easy', 'normal', 'hard'];
+const DIFFICULTY_KEYS = ['kids', 'easy', 'normal', 'hard']; // must match DIFFICULTIES in ai.js
 const HALF_MINUTES = [1, 2, 3];
 
 const clampNumber = (value, low, high, fallback) => (Number.isFinite(value) ? Math.min(high, Math.max(low, value)) : fallback);

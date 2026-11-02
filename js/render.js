@@ -145,7 +145,7 @@ function buildBall(ball) {
     class: 'ball-token',
     tabindex: '0',
     role: 'button',
-    'aria-label': 'Soccer ball. Tap for actions, drag or use arrow keys to move, Enter to edit.',
+    'aria-label': 'Soccer ball. Tap for actions, drag or use arrow keys to move.',
     'data-object-id': ball.id,
     'data-object-type': 'ball',
   });
@@ -166,7 +166,7 @@ function buildCone(cone) {
     class: 'cone-token',
     tabindex: '0',
     role: 'button',
-    'aria-label': 'Training cone. Tap for actions, drag or use arrow keys to move, Enter to edit.',
+    'aria-label': 'Training cone. Tap for actions, drag or use arrow keys to move.',
     'data-object-id': cone.id,
     'data-object-type': 'cone',
   });
@@ -184,7 +184,7 @@ function buildMiniGoal(goal) {
     class: 'minigoal-token',
     tabindex: '0',
     role: 'button',
-    'aria-label': 'Mini goal. Tap for actions, drag or use arrow keys to move, Enter to edit.',
+    'aria-label': 'Mini goal. Tap for actions, drag or use arrow keys to move.',
     'data-object-id': goal.id,
     'data-object-type': 'minigoal',
   });

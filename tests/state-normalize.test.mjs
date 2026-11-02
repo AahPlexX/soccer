@@ -150,7 +150,8 @@ test('drawings without usable points are dropped and unknown drawing types becom
       { id: 'd1', type: 'arrow', points: [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.2 }] },
       { id: 'd2', points: [] },
       { id: 'd3', points: [null] },
-      { id: 'd4', type: 'spiral', points: [{ x: 0.5, y: 0.5 }] },
+      { id: 'd4', type: 'spiral', points: [{ x: 0.5, y: 0.5 }, { x: 0.6, y: 0.6 }] },
+      { id: 'd5', type: 'arrow', points: [{ x: 0.5, y: 0.5 }] },
       'junk',
     ],
   });

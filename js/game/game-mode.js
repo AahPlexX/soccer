@@ -68,7 +68,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   const camera = createCamera();
   let view = renderer.resize(root.clientWidth || 800, root.clientHeight || 450);
 
-  const session = { carry: null, tipsOpen: false, padPrev: {}, charge: 0, match: null, ai: null, mode: 'menu', time: 0, steps: 0, aiMap: {}, scorer: null, goalClock: 0, replayClock: 0, replayFrames: null, accumulator: 0, over: false };
+  const session = { carry: null, tipsOpen: false, padPrev: {}, charge: 0, match: null, ai: null, mode: 'menu', time: 0, steps: 0, aiMap: {}, scorer: null, goalClock: 0, replayShown: false, replayClock: 0, replayFrames: null, accumulator: 0, over: false };
   let touch = null;
 
   const hud = createHud(root, { onPause: () => pause(), onMute: () => { settings.sound = !settings.sound; audio.setMuted(!settings.sound); saveSettings(storage, settings, ACTIONS); } });
@@ -99,7 +99,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   function beginMatch() {
     saveSettings(storage, settings, ACTIONS);
     session.match = createMatch({ seed: (Date.now() & 0xffff) || 1, halfSeconds: settings.halfMinutes * 60, humanTeam: 'home', homeFormation: board?.homeFormation, awayFormation: board?.awayFormation });
-    session.ai = createAi(settings.difficulty);
+    session.ai = createAi({ home: 'normal', away: settings.difficulty }); // difficulty changes the opponent only, not your own teammates and keeper
     session.mode = 'playing';
     session.steps = 0;
     session.aiMap = {};
@@ -142,7 +142,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
         if (event.type === 'goal') globalThis.navigator?.vibrate?.([60, 40, 60]);
         else if (event.type === 'tackle' || event.type === 'foul') globalThis.navigator?.vibrate?.(15);
       }
-      if (event.type === 'goal') { session.scorer = event.team; session.goalClock = 0; }
+      if (event.type === 'goal') { session.scorer = event.team; session.goalClock = 0; session.replayShown = false; }
     }
   }
 
@@ -186,7 +186,8 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
 
     if (match.phase === 'goal') {
       session.goalClock += dt;
-      if (session.goalClock >= REPLAY_DELAY && replayFrames(replay).length > 20) {
+      if (!session.replayShown && session.goalClock >= REPLAY_DELAY && replayFrames(replay).length > 20) {
+        session.replayShown = true; // once per goal; a skipped or finished replay must not start again
         session.replayFrames = replayFrames(replay);
         session.replayClock = 0;
         session.mode = 'replay';
@@ -269,6 +270,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     }
   }
 
+  const heldKeys = new Map();
   function onKeyDown(event) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     audio.resume();
@@ -278,11 +280,14 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
       else if (event.code === 'ArrowDown' || event.code === 'ArrowUp') { menus.moveFocus(event.code === 'ArrowDown' ? 1 : -1); event.preventDefault(); }
       return;
     }
-    if (event.repeat) { if (input.keyDown(event.code)) event.preventDefault(); return; }
-    if (input.keyDown(event.code)) event.preventDefault();
+    // OS auto-repeat sends more keydowns for a key already held; counting them would leave the key stuck after one keyup.
+    if (heldKeys.has(event.code)) { if (heldKeys.get(event.code)) event.preventDefault(); return; }
+    const bound = input.keyDown(event.code);
+    heldKeys.set(event.code, bound);
+    if (bound) event.preventDefault();
   }
-  function onKeyUp(event) { if (input.keyUp(event.code)) event.preventDefault(); }
-  function onBlur() { input.reset(); if (session.mode === 'playing') pause(); }
+  function onKeyUp(event) { heldKeys.delete(event.code); if (input.keyUp(event.code)) event.preventDefault(); }
+  function onBlur() { heldKeys.clear(); input.reset(); if (session.mode === 'playing') pause(); }
   function onVisibility() { if (document.hidden) onBlur(); }
 
   const observer = new ResizeObserver(() => {

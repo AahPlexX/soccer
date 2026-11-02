@@ -65,7 +65,7 @@ const BINDABLE = [
 const TOUCH_SIZES = [[0.8, 'Small'], [1, 'Normal'], [1.25, 'Large']];
 const onOff = [[true, 'On'], [false, 'Off']];
 
-export function createMenus(root, { settings, onStart, onResume, onRestart, onExit, onSettings, bindings, defaultBindings, onBindings, touch = false }) {
+export function createMenus(root, { settings, onStart, onResume, onRestart, onExit, onSettings, bindings, defaultBindings, onBindings, onDifficulty, touch = false }) {
   const layer = element('div', 'g-menu-layer');
   layer.hidden = true;
   root.append(layer);
@@ -135,6 +135,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
       const panel = element('div', 'g-menu');
       panel.append(
         element('h2', 'g-title', 'PAUSED'),
+        choice('Difficulty', Object.entries(DIFFICULTIES).map(([key, profile]) => [key, profile.label]), settings.difficulty, (value) => { settings.difficulty = value; onSettings?.(settings); onDifficulty?.(value); }),
         button('Resume', () => onResume(), { primary: true }),
         confirmButton('Restart match', () => onRestart()),
         button('Controls', () => api.showControls(() => api.showPause())),

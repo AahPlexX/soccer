@@ -86,7 +86,7 @@ test('a shot over the bar is a goal kick for the defenders, taken by their keepe
   place(match, 'home-7', 18, 0);
   Object.assign(match.ball, { x: 18.4, y: 0 });
   match.owner = 'home-7';
-  stepMatch(match, { 'home-7': { move: { x: 1, y: 0 }, shoot: { power: 1 } } }, STEP);
+  stepMatch(match, { 'home-7': { move: { x: 1, y: 0 }, shoot: { power: 1, elevation: 0.7 } } }, STEP); // a deliberately lofted shot (a normal shot at goal is solved to stay under the bar)
   seconds(match, {}, 3);
   assert.equal(match.restart.type, 'goal-kick');
   assert.equal(match.restart.team, 'away');

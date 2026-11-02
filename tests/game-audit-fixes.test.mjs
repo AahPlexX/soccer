@@ -1,12 +1,14 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { BALL } from '../js/ball-physics.js';
+import { BALL, flightAt } from '../js/ball-physics.js';
+import { CONTROL, assistedAim, goalShotElevation, startTackle } from '../js/game/ball-control.js';
+import { createPlayer, stepPlayer } from '../js/game/player-physics.js';
 import { DIFFICULTIES, aiControls, createAi } from '../js/game/ai.js';
 import { bannerFor, hintFor, playerLabel } from '../js/game/hud.js';
 import { ACTIONS, DEFAULT_BINDINGS, mergeFrames } from '../js/game/input-map.js';
 import { MATCH, createMatch, drainEvents, playerById, setRestart, stepMatch, teamOf } from '../js/game/match.js';
 import { createMenus } from '../js/game/menus.js';
-import { HALF_LENGTH } from '../js/game/rules.js';
+import { HALF_LENGTH, HALF_MOUTH } from '../js/game/rules.js';
 import { autoSwitch } from '../js/game/switching.js';
 import { effectiveBindings, normalizeSettings } from '../js/game/settings.js';
 
@@ -154,7 +156,7 @@ function menus(calls = {}) {
   const settings = normalizeSettings(null, ACTIONS);
   const note = (name) => () => { calls[name] = (calls[name] ?? 0) + 1; };
   return createMenus(new Node('div'), {
-    settings, onStart: note('start'), onResume: note('resume'), onRestart: note('restart'), onExit: note('exit'), onSettings() {},
+    settings, onStart: note('start'), onResume: note('resume'), onRestart: note('restart'), onExit: note('exit'), onSettings() {}, onDifficulty: (level) => { calls.difficulty = level; },
     bindings: () => effectiveBindings(DEFAULT_BINDINGS, settings), defaultBindings: DEFAULT_BINDINGS, onBindings() {},
   });
 }
@@ -218,4 +220,112 @@ test('G-11: Restart match and Exit to coach need a second press within three sec
     exit.click();
     assert.equal(calls.exit, 1);
   } finally { mock.timers.reset(); }
+});
+
+test('G-05: a human shot at goal crosses the line under the bar however hard it is charged', () => {
+  for (const power of [0.15, 0.4, 0.7, 1]) {
+    for (const meters of [8, 14, 20, 26]) {
+      const ball = { x: HALF_LENGTH - meters, y: 0 };
+      const elevation = goalShotElevation(ball, { x: 1, y: 0 }, 'home', power);
+      assert.ok(elevation !== null && elevation > 0, `power ${power} at ${meters} m has an elevation`);
+      if (power < 0.3) { assert.ok(elevation <= 0.05, 'a gentle tap is a rolling shot'); continue; }
+      const speed = CONTROL.shotMinSpeed + (CONTROL.shotMaxSpeed - CONTROL.shotMinSpeed) * power;
+      const crossing = flightAt(speed, elevation, meters);
+      if (!crossing) continue; // it lands short of the goal and rolls in: certainly not over the bar
+      assert.ok(crossing.height > 0.05 && crossing.height < 1.8, `power ${power} at ${meters} m crosses the line at ${crossing.height.toFixed(2)} m, under the bar`);
+    }
+  }
+  assert.equal(goalShotElevation({ x: 0, y: 0 }, { x: -1, y: 0 }, 'home', 0.8), null, 'a shot away from the goal keeps the old loft');
+  assert.equal(goalShotElevation({ x: -20, y: 0 }, { x: 1, y: 0 }, 'home', 0.8), null, 'and so does a shot from the far end');
+  assert.ok(goalShotElevation({ x: -HALF_LENGTH + 14, y: 0 }, { x: -1, y: 0 }, 'away', 0.8) > 0, 'the away team attacks the left goal');
+  assert.equal(goalShotElevation({ x: -HALF_LENGTH + 14, y: 0 }, { x: 1, y: 0 }, 'away', 0.8), null, 'and a shot back up the pitch is not a shot at goal');
+});
+
+test('G-05: the aim assist rescues a shot that is just wide but keeps the corner you aimed at', () => {
+  const striker = { team: 'home', x: HALF_LENGTH - 14, y: 0, heading: 0 };
+  const at = (yAtGoal) => { const d = { x: 14, y: yAtGoal }; const l = Math.hypot(d.x, d.y); return assistedAim(striker, { x: d.x / l, y: d.y / l }); };
+  const crossingY = (aim) => striker.y + aim.y * (14 / aim.x);
+  assert.ok(Math.abs(crossingY(at(2.4)) - 2.4) < 0.05, 'a shot at the near corner stays at the corner');
+  assert.ok(Math.abs(crossingY(at(-1.1)) + 1.1) < 0.05, 'and one at the other side');
+  assert.ok(Math.abs(crossingY(at(HALF_MOUTH + 1)) - (HALF_MOUTH - 0.4)) < 0.05, 'a shot 1 m wide is pulled just inside the post');
+  assert.ok(Math.abs(crossingY(at(HALF_MOUTH + 4)) - (HALF_MOUTH + 4)) < 0.05, 'a shot far wide is left alone');
+  assert.deepEqual(assistedAim(striker, { x: -1, y: 0 }), { x: -1, y: 0 }, 'and one aimed away from the goal');
+});
+
+test('G-05: goals can be scored against every keeper, easier at the lower levels (shots spread across the goal)', () => {
+  const rate = (level) => {
+    let goals = 0;
+    const trials = 40;
+    for (let n = 0; n < trials; n += 1) {
+      const match = createMatch({ seed: 100 + n, humanTeam: 'home', halfSeconds: 60 });
+      match.phase = 'play';
+      match.players.forEach((p, i) => Object.assign(p, { x: p.team === 'home' ? -15 : 15, y: (i % 7) * 4 - 12, vx: 0, vy: 0 }));
+      Object.assign(match.players.find((p) => p.team === 'away' && p.role === 'GK'), { x: HALF_LENGTH - 1.2, y: 0 });
+      const striker = playerById(match, match.activeId);
+      Object.assign(striker, { x: HALF_LENGTH - (10 + (n % 9)), y: ((n * 7) % 11) - 5, heading: 0, vx: 0, vy: 0 });
+      Object.assign(match.ball, { x: striker.x + 0.3, y: striker.y, z: BALL.radius, vx: 0, vy: 0, vz: 0 });
+      match.owner = striker.id;
+      const aimY = (((n * 13) % 9) - 4) * (HALF_MOUTH * 0.85) / 4;
+      const length = Math.hypot(HALF_LENGTH - striker.x, aimY - striker.y);
+      const direction = { x: (HALF_LENGTH - striker.x) / length, y: (aimY - striker.y) / length };
+      const ai = createAi(level);
+      let controls = {};
+      for (let i = 0; i < 120 * 3 && match.phase === 'play'; i += 1) {
+        if (i % 6 === 0) controls = aiControls(match, ai, {});
+        controls[match.activeId] = i === 0 ? { move: direction, shoot: { power: 0.85, curl: 0 } } : { move: { x: 0, y: 0 } };
+        stepMatch(match, controls, DT);
+        if (drainEvents(match).some((event) => event.type === 'goal')) goals += 1;
+      }
+    }
+    return goals / trials;
+  };
+  const kids = rate('kids');
+  const normal = rate('normal');
+  const hard = rate('hard');
+  assert.ok(hard >= 0.05, `even Hard concedes sometimes (${(hard * 100).toFixed(0)}%; it was 0% at every level)`);
+  assert.ok(kids >= 0.25 && kids <= 0.6, `Kids lets a good shot in about a third of the time (${(kids * 100).toFixed(0)}%)`);
+  assert.ok(kids > normal && normal > hard - 0.02, `harder levels save more (${(kids * 100).toFixed(0)}% > ${(normal * 100).toFixed(0)}% >= ${(hard * 100).toFixed(0)}%)`);
+});
+
+test('G-09: a slide has a cooldown, so it is a decision and not a habit', () => {
+  const player = createPlayer({ id: 'p', team: 'home', role: 'CM', x: 0, y: 0 }, 0);
+  assert.equal(startTackle(player, { slide: true }), true);
+  player.action = null; // the slide is over
+  assert.equal(startTackle(player, { slide: true }), false, 'cannot slide again at once');
+  assert.equal(startTackle(player), true, 'but a standing tackle is still allowed');
+  player.action = null;
+  for (let i = 0; i < Math.round((CONTROL.slideCooldown + 0.1) / DT); i += 1) stepPlayer(player, { x: 0, y: 0 }, DT);
+  assert.equal(startTackle(player, { slide: true }), true, 'and after the cooldown it can');
+});
+
+test('G-22 and G-23: the restart prompt counts down before the match goes on by itself, and half-time shows the score', () => {
+  const match = createMatch({ seed: 5, humanTeam: 'home' });
+  match.phase = 'play';
+  park(match);
+  setRestart(match, { type: 'throw-in', team: 'home', outBy: 'away', spot: { x: 0, y: 18.6 } });
+  assert.equal(match.restart.limit, MATCH.throwIn.humanTimeout);
+  assert.doesNotMatch(hintFor(match), /play on/, 'no countdown at first');
+  match.restart.waited = match.restart.limit - 3.2;
+  assert.match(hintFor(match), /play on in 4/);
+  match.restart.waited = match.restart.limit - 0.4;
+  assert.match(hintFor(match), /play on in 1/);
+  const theirs = createMatch({ seed: 5, humanTeam: 'home' });
+  theirs.phase = 'play';
+  park(theirs);
+  setRestart(theirs, { type: 'throw-in', team: 'away', outBy: 'home', spot: { x: 0, y: 18.6 } });
+  theirs.restart.waited = theirs.restart.limit - 0.4;
+  assert.doesNotMatch(hintFor(theirs), /play on/, 'the computer\'s throw is not the human\'s business');
+  assert.equal(bannerFor({ phase: 'halftime', score: { home: 2, away: 1 } }), 'HALF TIME · 2 - 1');
+  assert.equal(bannerFor({ phase: 'fulltime', score: { home: 2, away: 1 } }), 'FULL TIME');
+});
+
+test('G-24: the difficulty can be changed from the pause menu and takes effect at once', () => {
+  const calls = {};
+  const m = menus(calls);
+  m.showPause();
+  const hard = m.layer.querySelectorAll('button').find((n) => n.textContent === 'Hard');
+  assert.ok(hard, 'the pause menu offers the difficulty levels');
+  assert.ok(m.layer.querySelectorAll('button').some((n) => n.textContent === 'Kids'), 'including Kids');
+  hard.click();
+  assert.equal(calls.difficulty, 'hard');
 });

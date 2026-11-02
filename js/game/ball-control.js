@@ -1,5 +1,5 @@
-import { BALL, GOAL_HEIGHT, groundPassSpeed, launchVelocity, lobSpeed } from '../ball-physics.js';
-import { attackDirection } from './rules.js';
+import { BALL, GOAL_HEIGHT, groundPassSpeed, launchVelocity, lobSpeed, shotElevation } from '../ball-physics.js';
+import { HALF_LENGTH, HALF_MOUTH, attackDirection } from './rules.js';
 
 // How players and the ball interact in Game Mode: control, dribbling touches, passing, shooting, tackling, heading and
 // goalkeeper saves. Pure: mutates the player and ball objects it is given (the ball is a ball-physics body in meters).
@@ -23,13 +23,15 @@ export const CONTROL = Object.freeze({
   tackleDuration: 0.3,
   slideDuration: 0.9,
   slideSpeed: 7.5,
+  slideCooldown: 1.6, // seconds before a player can slide again, so a slide is a decision, not a habit
+  slideFoulReach: 0.78, // a slide that reaches an opponent (bodies cannot overlap: they stay 0.7 m apart), away from the ball, is a foul
   lobElevation: 0.75,
   passCone: (35 * Math.PI) / 180,
   shotMinSpeed: 11,
   shotMaxSpeed: 28,
   chargeSeconds: 0.8,
-  keeperCatchReach: 1.1,
-  keeperDiveReach: 2.3, // a diving keeper reaches this far sideways, but can only push the ball away
+  keeperCatchReach: 0.7,
+  keeperDiveReach: 1.2, // a diving keeper reaches this far sideways, but can only push the ball away
   keeperDiveSpeed: 4.8, // m/s of the sideways launch
   keeperDiveSeconds: 0.7,
   keeperCatchSpeed: 13,
@@ -158,23 +160,47 @@ export function kickShot(ball, power, aim, curl = 0, solvedElevation = null) {
   return { speed, elevation };
 }
 
-/** Nudges a shot direction onto the goal when it is already roughly aimed there (within about 20 degrees). */
+/**
+ * The elevation for a human's shot at goal, so that how hard he charges it sets how hard and how high it crosses the line (about 0.4 m
+ * for a tap up to about 1.4 m for a full charge) but never over the bar. Before this a full charge climbed about 5 m by the goal line
+ * and every strong shot flew over. Null when the shot is not aimed at the goal (the old charge-based loft then applies).
+ */
+export function goalShotElevation(ball, aim, team, power) {
+  const toward = aim.x * attackDirection(team);
+  if (toward < 0.5) return null;
+  const meters = (attackDirection(team) * HALF_LENGTH - ball.x) / aim.x; // along the aim to the goal line
+  if (meters < 2 || meters > 34) return null;
+  const charge = clamp(power, 0, 1);
+  if (charge < 0.3) return 0.03; // a gentle tap is a rolling shot along the grass
+  const speed = CONTROL.shotMinSpeed + (CONTROL.shotMaxSpeed - CONTROL.shotMinSpeed) * charge;
+  return shotElevation(speed, meters, 0.3 + 1.1 * charge);
+}
+
+/**
+ * Aim assist for a shot: a shot that would cross the goal line within 1.5 m of a post (just wide) is pulled to just inside that
+ * post; a shot already between the posts keeps exactly the corner it was aimed at (the old assist pulled everything toward the
+ * middle of the goal, where the keeper stands, so careful placement was thrown away); a shot not aimed at the goal is left alone.
+ */
 export function assistedAim(player, direction) {
   const length = Math.hypot(direction.x, direction.y);
   const aim = length > 0.1 ? { x: direction.x / length, y: direction.y / length } : heading(player);
-  const goalX = attackDirection(player.team) * 27.432;
-  const toGoal = Math.atan2(clamp(player.y, -2.5, 2.5) - player.y, goalX - player.x);
-  const wanted = Math.atan2(aim.y, aim.x);
-  const off = Math.atan2(Math.sin(wanted - toGoal), Math.cos(wanted - toGoal));
-  if (Math.abs(off) > (20 * Math.PI) / 180) return aim;
-  const blend = toGoal + off * 0.4;
-  return { x: Math.cos(blend), y: Math.sin(blend) };
+  const sign = attackDirection(player.team);
+  if (aim.x * sign < 0.3) return aim;
+  const goalX = sign * HALF_LENGTH;
+  const yAtGoal = player.y + aim.y * ((goalX - player.x) / aim.x);
+  if (Math.abs(yAtGoal) > HALF_MOUTH + 1.5) return aim;
+  const target = clamp(yAtGoal, -(HALF_MOUTH - 0.4), HALF_MOUTH - 0.4);
+  const toTarget = { x: goalX - player.x, y: target - player.y };
+  const reach = Math.hypot(toTarget.x, toTarget.y);
+  return { x: toTarget.x / reach, y: toTarget.y / reach };
 }
 
 /** Starts a tackle: a quick stand tackle, or (with a direction held) a long slide that commits the player to the move. */
 export function startTackle(player, { slide = false } = {}) {
   if (player.action || player.down > 0) return false;
   if (slide) {
+    if ((player.slideCool ?? 0) > 0) return false;
+    player.slideCool = CONTROL.slideCooldown;
     player.action = { type: 'slide', t: 0, duration: CONTROL.slideDuration };
     const facing = heading(player);
     player.vx = facing.x * CONTROL.slideSpeed;
@@ -207,7 +233,7 @@ export function tackleContact(tackler, ball, opponents, ballOwnerId) {
   if (action.type === 'slide') {
     for (const foe of opponents) {
       if (foe.id === ballOwnerId || foe.down > 0) continue;
-      if (distance2d(tackler, foe) <= 0.75) { foe.down = 0.6; action.t = action.duration; return 'foul'; }
+      if (distance2d(tackler, foe) <= CONTROL.slideFoulReach) { foe.down = 0.6; action.t = action.duration; return 'foul'; }
     }
   }
   return null;

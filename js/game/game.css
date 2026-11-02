@@ -141,3 +141,13 @@
 /* Audit fixes: the replay banner goes to a corner; the tips note. */
 #game-root .g-banner.g-banner-replay { top: 14px; right: 14px; left: auto; transform: none; font-size: clamp(12px, 2.2vw, 18px); padding: 5px 12px; }
 #game-root .g-tips-note { margin: 0 0 6px; color: #ffd43b; font-weight: 800; }
+
+/* Small screens: the menus scroll instead of being clipped, and the HUD is more compact. */
+#game-root .g-menu-layer { overflow-y: auto; }
+#game-root .g-menu { max-height: 100%; overflow-y: auto; }
+@media (max-height: 380px) {
+  #game-root .g-score { transform: scale(0.8); transform-origin: top center; }
+  #game-root .g-radar { transform: scale(0.7); transform-origin: top right; }
+  #game-root .g-button { min-width: 40px; min-height: 40px; }
+  #game-root .g-menu-button { min-height: 40px; padding-block: 4px; }
+}

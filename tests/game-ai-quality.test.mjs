@@ -35,7 +35,9 @@ test('a harder AI beats an easier one, whichever side it plays: more of the ball
   const hardAway = play({ home: 'easy', away: 'hard' }, SEEDS);
   const hard = sum(hardHome.home, hardAway.away);
   const easy = sum(hardHome.away, hardAway.home);
-  assert.ok(hard.possession > easy.possession * 1.4, `possession ${hard.possession.toFixed(0)} vs ${easy.possession.toFixed(0)}`);
+  // Hard now scores about as often as it shoots, and every goal is dead time (the whistle and the kickoff), so its share of the ball
+  // is smaller than when nothing went in; the gap that matters is shots, goals and passing (checked below).
+  assert.ok(hard.possession > easy.possession * 1.15, `possession ${hard.possession.toFixed(0)} vs ${easy.possession.toFixed(0)}`);
   assert.ok(hard.shots > easy.shots * 2, `shots ${hard.shots} vs ${easy.shots}`);
   assert.ok(hard.completed / hard.passes > easy.completed / easy.passes + 0.1, `pass completion ${(hard.completed / hard.passes).toFixed(2)} vs ${(easy.completed / easy.passes).toFixed(2)}`);
   assert.ok(hard.goals > easy.goals, `goals ${hard.goals} vs ${easy.goals}`);

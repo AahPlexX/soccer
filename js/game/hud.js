@@ -17,6 +17,7 @@ export function formatClock(seconds) {
 export function bannerFor(match, replaying = false) {
   if (replaying) return 'REPLAY';
   if (match.phase === 'restart' && match.restart) return `${RESTART_BANNERS[match.restart.type] ?? 'RESTART'} · ${whose(match, match.restart.team)}`;
+  if (match.phase === 'halftime' && match.score) return `HALF TIME · ${match.score.home} - ${match.score.away}`;
   return PHASE_BANNERS[match.phase] ?? '';
 }
 
@@ -41,7 +42,9 @@ export function hintFor(match) {
   const cause = restart.foulBy ? `${who(match, restart.foulBy)} fouled` : restart.outBy ? `${who(match, restart.outBy)} put it out` : '';
   const mine = restart.state === 'wait' && restart.team === match.humanTeam;
   const prompt = !mine ? '' : restart.type === 'throw-in' ? 'aim with the stick, then tap PASS to throw' : 'aim with the stick, then tap PASS or SHOOT to kick';
-  return [cause, prompt].filter(Boolean).join(' · ');
+  const remaining = mine && restart.limit ? Math.ceil(restart.limit - restart.waited) : Infinity;
+  const countdown = remaining <= 4 ? `play on in ${Math.max(1, remaining)}` : '';
+  return [cause, prompt, countdown].filter(Boolean).join(' · ');
 }
 
 /** "#7 ST" for the player, or '' for none. */

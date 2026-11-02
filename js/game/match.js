@@ -1,6 +1,6 @@
 import { BALL, goalColliders, restingBall, stepBall } from '../ball-physics.js';
 import {
-  CONTROL, assistedAim, bestPassTarget, canControl, carryBall, headerContact, keeperContact, kickPass, kickShot, leadTarget,
+  CONTROL, assistedAim, bestPassTarget, canControl, carryBall, goalShotElevation, headerContact, keeperContact, kickPass, kickShot, leadTarget,
   startDive, startTackle, tackleContact, trapBall,
 } from './ball-control.js';
 import { PLAYER, createPlayer, separatePlayers, stepPlayer, turnToward } from './player-physics.js';
@@ -144,7 +144,9 @@ export function setRestart(match, restart) {
   }
   resetBall(match, spot.x, spot.y);
   setOwner(match, taker);
-  match.restart = { ...restart, takerId: taker.id, state: 'wait', waited: 0, t: 0, target: null, mate: null };
+  // `limit` is how long the match waits for the taker before it goes on by itself, so the screen can count it down.
+  const limit = restart.team === match.humanTeam ? (restart.type === 'throw-in' ? MATCH.throwIn.humanTimeout : MATCH.setPiece.humanTimeout) : (restart.type === 'throw-in' ? MATCH.throwIn.aiDelay : MATCH.setPiece.aiDelay);
+  match.restart = { ...restart, takerId: taker.id, state: 'wait', waited: 0, t: 0, target: null, mate: null, limit };
   if (restart.type === 'throw-in') match.ball.z = MATCH.throwIn.height; // held overhead
   match.phase = 'restart';
   match.phaseTime = 0;
@@ -176,7 +178,7 @@ function applyOwnerActions(match, player, control) {
   if (control.shoot) {
     const aim = assistedAim(player, direction);
     const power = control.shoot.power ?? 0.5;
-    kickShot(match.ball, power, aim, control.shoot.curl ?? 0, control.shoot.elevation ?? null);
+    kickShot(match.ball, power, aim, control.shoot.curl ?? 0, control.shoot.elevation ?? goalShotElevation(match.ball, aim, player.team, power));
     if (aim.x * attackDirection(player.team) > 0) match.stats.shots[player.team] += 1;
     player.action = { type: 'kick', t: 0, duration: 0.25 };
     kickImmunity(match, player);

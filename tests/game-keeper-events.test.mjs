@@ -45,7 +45,7 @@ test('a dive launches sideways, commits for its duration and cannot be started t
   assert.equal(startDive(keeper, 1), false, 'already diving');
   assert.equal(startDive({ ...keeper, action: null, down: 1 }, 1), false, 'not while lying down');
   const standing = { team: 'away', x: 26, y: 0, down: 0, action: null };
-  const ball = { x: 25.5, y: 1.9, z: BALL.radius, vx: 10, vy: 0, vz: 0 };
+  const ball = { x: 25.5, y: 1.0, z: BALL.radius, vx: 10, vy: 0, vz: 0 };
   assert.equal(keeperContact(standing, { ...ball }), null, 'out of reach standing');
   assert.equal(keeperContact({ ...standing, action: { type: 'dive' } }, { ...ball }), 'parry', 'in reach diving, and not holdable');
 });

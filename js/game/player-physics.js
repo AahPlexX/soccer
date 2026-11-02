@@ -40,6 +40,7 @@ export function createPlayer(slot, heading = 0) {
  * `hasBall` slows the player slightly; `speedScale` is the AI difficulty or fatigue factor.
  */
 export function stepPlayer(player, wish, dt, { hasBall = false, speedScale = 1 } = {}) {
+  if (player.slideCool > 0) player.slideCool = Math.max(0, player.slideCool - dt);
   if (player.down > 0) {
     player.down = Math.max(0, player.down - dt);
     player.vx *= Math.max(0, 1 - 8 * dt);

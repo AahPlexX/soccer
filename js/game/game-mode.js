@@ -49,6 +49,8 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   const settings = loadSettings(storage, ACTIONS);
   const canvas = document.createElement('canvas');
   canvas.className = 'g-canvas';
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', 'Soccer match: you play the team in blue against the computer. The score and clock are in the bar above the pitch.');
   const stage = document.createElement('div');
   stage.className = 'g-stage';
   stage.append(canvas);
@@ -86,6 +88,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     },
     bindings: () => effectiveBindings(DEFAULT_BINDINGS, settings),
     defaultBindings: DEFAULT_BINDINGS,
+    onDifficulty: (level) => { if (session.match) session.ai = createAi(level); }, // takes effect at once, mid-match
     onBindings: (bindings) => {
       Object.assign(settings, withBindings(settings, DEFAULT_BINDINGS, bindings));
       saveSettings(storage, settings, ACTIONS);

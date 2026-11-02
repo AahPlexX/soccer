@@ -16,10 +16,10 @@ import { HALF_LENGTH, attackDirection } from './rules.js';
 // human is not controlling, in the shape `stepMatch` takes. Call it at about 20 Hz.
 
 export const DIFFICULTIES = Object.freeze({
-  kids: { speed: 0.7, think: 0.6, reaction: 0.5, passNoise: 0.45, shotError: 4, shotPower: 0.5, decisionNoise: 0.45, pressRadius: 6, keeperSkill: 0.25, tackleChance: 0.12, shootRange: 9, runners: 1, markers: 1, aggression: 0.1, label: 'Kids' },
-  easy: { speed: 0.82, think: 0.45, reaction: 0.35, passNoise: 0.3, shotError: 3, shotPower: 0.62, decisionNoise: 0.35, pressRadius: 9, keeperSkill: 0.45, tackleChance: 0.3, shootRange: 11, runners: 1, markers: 1, aggression: 0.3, label: 'Easy' },
-  normal: { speed: 0.92, think: 0.25, reaction: 0.2, passNoise: 0.14, shotError: 1.6, shotPower: 0.76, decisionNoise: 0.2, pressRadius: 13, keeperSkill: 0.65, tackleChance: 0.55, shootRange: 17, runners: 2, markers: 2, aggression: 0.55, label: 'Normal' },
-  hard: { speed: 1, think: 0.12, reaction: 0.08, passNoise: 0.05, shotError: 0.8, shotPower: 0.86, decisionNoise: 0.08, pressRadius: 18, keeperSkill: 0.95, tackleChance: 0.8, shootRange: 18, runners: 3, markers: 3, aggression: 0.85, label: 'Hard' },
+  kids: { speed: 0.7, think: 0.6, reaction: 0.5, passNoise: 0.45, shotError: 4, shotPower: 0.5, decisionNoise: 0.45, pressRadius: 6, keeperSkill: 0.1, tackleChance: 0.12, shootRange: 9, runners: 1, markers: 1, aggression: 0.1, label: 'Kids' },
+  easy: { speed: 0.82, think: 0.45, reaction: 0.35, passNoise: 0.3, shotError: 3, shotPower: 0.62, decisionNoise: 0.35, pressRadius: 9, keeperSkill: 0.3, tackleChance: 0.3, shootRange: 11, runners: 1, markers: 1, aggression: 0.3, label: 'Easy' },
+  normal: { speed: 0.92, think: 0.25, reaction: 0.2, passNoise: 0.14, shotError: 1.6, shotPower: 0.76, decisionNoise: 0.2, pressRadius: 13, keeperSkill: 0.55, tackleChance: 0.55, shootRange: 17, runners: 2, markers: 2, aggression: 0.55, label: 'Normal' },
+  hard: { speed: 1, think: 0.12, reaction: 0.08, passNoise: 0.05, shotError: 0.8, shotPower: 0.86, decisionNoise: 0.08, pressRadius: 18, keeperSkill: 0.92, tackleChance: 0.8, shootRange: 18, runners: 3, markers: 3, aggression: 0.85, label: 'Hard' },
 });
 
 const HISTORY_SECONDS = 1.2;

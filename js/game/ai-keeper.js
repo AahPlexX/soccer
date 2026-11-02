@@ -43,12 +43,12 @@ export function keeperControl(ctx, profile, keeper, seen) {
   if (state === 'track') {
     const t = (goalX - seen.x) / seen.vx;
     const predicted = seen.y + seen.vy * Math.max(0, t) * 0.95;
-    const error = (nextRandom(ctx.match) - 0.5) * 2 * (1 - profile.keeperSkill) * 1.6;
+    const error = (nextRandom(ctx.match) - 0.5) * 2 * (1 - profile.keeperSkill) * 4.2; // a weak keeper misjudges where the shot crosses by a long way
     const aimY = clamp(predicted + error, -HALF_MOUTH - 0.5, HALF_MOUTH + 0.5);
-    const targetY = keeper.y + (aimY - keeper.y) * (0.55 + 0.45 * profile.keeperSkill);
+    const targetY = keeper.y + (aimY - keeper.y) * (0.3 + 0.7 * profile.keeperSkill);
     // Too far to reach by running: dive for it (a better keeper picks the moment more reliably).
     const miss = aimY - keeper.y;
-    const dive = Math.abs(miss) > 1 && Math.abs(miss) <= 2.3 && t < 0.6 && nextRandom(ctx.match) < 0.5 + 0.5 * profile.keeperSkill ? Math.sign(miss) : 0;
+    const dive = Math.abs(miss) > 1 && Math.abs(miss) <= 2.3 && t < 0.6 && nextRandom(ctx.match) < 0.2 + 0.8 * profile.keeperSkill ? Math.sign(miss) : 0;
     return { move: arrive(keeper, { x: goalX + dir * 1.2, y: targetY }, 1, 1), sprint: true, dive, state };
   }
   if (state === 'sweep') {

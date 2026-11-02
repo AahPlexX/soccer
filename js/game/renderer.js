@@ -8,12 +8,13 @@ import { BALL_SPRITE, drawBallFrame, spriteSize, drawPlayerFrame, facingFor, pic
 // writes to its canvas; all game logic lives in the pure modules.
 
 const COLORS = {
-  apron: '#1b5e31',
+  apron: '#2a7a3f', // close to the grass so the margin reads as more pitch, not a dark band (G-20)
   grassA: '#2f8a45',
   grassB: '#2a7d3f',
   line: 'rgba(255,255,255,0.92)',
-  net: 'rgba(255,255,255,0.28)',
-  netLine: 'rgba(255,255,255,0.5)',
+  net: 'rgba(255,255,255,0.14)',
+  netLine: 'rgba(255,255,255,0.55)',
+  postEdge: 'rgba(0,0,0,0.5)',
   post: '#ffffff',
   active: '#ffd43b',
 };
@@ -135,14 +136,20 @@ export function createRenderer(canvas, { colors = null } = {}) {
     quad([at(x1, -HALF_MOUTH, 0), at(x1, HALF_MOUTH, 0), at(x1 + side * wobble, HALF_MOUTH, GOAL_HEIGHT * 0.8), at(x1, -HALF_MOUTH, GOAL_HEIGHT * 0.8)], COLORS.net);
     quad([at(x0, -HALF_MOUTH, GOAL_HEIGHT), at(x1, -HALF_MOUTH, GOAL_HEIGHT * 0.8), at(x1, -HALF_MOUTH, 0), at(x0, -HALF_MOUTH, 0)], COLORS.net);
     quad([at(x0, HALF_MOUTH, GOAL_HEIGHT), at(x1, HALF_MOUTH, GOAL_HEIGHT * 0.8), at(x1, HALF_MOUTH, 0), at(x0, HALF_MOUTH, 0)], COLORS.net);
+    // A mesh on the back and both sides, so the net reads as a net rather than grey boxes (G-19).
     ctx.strokeStyle = COLORS.netLine;
     ctx.lineWidth = 1;
-    for (let i = 1; i < 6; i += 1) {
-      const y = -HALF_MOUTH + (i / 6) * HALF_MOUTH * 2;
-      const a = at(x1, y, 0);
-      const b = at(x1, y, GOAL_HEIGHT * 0.8);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-    }
+    const grid = (p00, p10, p11, p01, nu, nv) => {
+      const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      ctx.beginPath();
+      for (let i = 1; i < nu; i += 1) { const a = lerp(p00, p10, i / nu); const b = lerp(p01, p11, i / nu); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
+      for (let j = 1; j < nv; j += 1) { const a = lerp(p00, p01, j / nv); const b = lerp(p10, p11, j / nv); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
+      ctx.stroke();
+    };
+    grid(at(x0, -HALF_MOUTH, 0), at(x1, -HALF_MOUTH, 0), at(x1, HALF_MOUTH, 0), at(x0, HALF_MOUTH, 0), 4, 8); // the floor of the net
+    grid(at(x1, -HALF_MOUTH, 0), at(x1, HALF_MOUTH, 0), at(x1, HALF_MOUTH, GOAL_HEIGHT * 0.8), at(x1, -HALF_MOUTH, GOAL_HEIGHT * 0.8), 8, 4);
+    grid(at(x0, -HALF_MOUTH, 0), at(x1, -HALF_MOUTH, 0), at(x1, -HALF_MOUTH, GOAL_HEIGHT * 0.8), at(x0, -HALF_MOUTH, GOAL_HEIGHT), 4, 4);
+    grid(at(x0, HALF_MOUTH, 0), at(x1, HALF_MOUTH, 0), at(x1, HALF_MOUTH, GOAL_HEIGHT * 0.8), at(x0, HALF_MOUTH, GOAL_HEIGHT), 4, 4);
   }
 
   function goalFrame(camera, view, side, nearOnly) {
@@ -151,14 +158,19 @@ export function createRenderer(canvas, { colors = null } = {}) {
     ctx.strokeStyle = COLORS.post;
     ctx.lineWidth = Math.max(2, camera.scale * 0.16);
     ctx.lineCap = 'round';
-    const post = (y) => { const a = at(x, y, 0); const b = at(x, y, GOAL_HEIGHT); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); };
+    const line = (a, b) => { // a dark edge under the white so the frame stands out from the grass and the net (G-19)
+      const width = ctx.lineWidth;
+      ctx.strokeStyle = COLORS.postEdge; ctx.lineWidth = width + 2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.strokeStyle = COLORS.post; ctx.lineWidth = width;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    };
+    const post = (y) => line(at(x, y, 0), at(x, y, GOAL_HEIGHT));
     if (nearOnly) {
       post(HALF_MOUTH);
     } else {
       post(-HALF_MOUTH);
-      const a = at(x, -HALF_MOUTH, GOAL_HEIGHT);
-      const b = at(x, HALF_MOUTH, GOAL_HEIGHT);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      line(at(x, -HALF_MOUTH, GOAL_HEIGHT), at(x, HALF_MOUTH, GOAL_HEIGHT));
     }
     ctx.lineCap = 'butt';
   }

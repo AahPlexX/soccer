@@ -20,6 +20,19 @@ function button(label, onClick, { primary = false, pressed } = {}) {
   return node;
 }
 
+/** A button that must be pressed twice (the second press within 3 s) before it does something that cannot be undone. */
+function confirmButton(label, onConfirm) {
+  const node = button(label, () => {
+    if (node.dataset) {
+      if (node.dataset.armed) { onConfirm(); return; }
+      node.dataset.armed = '1';
+    }
+    node.textContent = 'Tap again to confirm';
+    setTimeout(() => { if (node.dataset) delete node.dataset.armed; node.textContent = label; }, 3000);
+  });
+  return node;
+}
+
 /** A row of mutually exclusive buttons ([value, label] pairs) with `current` pressed; picking one calls `onPick(value)`. */
 function choice(title, options, current, onPick) {
   const group = element('div', 'g-choice');
@@ -56,6 +69,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
   const layer = element('div', 'g-menu-layer');
   layer.hidden = true;
   root.append(layer);
+  let currentBack = null; // what one level back (Esc, or B on a gamepad) does on the screen shown
   let capturing = null; // { action, done } while the next key press is being taken as a new binding
 
   function show(...nodes) {
@@ -67,7 +81,26 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
   const api = {
     layer,
     get visible() { return !layer.hidden; },
-    hide() { capturing = null; layer.hidden = true; layer.replaceChildren(); },
+    hide() { capturing = null; currentBack = null; layer.hidden = true; layer.replaceChildren(); },
+
+    /** One level back (Esc, or B on a gamepad). Returns true if there was somewhere to go. */
+    back() {
+      if (!currentBack) return false;
+      currentBack();
+      return true;
+    },
+    /** Moves the keyboard or gamepad focus through the buttons on screen. */
+    moveFocus(step) {
+      const nodes = [...(layer.querySelectorAll?.('button') ?? [])];
+      if (nodes.length === 0) return;
+      const at = nodes.indexOf(document.activeElement);
+      nodes[(at + step + nodes.length) % nodes.length].focus();
+    },
+    /** Presses the focused button (A on a gamepad). */
+    activate() {
+      const node = document.activeElement;
+      if (node && layer.contains?.(node)) node.click?.();
+    },
 
     /** Offers a key press to the menus; true when it was consumed (while a new key is being picked for an action). */
     handleKey(event) {
@@ -82,6 +115,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
     },
 
     showTitle() {
+      currentBack = () => onExit();
       const panel = element('div', 'g-menu');
       panel.append(
         element('h2', 'g-title', 'U9 SOCCER'),
@@ -97,19 +131,21 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
     },
 
     showPause() {
+      currentBack = () => onResume();
       const panel = element('div', 'g-menu');
       panel.append(
         element('h2', 'g-title', 'PAUSED'),
         button('Resume', () => onResume(), { primary: true }),
-        button('Restart match', () => onRestart()),
+        confirmButton('Restart match', () => onRestart()),
         button('Controls', () => api.showControls(() => api.showPause())),
         button('Settings', () => api.showSettings(() => api.showPause())),
-        button('Exit to coach', () => onExit()),
+        confirmButton('Exit to coach', () => onExit()),
       );
       show(panel);
     },
 
     showControls(back) {
+      currentBack = back;
       const panel = element('div', 'g-menu g-menu-wide');
       panel.append(element('h2', 'g-title', 'CONTROLS'));
       const list = element('dl', 'g-controls');
@@ -133,6 +169,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
     },
 
     showSettings(back) {
+      currentBack = back;
       const panel = element('div', 'g-menu');
       const set = (key) => (value) => { settings[key] = value; onSettings?.(settings); };
       panel.append(
@@ -149,6 +186,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
 
     /** Lists every action with its keys; picking one waits for the next key press (Esc cancels) and rebinds it. */
     showKeys(back, message = '') {
+      currentBack = back;
       const panel = element('div', 'g-menu g-menu-wide');
       const status = element('p', 'g-subtitle', message || 'Pick an action, then press the key you want.');
       status.setAttribute('role', 'status');
@@ -170,6 +208,7 @@ export function createMenus(root, { settings, onStart, onResume, onRestart, onEx
     },
 
     showFullTime(match) {
+      currentBack = null;
       const { home, away } = match.score;
       const verdict = home === away ? 'It finished level.' : home > away ? 'You win!' : 'The computer wins.';
       const shots = match.stats.shots;

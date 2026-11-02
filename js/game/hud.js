@@ -4,6 +4,7 @@ import { HALF_LENGTH, HALF_WIDTH } from './rules.js';
 // mini-map, big banners (GOAL!, HALF TIME, FULL TIME) and pause/sound buttons. Plain DOM plus one small canvas; no game logic.
 
 const PHASE_BANNERS = { goal: 'GOAL!', halftime: 'HALF TIME', fulltime: 'FULL TIME' };
+const ROLE_NAMES = { GK: 'Keeper', LD: 'Defender', RD: 'Defender', CD: 'Defender', LM: 'Midfielder', RM: 'Midfielder', CM: 'Midfielder', ST: 'Striker' };
 const RESTART_BANNERS = { 'throw-in': 'THROW-IN', corner: 'CORNER KICK', 'goal-kick': 'GOAL KICK', 'free-kick': 'FREE KICK' };
 
 /** Seconds as m:ss (never negative, never NaN). */
@@ -38,13 +39,14 @@ export function hintFor(match) {
   const restart = match.restart;
   if (match.phase !== 'restart' || !restart) return '';
   const cause = restart.foulBy ? `${who(match, restart.foulBy)} fouled` : restart.outBy ? `${who(match, restart.outBy)} put it out` : '';
-  const prompt = restart.type === 'throw-in' && restart.state === 'wait' && restart.team === match.humanTeam ? 'aim with the stick, then tap PASS to throw' : '';
+  const mine = restart.state === 'wait' && restart.team === match.humanTeam;
+  const prompt = !mine ? '' : restart.type === 'throw-in' ? 'aim with the stick, then tap PASS to throw' : 'aim with the stick, then tap PASS or SHOOT to kick';
   return [cause, prompt].filter(Boolean).join(' · ');
 }
 
 /** "#7 ST" for the player, or '' for none. */
 export function playerLabel(player) {
-  return player ? `#${String(player.id).split('-')[1] ?? ''} ${player.role}` : '';
+  return player ? `#${String(player.id).split('-')[1] ?? ''} ${ROLE_NAMES[player.role] ?? player.role}` : '';
 }
 
 function element(tag, className, text) {
@@ -110,6 +112,9 @@ export function createHud(root, { onPause, onMute } = {}) {
   return {
     layer,
     update({ match, charge = 0, replaying = false, muted = false, showRadar = true }) {
+      // Who is who and which way each side attacks (home attacks to the right).
+      home.textContent = match.humanTeam === 'none' ? 'HOME ▶' : match.humanTeam === 'home' ? 'YOU ▶' : 'CPU ▶';
+      away.textContent = match.humanTeam === 'none' ? '◀ AWAY' : match.humanTeam === 'away' ? '◀ YOU' : '◀ CPU';
       homeGoals.textContent = String(match.score.home);
       awayGoals.textContent = String(match.score.away);
       clock.textContent = formatClock(match.clock);
@@ -124,7 +129,8 @@ export function createHud(root, { onPause, onMute } = {}) {
       const text = bannerFor(match, replaying);
       if (text !== lastBanner) {
         lastBanner = text;
-        banner.textContent = text;
+        banner.textContent = text === 'REPLAY' ? 'REPLAY · tap anything to skip' : text;
+        banner.classList.toggle('g-banner-replay', text === 'REPLAY');
         banner.hidden = text === '';
         banner.classList.toggle('g-banner-goal', text === 'GOAL!');
       }

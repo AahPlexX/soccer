@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
     } else {
       // First run: the tips card is up. Dismiss it, then drag the left thumb 45 degrees down-right and measure the real movement.
       await tab.screenshot({ path: `${out}/${name}-tips.png` });
-      await tab.click('text=Got it');
+      await tab.click('button:has-text("Got it")');
       await tab.waitForTimeout(300);
       const cdp = await ctx.newCDPSession(tab);
       const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });

@@ -183,6 +183,15 @@ export function createInput(bindings = DEFAULT_BINDINGS) {
   };
 }
 
+/**
+ * Joins the taps kept from a frame that ran no fixed step (a screen faster than the 120 Hz step) with the next frame, so a pass,
+ * shot, tackle or switch tapped on that frame is not lost. The newer frame's held values win; its own taps win over kept ones.
+ */
+export function mergeFrames(kept, next) {
+  if (!kept) return next;
+  return { ...next, pass: next.pass ?? kept.pass, shoot: next.shoot ?? kept.shoot, tackle: next.tackle ?? kept.tackle, switch: next.switch ?? kept.switch, pause: next.pause || kept.pause };
+}
+
 /** Turns a human frame into the controls entry for the active player (what `stepMatch` takes). */
 export function frameToControl(frame, player = null) {
   // A goalkeeper has no tackle: the tackle button with a sideways direction held is a dive that way.

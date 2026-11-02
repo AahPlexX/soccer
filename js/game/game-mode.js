@@ -3,7 +3,7 @@ import { createAudio, soundFor } from './audio.js';
 import { cameraTarget, createCamera, screenToWorldMove, snapCamera, stepCamera } from './camera.js';
 import { addFromEvent, addFromMotion, createEffects, stepEffects } from './effects.js';
 import { createHud } from './hud.js';
-import { ACTIONS, DEFAULT_BINDINGS, createInput, frameToControl } from './input-map.js';
+import { ACTIONS, DEFAULT_BINDINGS, createInput, frameToControl, mergeFrames } from './input-map.js';
 import { bestPassTarget } from './ball-control.js';
 import { MATCH, createMatch, drainEvents, playerById, stepMatch, teamOf } from './match.js';
 import { opponentOf } from './rules.js';
@@ -66,12 +66,12 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   const camera = createCamera();
   let view = renderer.resize(root.clientWidth || 800, root.clientHeight || 450);
 
-  const session = { charge: 0, match: null, ai: null, mode: 'menu', time: 0, steps: 0, aiMap: {}, scorer: null, goalClock: 0, replayClock: 0, replayFrames: null, accumulator: 0, over: false };
+  const session = { carry: null, tipsOpen: false, padPrev: {}, charge: 0, match: null, ai: null, mode: 'menu', time: 0, steps: 0, aiMap: {}, scorer: null, goalClock: 0, replayClock: 0, replayFrames: null, accumulator: 0, over: false };
   let touch = null;
 
   const hud = createHud(root, { onPause: () => pause(), onMute: () => { settings.sound = !settings.sound; audio.setMuted(!settings.sound); saveSettings(storage, settings, ACTIONS); } });
   hud.setVisible(false);
-  const tipsDone = () => { settings.tipsSeen = true; saveSettings(storage, settings, ACTIONS); };
+  const tipsDone = () => { session.tipsOpen = false; settings.tipsSeen = true; saveSettings(storage, settings, ACTIONS); };
   const menus = createMenus(root, {
     settings,
     touch: isTouchDevice(),
@@ -82,7 +82,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     onSettings: () => {
       audio.setMuted(!settings.sound);
       saveSettings(storage, settings, ACTIONS);
-      if (touch) { touch.destroy(); touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics, onTipsDone: tipsDone }); if (!settings.tipsSeen) touch.showTips(); } // size and vibration apply at once
+      if (touch) { touch.destroy(); touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics, onTipsDone: tipsDone }); if (!settings.tipsSeen) { touch.showTips(); session.tipsOpen = true; } } // size and vibration apply at once
     },
     bindings: () => effectiveBindings(DEFAULT_BINDINGS, settings),
     defaultBindings: DEFAULT_BINDINGS,
@@ -110,7 +110,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     hud.setVisible(true);
     if (isTouchDevice() && !touch) {
       touch = mountTouchControls(root, input, { scale: settings.touchScale, haptics: settings.haptics, onTipsDone: tipsDone });
-      if (!settings.tipsSeen) touch.showTips();
+      if (!settings.tipsSeen) { touch.showTips(); session.tipsOpen = true; }
     }
     root.dataset.gamePhase = 'playing';
     root.focus?.();
@@ -160,11 +160,13 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
   function updatePlaying(dt) {
     const { match } = session;
     const active = playerById(match, match.activeId);
-    const frame = input.sample(dt, active?.heading ?? 0, screenToWorldMove); // the stick and keys are screen directions; the pitch is drawn squashed
+    const frame = mergeFrames(session.carry, input.sample(dt, active?.heading ?? 0, screenToWorldMove)); // the stick and keys are screen directions; the pitch is drawn squashed
+    session.carry = null;
     if (frame.pause) { pause(); return; }
     if (frame.switch === 'cycle') cycleSwitch(match);
     else if (frame.switch) directionSwitch(match, frame.switch.dir);
 
+    if (session.tipsOpen) { touch?.setCharge(0); return; }
     session.accumulator += dt;
     let first = true;
     while (session.accumulator >= MATCH.step) {
@@ -172,6 +174,7 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
       first = false;
       session.accumulator -= MATCH.step;
     }
+    if (first) session.carry = { ...frame, switch: null, pause: false }; // no step ran on this frame (a screen faster than 120 Hz): keep its taps for the next one
     touch?.setCharge(frame.charge);
     // Show who a pass would go to right now (the same choice the pass makes), so a pass is never a surprise.
     session.preview = null;
@@ -205,6 +208,19 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     }
   }
 
+  /** A gamepad in the menus: up/down (D-pad or stick) moves the focus, A presses, B goes back. */
+  function padMenus() {
+    const pad = Array.from(globalThis.navigator?.getGamepads?.() ?? []).find((p) => p?.connected);
+    if (!pad || !menus.visible) { session.padPrev = {}; return; }
+    const now = { up: Boolean(pad.buttons[12]?.pressed) || pad.axes[1] < -0.6, down: Boolean(pad.buttons[13]?.pressed) || pad.axes[1] > 0.6, a: Boolean(pad.buttons[0]?.pressed), b: Boolean(pad.buttons[1]?.pressed) };
+    const edge = (key) => now[key] && !session.padPrev[key];
+    if (edge('up')) menus.moveFocus(-1);
+    if (edge('down')) menus.moveFocus(1);
+    if (edge('a')) menus.activate();
+    if (edge('b')) menus.back();
+    session.padPrev = now;
+  }
+
   function pollGamepad() {
     const pads = globalThis.navigator?.getGamepads?.() ?? [];
     const pad = Array.from(pads).find((p) => p?.connected);
@@ -222,7 +238,11 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     const touchRotated = !rotate.hidden;
     if (session.mode === 'playing' && !touchRotated) updatePlaying(dt);
     else if (session.mode === 'replay') updateReplay(dt, input.sample(dt));
-    else input.sample(dt); // keep edge events from piling up in menus
+    else {
+      const idle = input.sample(dt); // keep edge events from piling up in menus
+      if (session.mode === 'paused' && idle.pause) resume();
+      padMenus();
+    }
 
     const match = session.match;
     if (match) {
@@ -230,7 +250,9 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
       const model = showing ? { ...showing, ball: showing.ball, players: showing.players, activeId: showing.activeId, passTarget: null } : match;
       if (session.mode !== 'paused' && session.mode !== 'over') { addFromMotion(effects, match, dt); }
       stepEffects(effects, dt);
-      stepCamera(camera, cameraTarget(model, camera, view), dt, view, Math.hypot(model.ball.vx, model.ball.vy));
+      // At a restart the taker stands on the line under the HUD: frame the spot a little further in.
+      const camModel = model.phase === 'restart' ? { ...model, ball: { ...model.ball, x: model.ball.x * 0.88, y: model.ball.y * 0.86 } } : model;
+      stepCamera(camera, cameraTarget(camModel, camera, view), dt, view, Math.hypot(model.ball.vx, model.ball.vy));
       renderer.draw({ match: model, camera, view, effects, time: session.time, celebrating: match.phase === 'goal' ? session.scorer : null, aim: session.mode === 'playing', passPreview: session.mode === 'playing' ? session.preview : null });
       hud.update({ match, charge: session.mode === 'playing' ? (session.charge ?? 0) : 0, replaying: session.mode === 'replay', muted: !settings.sound, showRadar: settings.radar });
       root.dataset.score = `${match.score.home}-${match.score.away}`;
@@ -249,8 +271,8 @@ export function startGame({ root, onExit, board = null, storage = safeStorage() 
     audio.resume();
     if (menus.handleKey(event)) { event.preventDefault(); return; }
     if (session.mode === 'menu' || session.mode === 'over' || menus.visible) {
-      if (event.code === 'Escape' && session.mode === 'paused') { resume(); event.preventDefault(); }
-      else if (event.code === 'Escape' && session.mode === 'menu') onExit();
+      if (event.code === 'Escape' && menus.back()) event.preventDefault(); // Esc is always one level back
+      else if (event.code === 'ArrowDown' || event.code === 'ArrowUp') { menus.moveFocus(event.code === 'ArrowDown' ? 1 : -1); event.preventDefault(); }
       return;
     }
     if (event.repeat) { if (input.keyDown(event.code)) event.preventDefault(); return; }

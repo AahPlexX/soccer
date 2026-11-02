@@ -23,6 +23,8 @@ export const MATCH = Object.freeze({
   // A throw-in: the taker stands on the line holding the ball overhead until he is told to throw (the human aims and presses pass,
   // the computer waits `aiDelay`), then a wind-up and the release `release` seconds in.
   throwIn: { aiDelay: 1.6, humanTimeout: 9, minWait: 0.5, release: 0.3, duration: 0.6, height: 2.0, maxRange: 18 },
+  // A corner, goal kick or free kick: the taker waits for the human to aim and kick (the computer kicks after a moment).
+  setPiece: { aiDelay: 1.6, humanTimeout: 9, minWait: 0.5 },
 });
 
 const COLLIDERS = goalColliders({ halfLength: HALF_LENGTH, halfMouth: HALF_MOUTH });
@@ -274,7 +276,8 @@ function resolveBallContacts(match, dt) {
     return;
   }
   for (const player of eligible) {
-    if (headerContact(player, ball)) {
+    if (match.time >= (match.headerUntil ?? 0) && headerContact(player, ball)) {
+      match.headerUntil = match.time + 0.7; // a header hands the ball on: no heading it back and forth
       player.action = { type: 'header', t: 0, duration: 0.4 };
       match.lastTouch = { team: player.team, id: player.id };
       kickImmunity(match, player); // one touch at a time, or a ball hanging at head height would be headed every step
@@ -291,6 +294,31 @@ function resolveBallContacts(match, dt) {
       emit(match, { type: 'block', team: player.team, id: player.id });
       return;
     }
+  }
+}
+
+/**
+ * One step of a corner, goal kick or free kick while the match waits for it. The taker stands on the spot with the ball; the human
+ * aims with the stick and kicks with pass or shoot (after a short minimum, or play simply resumes after `humanTimeout`); the
+ * computer's taker waits `aiDelay` and then plays on. Everyone else stays where the whistle left them until the ball is kicked.
+ */
+function stepSetPiece(match, controls, dt) {
+  const r = match.restart;
+  const cfg = MATCH.setPiece;
+  const taker = playerById(match, r.takerId);
+  Object.assign(taker, { x: r.spot.x, y: r.spot.y, vx: 0, vy: 0 });
+  Object.assign(match.ball, { x: r.spot.x, y: r.spot.y, vx: 0, vy: 0, vz: 0 });
+  r.waited += dt;
+  const human = taker.team === match.humanTeam;
+  const control = human ? controls[taker.id] ?? STILL : STILL;
+  const direction = control.move ?? STILL;
+  if (Math.hypot(direction.x, direction.y) > 0.3) taker.heading = turnToward(taker.heading, Math.atan2(direction.y, direction.x), PLAYER.turnRate * dt);
+  const kick = human && (control.pass || control.shoot) && r.waited >= cfg.minWait;
+  if (kick || r.waited >= (human ? cfg.humanTimeout : cfg.aiDelay)) {
+    r.state = 'done';
+    match.phase = 'play';
+    match.phaseTime = 0;
+    if (kick) applyOwnerActions(match, taker, control);
   }
 }
 
@@ -430,6 +458,7 @@ export function stepMatch(match, controls, dt = MATCH.step) {
     case 'restart':
       movePlayers(match, {}, dt, true);
       if (match.restart?.type === 'throw-in' && match.restart.state !== 'done') stepThrowIn(match, controls, dt);
+      else if (match.restart?.state === 'wait') stepSetPiece(match, controls, dt);
       else if (match.phaseTime >= MATCH.restartDelay) { match.phase = 'play'; match.phaseTime = 0; }
       break;
     case 'play':

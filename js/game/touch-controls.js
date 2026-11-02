@@ -163,7 +163,7 @@ export function mountTouchControls(root, input, { scale = 1, haptics = true, onT
   const gotIt = element('button', 'g-tips-ok', 'Got it');
   gotIt.type = 'button';
   gotIt.addEventListener('click', () => hideTips());
-  tips.append(element('strong', 'g-tips-title', 'Your player has the yellow marker'), list, gotIt);
+  tips.append(element('strong', 'g-tips-title', 'Your player has the yellow marker'), list, element('p', 'g-tips-note', 'The match waits until you close this card.'), gotIt);
   let tipsTimer = 0;
   function hideTips() {
     if (tips.hidden) return;

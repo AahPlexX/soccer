@@ -16,6 +16,7 @@ import { HALF_LENGTH, attackDirection } from './rules.js';
 // human is not controlling, in the shape `stepMatch` takes. Call it at about 20 Hz.
 
 export const DIFFICULTIES = Object.freeze({
+  kids: { speed: 0.7, think: 0.6, reaction: 0.5, passNoise: 0.45, shotError: 4, shotPower: 0.5, decisionNoise: 0.45, pressRadius: 6, keeperSkill: 0.25, tackleChance: 0.12, shootRange: 9, runners: 1, markers: 1, aggression: 0.1, label: 'Kids' },
   easy: { speed: 0.82, think: 0.45, reaction: 0.35, passNoise: 0.3, shotError: 3, shotPower: 0.62, decisionNoise: 0.35, pressRadius: 9, keeperSkill: 0.45, tackleChance: 0.3, shootRange: 11, runners: 1, markers: 1, aggression: 0.3, label: 'Easy' },
   normal: { speed: 0.92, think: 0.25, reaction: 0.2, passNoise: 0.14, shotError: 1.6, shotPower: 0.76, decisionNoise: 0.2, pressRadius: 13, keeperSkill: 0.65, tackleChance: 0.55, shootRange: 17, runners: 2, markers: 2, aggression: 0.55, label: 'Normal' },
   hard: { speed: 1, think: 0.12, reaction: 0.08, passNoise: 0.05, shotError: 0.8, shotPower: 0.86, decisionNoise: 0.08, pressRadius: 18, keeperSkill: 0.95, tackleChance: 0.8, shootRange: 18, runners: 3, markers: 3, aggression: 0.85, label: 'Hard' },
@@ -61,12 +62,15 @@ function execute(ctx, profile, player, assignment, brain) {
       if (!carrier) return go(1, false);
       const d = distance(player, carrier);
       // Far away: run at where they are going. Close: jockey, staying goal side and shepherding instead of diving in.
+      // A carrier who is standing or walking cannot be shepherded forever: close right in and win the ball.
+      const slow = Math.hypot(carrier.vx, carrier.vy) < 1.8;
       const control = d > 4
         ? { move: arrive(player, { x: carrier.fx, y: carrier.fy }, 1, 1), sprint: d > 6 }
-        : { move: arrive(player, shadowPoint(carrier, goal, 1.4), 0.9, 1.5), sprint: false };
-      if (d < 1.15 && match.time >= brain.coolUntil) {
+        : { move: arrive(player, shadowPoint(carrier, goal, slow ? 0.7 : 1.4), 0.9, 1.5), sprint: false };
+      if (d < (slow ? 1.5 : 1.15) && match.time >= brain.coolUntil) {
         const loose = distance(carrier, match.ball) > 0.7; // the ball has run away from their feet: a good moment to go in
-        if (nextRandom(match) < profile.tackleChance * (loose ? 1.6 : 0.6) * 0.25) { control.tackle = 'stand'; brain.coolUntil = match.time + 1; }
+        const chance = slow ? 0.35 : (loose ? 1.6 : 0.6) * 0.25;
+        if (nextRandom(match) < profile.tackleChance * chance) { control.tackle = 'stand'; brain.coolUntil = match.time + 1; }
       } else if (d >= 1.4 && d <= 2.1 && profile.aggression > 0.6 && Math.hypot(carrier.vx, carrier.vy) > 4 && match.time >= brain.coolUntil && nextRandom(match) < 0.08) {
         control.tackle = 'slide';
         brain.coolUntil = match.time + 1.5;

@@ -137,3 +137,7 @@
 #game-root .g-banner.g-banner-restart { font-size: clamp(16px, 3.2vw, 30px); letter-spacing: 0.12em; padding: 6px 16px; top: 26%; }
 #game-root .g-restart-hint { position: absolute; left: 50%; top: calc(26% + 44px); transform: translateX(-50%); padding: 6px 14px; border-radius: 10px; background: rgba(8, 22, 14, 0.85); border: 2px solid #ffd43b; color: #fff; font: 800 clamp(12px, 2.2vw, 16px) system-ui, sans-serif; text-align: center; pointer-events: none; }
 #game-root .g-restart-hint[hidden] { display: none; }
+
+/* Audit fixes: the replay banner goes to a corner; the tips note. */
+#game-root .g-banner.g-banner-replay { top: 14px; right: 14px; left: auto; transform: none; font-size: clamp(12px, 2.2vw, 18px); padding: 5px 12px; }
+#game-root .g-tips-note { margin: 0 0 6px; color: #ffd43b; font-weight: 800; }

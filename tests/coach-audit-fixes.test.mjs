@@ -64,7 +64,7 @@ test('C-19: Game Mode starts from the same formations rather than silently falli
 });
 
 test('C-01 and C-03: Undo and Redo are shown on touch screens, and the selection bar wraps instead of hiding actions', () => {
-  assert.match(css, /@media \(max-width: 1099px\) \{ #undo, #redo \{ display: inline-flex/, 'Undo/Redo come back below 1100 px');
+  assert.match(css, /@media \(max-width: 959px\) \{ #undo, #redo \{ display: inline-flex/, 'Undo/Redo come back wherever the tools become a drawer (below 960 px)');
   assert.match(css, /\.selection-actions \{ flex-wrap: wrap; overflow-x: visible;/, 'the phone selection bar wraps');
 });
 
@@ -124,4 +124,11 @@ test('C-18: the Coach workspace applies typed teaching points when it closes, an
   assert.match(html, /<div class="coach-footer"><span>Your teaching points are kept when you close this window\.<\/span><button id="coach-done"/);
   assert.match(css, /\.coach-footer \{ position: sticky; bottom: -20px;/);
   assert.match(css, /\.coach-dialog textarea \{ min-height: 96px; \}/);
+});
+
+test('C-14: the tools drawer breakpoint is the same 959 px in the CSS and in the script, so tablets from 960 px keep the tools docked', () => {
+  const surface = readFileSync(new URL('../js/board-surface.js', import.meta.url), 'utf8');
+  assert.match(surface, /matchMedia\('\(max-width: 959px\)'\)/);
+  assert.equal((css.match(/\(max-width: 959px\)/g) ?? []).length, 2, 'the shell/drawer block and the Undo/Redo block');
+  assert.doesNotMatch(css, /max-width: 1099px/);
 });

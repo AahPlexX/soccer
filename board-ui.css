@@ -99,7 +99,7 @@ body.presentation .board-panel, body.presentation #panel-toggle, body.presentati
 body.presentation .workspace { padding: 12px 18px; }
 body.presentation .board-heading h1 { font-size: 20px; }
 body.presentation #presentation-toggle { background: #e0edbd; color: #173e2c; }
-@media (max-width: 1099px) {
+@media (max-width: 959px) {
  .app-shell { grid-template-columns: 1fr; grid-template-areas: 'top' 'workspace' 'bottom'; grid-template-rows: auto minmax(0,1fr) auto; }
  .board-panel { display: none; }
  .top-rail { padding: 10px 14px; gap: 10px; }
@@ -271,7 +271,7 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
 .player-token.is-selected .player-halo, .player-token.is-dragging .player-halo { stroke: #fff; filter: drop-shadow(0 0 2px rgba(0, 0, 0, .9)); }
 
 /* Coach audit fixes: Undo/Redo stay on touch screens, the phone header and selection bar do not hide actions, small text is larger, and a lasting warning when saving is blocked. */
-@media (max-width: 1099px) { #undo, #redo { display: inline-flex; align-items: center; justify-content: center; } }
+@media (max-width: 959px) { #undo, #redo { display: inline-flex; align-items: center; justify-content: center; } }
 @media (max-width: 680px) {
  .header-actions { grid-template-columns: repeat(12, minmax(0, 1fr)); }
  #undo, #redo, #saved-open, #save-as { grid-column: span 3; }

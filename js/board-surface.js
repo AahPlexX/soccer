@@ -31,7 +31,7 @@ export function setupBoardSurface({ getState, getSelection, clearSelection, comm
     span.innerHTML = `<svg viewBox="0 0 24 24">${path}</svg>`;
     document.querySelector(`[data-tool="${tool}"]`).prepend(span);
   }
-  const panel = byId('board-panel'); const narrow = matchMedia('(max-width: 1099px)');
+  const panel = byId('board-panel'); const narrow = matchMedia('(max-width: 959px)');
   let previousFocus;
   function setPanel(open) {
     open = Boolean(open && narrow.matches);

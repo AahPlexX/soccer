@@ -116,3 +116,12 @@ test('C-07: Present on a short screen (phone held sideways) slims the header and
   assert.match(css, /@media \(max-height: 520px\) \{\n body\.presentation \.app-shell \{ grid-template-rows: 44px minmax\(0,1fr\) auto; \}/);
   assert.match(css, /body\.presentation \.teaching-strip, body\.presentation \.simulation-group button:not\(#play-toggle\) \{ display: none; \}/);
 });
+
+test('C-18: the Coach workspace applies typed teaching points when it closes, and has a Done button that stays in view', () => {
+  const ui = readFileSync(new URL('../js/coaching-ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /dialog\.addEventListener\('close', \(\) => \{ if \(briefEdited\(\)\) applyBrief\(\); \}\)/, 'Close, Done and Esc all apply an edited brief');
+  assert.match(ui, /byId\('coach-done'\)\.addEventListener\('click', \(\) => dialog\.close\(\)\)/);
+  assert.match(html, /<div class="coach-footer"><span>Your teaching points are kept when you close this window\.<\/span><button id="coach-done"/);
+  assert.match(css, /\.coach-footer \{ position: sticky; bottom: -20px;/);
+  assert.match(css, /\.coach-dialog textarea \{ min-height: 96px; \}/);
+});

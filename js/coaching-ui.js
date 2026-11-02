@@ -90,6 +90,10 @@ export function setupCoaching({ getState, commit, replace, toast, setStart, retu
     getState().simulation.running = false; commit(); fillBrief(); drawRoster(); drawSequence(); dialog.showModal();
   });
   byId('coach-close').addEventListener('click', () => dialog.close());
+  byId('coach-done').addEventListener('click', () => dialog.close());
+  // Typed teaching points used to be lost unless the coach pressed Apply brief; Close, Done and Esc now apply them (C-18).
+  const briefEdited = () => BRIEF_FIELDS.some((key) => byId(`coach-${key}`).value.trim().slice(0, key === 'title' ? 80 : 2000) !== getState().coaching[key]) || (Math.min(120, Math.max(1, Math.round(Number(byId('coach-minutes').value) || 5))) !== getState().coaching.minutes);
+  dialog.addEventListener('close', () => { if (briefEdited()) applyBrief(); });
   byId('brief-apply').addEventListener('click', applyBrief);
   byId('coach-save-existing').addEventListener('click', async () => {
     applyBrief();

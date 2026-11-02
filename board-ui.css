@@ -306,3 +306,9 @@ select { appearance: none; -webkit-appearance: none; padding-right: 38px; backgr
  body.presentation .bottom-dock { padding: 4px 8px; }
  body.presentation .workspace { padding: 4px; }
 }
+
+/* Coach workspace (C-18): a Done button that stays in view, and text areas big enough to write in. */
+.coach-dialog textarea { min-height: 96px; }
+.coach-footer { position: sticky; bottom: -20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px -20px -20px; padding: 10px 20px; background: var(--rail); border-top: 1px solid var(--line); }
+.coach-footer span { font-size: 13px; color: var(--muted); }
+.coach-footer button { min-height: 44px; min-width: 96px; }

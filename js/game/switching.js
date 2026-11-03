@@ -49,6 +49,7 @@ export function autoSwitch(match) {
   const best = mine.slice().sort(byDistanceThenId(match))[0];
   if (!current || current.team !== match.humanTeam || current.role === 'GK' || current.down > 0) return setActive(match, best.id);
   if (match.time < match.switching.lockUntil) return false;
+  if (match.time - match.switching.lastManual < SWITCH.manualHold) return false; // a manual pick also holds while defending
   if (best.id !== current.id && distanceToBall(match, current) - distanceToBall(match, best) > SWITCH.defendMargin) return setActive(match, best.id);
   return false;
 }

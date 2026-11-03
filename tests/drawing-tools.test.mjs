@@ -12,7 +12,7 @@ test('the run arrow (PRD 7.1) is a tool and a persisted drawing type', () => {
   assert.ok(DRAWING_TYPES.includes('run'));
   const saved = { ...createInitialState(), tool: 'run', drawings: [
     { id: 'd1', type: 'run', points: [{ x: 0.2, y: 0.3 }, { x: 0.5, y: 0.4 }] },
-    { id: 'd2', type: 'wavy', points: [{ x: 0.1, y: 0.1 }] },
+    { id: 'd2', type: 'wavy', points: [{ x: 0.1, y: 0.1 }, { x: 0.3, y: 0.2 }] },
   ] };
   const state = normalizeState(saved);
   assert.equal(state.tool, 'run');
